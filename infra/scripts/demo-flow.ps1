@@ -7,98 +7,87 @@
   Assumes the stack is up (docker compose ... up -d) and healthy.
 #>
 param(
-  [string]$BaseUrl = "http://localhost:8080"
+  [string]$BaseUrl = "http://localhost:8080",
+  [int]$ClientId = 1
 )
 
 $ErrorActionPreference = "Stop"
-$email = "demo+$(Get-Random)@example.com"
-$emailEnc = [uri]::EscapeDataString($email)
-$password = "Passw0rd!"
 
 function Step($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 function Show($obj) { $obj | ConvertTo-Json -Depth 6 }
 
 Step "Wait for the gateway to route (lb:// routes activate after the first Eureka fetch)"
 $ready = $false
-foreach ($i in 1..40) {
+foreach ($i in 1..45) {
   try {
-    Invoke-RestMethod -Method Post "$BaseUrl/api/auth/register" -ContentType application/json `
-      -Body (@{ email = "probe-$i@example.com"; password = "Passw0rd!" } | ConvertTo-Json) `
-      -ErrorAction Stop | Out-Null
-    $ready = $true; break                      # 201 -> routed + permitAll working
-  } catch {
-    $sc = $_.Exception.Response.StatusCode.value__
-    if ($sc -eq 409) { $ready = $true; break } # route works, email already taken
-    Start-Sleep -Seconds 2                     # 401/404/503 -> gateway still warming
-  }
+    Invoke-RestMethod "$BaseUrl/api/assets?clientId=$ClientId" -ErrorAction Stop | Out-Null
+    $ready = $true; break
+  } catch { Start-Sleep -Seconds 2 }
 }
-if (-not $ready) { throw "gateway not routing to auth-service after 80s" }
+if (-not $ready) { throw "gateway not routing after 90s" }
 Write-Host "gateway ready"
 
-Step "Register $email"
-Invoke-RestMethod -Method Post "$BaseUrl/api/auth/register" `
-  -ContentType application/json `
-  -Body (@{ email = $email; password = $password } | ConvertTo-Json) | Out-Null
-Write-Host "registered"
+Step "Clients (public)"
+Show (Invoke-RestMethod "$BaseUrl/api/clients")
 
-Step "Login"
-$login = Invoke-RestMethod -Method Post "$BaseUrl/api/auth/login" `
-  -ContentType application/json `
-  -Body (@{ email = $email; password = $password } | ConvertTo-Json)
-$token = $login.token
-$auth = @{ Authorization = "Bearer $token" }
-Write-Host "token acquired ($($token.Substring(0,16))...)"
+Step "Assets in stock for client $ClientId (public)"
+$stock = Invoke-RestMethod "$BaseUrl/api/assets?clientId=$ClientId&status=IN_STOCK"
+$assetId = $stock[0].id
+Write-Host "picked asset $assetId ($($stock[0].assetTag))"
 
-Step "Browse products"
-$products = Invoke-RestMethod "$BaseUrl/api/products" -Headers $auth
-Show $products
-$p1 = $products[0].id
-$p2 = $products[1].id
+Step "All laptops (public)"
+$laptops = Invoke-RestMethod "$BaseUrl/api/assets?clientId=$ClientId&type=LAPTOP"
+Write-Host "$($laptops.Count) laptops"
 
-Step "Check inventory for product $p1"
-Show (Invoke-RestMethod "$BaseUrl/api/inventory/$p1" -Headers $auth)
+Step "People (public)"
+$people = Invoke-RestMethod "$BaseUrl/api/people?clientId=$ClientId"
+$personId = $people[0].id
+Write-Host "picked person $personId ($($people[0].fullName))"
 
-Step "Place order (2x $p1, 1x $p2)"
-$order = Invoke-RestMethod -Method Post "$BaseUrl/api/orders" -Headers $auth `
-  -ContentType application/json `
-  -Body (@{
-      userId = $email
-      items  = @(
-        @{ productId = $p1; quantity = 2 },
-        @{ productId = $p2; quantity = 1 }
-      )
-    } | ConvertTo-Json)
-Show $order
-if ($order.status -ne "CONFIRMED") { throw "expected CONFIRMED, got $($order.status)" }
+Step "Desks (public)"
+$desks = Invoke-RestMethod "$BaseUrl/api/locations?clientId=$ClientId&kind=DESK"
+Write-Host "$($desks.Count) desks"
 
-Step "Payment record $($order.paymentId)"
-Show (Invoke-RestMethod "$BaseUrl/api/payments/$($order.paymentId)" -Headers $auth)
-
-Step "Notifications for $email"
-Show (Invoke-RestMethod "$BaseUrl/api/notifications?userId=$emailEnc" -Headers $auth)
-
-Step "Orders for $email"
-Show (Invoke-RestMethod "$BaseUrl/api/orders?userId=$emailEnc" -Headers $auth)
-
-Step "Failure path: unauthenticated order -> 401"
+Step "Failure path: check-out with no token -> 401"
 try {
-  Invoke-RestMethod -Method Post "$BaseUrl/api/orders" -ContentType application/json `
-    -Body (@{ userId = $email; items = @(@{ productId = $p1; quantity = 1 }) } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Post "$BaseUrl/api/assignments" -ContentType application/json `
+    -Body (@{ clientId = $ClientId; assetId = $assetId; holderType = "PERSON"; holderId = $personId } | ConvertTo-Json) | Out-Null
   throw "expected 401"
 } catch { Write-Host "got $($_.Exception.Response.StatusCode.value__) as expected" }
 
-Step "Failure path: over-stock order -> 409 REJECTED_STOCK"
+Step "Sign in as the seeded tech"
+$login = Invoke-RestMethod -Method Post "$BaseUrl/api/auth/login" -ContentType application/json `
+  -Body (@{ email = "tech@acme.example"; password = "Passw0rd!" } | ConvertTo-Json)
+$auth = @{ Authorization = "Bearer $($login.token)" }
+Write-Host "token acquired"
+
+Step "Check asset $assetId out to person $personId"
+$assign = Invoke-RestMethod -Method Post "$BaseUrl/api/assignments" -Headers $auth -ContentType application/json `
+  -Body (@{ clientId = $ClientId; assetId = $assetId; holderType = "PERSON"; holderId = $personId } | ConvertTo-Json)
+Show $assign
+if (-not $assign.open) { throw "expected an open assignment" }
+if ($assign.checkedOutBy -ne "tech@acme.example") { throw "expected checkedOutBy=tech@acme.example, got $($assign.checkedOutBy)" }
+
+Step "It shows on the person"
+Show (Invoke-RestMethod "$BaseUrl/api/assets?clientId=$ClientId&holderType=PERSON&holderId=$personId")
+
+Step "Failure path: check it out again -> 409"
 try {
-  Invoke-RestMethod -Method Post "$BaseUrl/api/orders" -Headers $auth -ContentType application/json `
-    -Body (@{ userId = $email; items = @(@{ productId = 5; quantity = 9999 }) } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Post "$BaseUrl/api/assignments" -Headers $auth -ContentType application/json `
+    -Body (@{ clientId = $ClientId; assetId = $assetId; holderType = "PERSON"; holderId = $personId } | ConvertTo-Json) | Out-Null
   throw "expected 409"
 } catch { Write-Host "got $($_.Exception.Response.StatusCode.value__) as expected" }
 
-Step "Failure path: expensive order over the payment ceiling -> 402 PAYMENT_FAILED"
-try {
-  Invoke-RestMethod -Method Post "$BaseUrl/api/orders" -Headers $auth -ContentType application/json `
-    -Body (@{ userId = $email; items = @(@{ productId = $p1; quantity = 5 }) } | ConvertTo-Json) | Out-Null
-  throw "expected 402"
-} catch { Write-Host "got $($_.Exception.Response.StatusCode.value__) as expected" }
+Step "Offboard person $personId"
+$result = Invoke-RestMethod -Method Post "$BaseUrl/api/assignments/offboard?clientId=$ClientId&personId=$personId" -Headers $auth
+Show $result
+
+Step "Asset $assetId is back in stock"
+$after = Invoke-RestMethod "$BaseUrl/api/assets/$assetId"
+Write-Host "status = $($after.status)"
+if ($after.status -ne "IN_STOCK") { throw "expected IN_STOCK, got $($after.status)" }
+
+Step "Notifications for client $ClientId (public)"
+Show (Invoke-RestMethod "$BaseUrl/api/notifications?clientId=$ClientId")
 
 Write-Host "`nAll demo steps passed." -ForegroundColor Green

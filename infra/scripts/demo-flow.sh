@@ -1,77 +1,84 @@
 #!/usr/bin/env bash
-# End-to-end demo through the API gateway. Needs curl + python3.
+# End-to-end demo through the API gateway. Needs curl + python (3 or 2.7).
 #   bash infra/scripts/demo-flow.sh [base-url]
 set -euo pipefail
 BASE="${1:-http://localhost:8080}"
-EMAIL="demo+$RANDOM@example.com"
-PW="Passw0rd!"
+CLIENT=1
 
-j() { python3 -c "import sys,json;d=json.load(sys.stdin);print(d$1)"; }
+PY="$(command -v python3 || command -v python || true)"
+[ -n "$PY" ] || { echo "need python on PATH"; exit 1; }
+j() { "$PY" -c "import sys,json;d=json.load(sys.stdin);print(d$1)"; }
 step() { printf '\n=== %s ===\n' "$1"; }
 
 step "Wait for the gateway to route (lb:// routes activate after the first Eureka fetch)"
 ready=""
-for i in $(seq 1 40); do
-  code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/auth/register" \
-    -H 'Content-Type: application/json' -d "{\"email\":\"probe-$i@example.com\",\"password\":\"Passw0rd!\"}")
-  # 201 -> routed + permitAll working ; 409 -> route works, email taken
-  if [ "$code" = "201" ] || [ "$code" = "409" ]; then ready=1; break; fi
+for i in $(seq 1 45); do
+  code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/assets?clientId=$CLIENT")
+  if [ "$code" = "200" ]; then ready=1; break; fi
   sleep 2
 done
-[ -n "$ready" ] || { echo "gateway not routing to auth-service after 80s"; exit 1; }
+[ -n "$ready" ] || { echo "gateway not routing after 90s"; exit 1; }
 echo "gateway ready"
 
-step "Register $EMAIL"
-curl -fsS -X POST "$BASE/api/auth/register" -H 'Content-Type: application/json' \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"$PW\"}" >/dev/null && echo registered
+step "Clients (public)"
+curl -fsS "$BASE/api/clients"; echo
 
-step "Login"
+step "Assets in stock for client $CLIENT (public)"
+STOCK=$(curl -fsS "$BASE/api/assets?clientId=$CLIENT&status=IN_STOCK")
+ASSET=$(echo "$STOCK" | j "[0]['id']")
+echo "picked asset $ASSET"
+
+step "All laptops (public)"
+curl -fsS "$BASE/api/assets?clientId=$CLIENT&type=LAPTOP" | j "[len(d)]" >/dev/null \
+  && echo "$(curl -fsS "$BASE/api/assets?clientId=$CLIENT&type=LAPTOP" | j "[len(d)]") laptops"
+
+step "People (public)"
+PEOPLE=$(curl -fsS "$BASE/api/people?clientId=$CLIENT")
+PERSON=$(echo "$PEOPLE" | j "[0]['id']")
+echo "picked person $PERSON"
+
+step "Desks (public)"
+echo "$(curl -fsS "$BASE/api/locations?clientId=$CLIENT&kind=DESK" | j "[len(d)]") desks"
+
+step "Failure: check-out with no token -> 401"
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/assignments" \
+  -H 'Content-Type: application/json' \
+  -d "{\"clientId\":$CLIENT,\"assetId\":$ASSET,\"holderType\":\"PERSON\",\"holderId\":$PERSON}")
+echo "got $code"; [ "$code" = "401" ] || exit 1
+
+step "Sign in as the seeded tech"
 TOKEN=$(curl -fsS -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"$PW\"}" | j "['token']")
+  -d '{"email":"tech@acme.example","password":"Passw0rd!"}' | j "['token']")
 AUTH="Authorization: Bearer $TOKEN"
 echo "token acquired"
 
-step "Browse products"
-PRODUCTS=$(curl -fsS "$BASE/api/products" -H "$AUTH"); echo "$PRODUCTS"
-P1=$(echo "$PRODUCTS" | j "[0]['id']")
-P2=$(echo "$PRODUCTS" | j "[1]['id']")
+step "Check asset $ASSET out to person $PERSON"
+ASSIGN=$(curl -fsS -X POST "$BASE/api/assignments" -H "$AUTH" -H 'Content-Type: application/json' \
+  -d "{\"clientId\":$CLIENT,\"assetId\":$ASSET,\"holderType\":\"PERSON\",\"holderId\":$PERSON}")
+echo "$ASSIGN"
+OPEN=$(echo "$ASSIGN" | j "['open']")
+ACTOR=$(echo "$ASSIGN" | j "['checkedOutBy']")
+[ "$OPEN" = "True" ] || { echo "expected open assignment"; exit 1; }
+[ "$ACTOR" = "tech@acme.example" ] || { echo "expected checkedOutBy=tech@acme.example, got $ACTOR"; exit 1; }
 
-step "Inventory for product $P1"
-curl -fsS "$BASE/api/inventory/$P1" -H "$AUTH"; echo
+step "It shows on the person"
+curl -fsS "$BASE/api/assets?clientId=$CLIENT&holderType=PERSON&holderId=$PERSON" | j "[[a['assetTag'] for a in d]]"
 
-step "Place order (2x $P1, 1x $P2)"
-ORDER=$(curl -fsS -X POST "$BASE/api/orders" -H "$AUTH" -H 'Content-Type: application/json' \
-  -d "{\"userId\":\"$EMAIL\",\"items\":[{\"productId\":$P1,\"quantity\":2},{\"productId\":$P2,\"quantity\":1}]}")
-echo "$ORDER"
-STATUS=$(echo "$ORDER" | j "['status']")
-[ "$STATUS" = "CONFIRMED" ] || { echo "expected CONFIRMED, got $STATUS"; exit 1; }
-PAYMENT_ID=$(echo "$ORDER" | j "['paymentId']")
-
-step "Payment $PAYMENT_ID"
-curl -fsS "$BASE/api/payments/$PAYMENT_ID" -H "$AUTH"; echo
-
-step "Notifications for $EMAIL"
-curl -fsS -G "$BASE/api/notifications" --data-urlencode "userId=$EMAIL" -H "$AUTH"; echo
-
-step "Orders for $EMAIL"
-curl -fsS -G "$BASE/api/orders" --data-urlencode "userId=$EMAIL" -H "$AUTH"; echo
-
-step "Failure: no token -> 401"
-code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/orders" \
+step "Failure: check it out again -> 409"
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/assignments" -H "$AUTH" \
   -H 'Content-Type: application/json' \
-  -d "{\"userId\":\"$EMAIL\",\"items\":[{\"productId\":$P1,\"quantity\":1}]}")
-echo "got $code"; [ "$code" = "401" ] || exit 1
-
-step "Failure: over-stock -> 409"
-code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/orders" -H "$AUTH" \
-  -H 'Content-Type: application/json' \
-  -d "{\"userId\":\"$EMAIL\",\"items\":[{\"productId\":5,\"quantity\":9999}]}")
+  -d "{\"clientId\":$CLIENT,\"assetId\":$ASSET,\"holderType\":\"PERSON\",\"holderId\":$PERSON}")
 echo "got $code"; [ "$code" = "409" ] || exit 1
 
-step "Failure: over payment ceiling -> 402"
-code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/orders" -H "$AUTH" \
-  -H 'Content-Type: application/json' \
-  -d "{\"userId\":\"$EMAIL\",\"items\":[{\"productId\":$P1,\"quantity\":5}]}")
-echo "got $code"; [ "$code" = "402" ] || exit 1
+step "Offboard person $PERSON"
+RESULT=$(curl -fsS -X POST "$BASE/api/assignments/offboard?clientId=$CLIENT&personId=$PERSON" -H "$AUTH")
+echo "$RESULT"
+
+step "Asset $ASSET is back in stock"
+ST=$(curl -fsS "$BASE/api/assets/$ASSET" | j "['status']")
+echo "status = $ST"; [ "$ST" = "IN_STOCK" ] || exit 1
+
+step "Notifications for client $CLIENT (public)"
+curl -fsS "$BASE/api/notifications?clientId=$CLIENT" | j "[[n['type'] for n in d]]"
 
 printf '\nAll demo steps passed.\n'

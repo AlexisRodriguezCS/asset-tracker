@@ -1,13 +1,13 @@
 # Architecture Decision Records
 
-Short notes on decisions that would otherwise look arbitrary. Format: Status / Context /
-Decision / Consequences. One file per decision, numbered, never deleted — superseded ones are
-marked as such.
+Short records of the choices that would otherwise look arbitrary. Format:
+Status / Context / Decision / Consequences.
 
-| # | Decision | Status |
-|---|---|---|
-| [0001](0001-vendor-build-quality-config.md) | Vendor the Gradle quality config per repo instead of `apply from:` a remote URL | Accepted |
-| [0002](0002-hs256-jwt-for-v1.md) | HS256 shared-secret JWT for v1; RS256 + JWKS later | Accepted |
-| [0003](0003-synchronous-orchestration.md) | order-service orchestrates synchronously with independent transactions | Accepted |
-| [0004](0004-config-server-not-load-bearing.md) | config-server is demonstrable but not load-bearing | Accepted |
-| [0005](0005-flyway-owns-the-schema.md) | Flyway owns the `prod` schema; Hibernate only validates | Accepted |
+| # | Decision |
+|---|---|
+| [0001](0001-monorepo-gradle-multiproject.md) | One monorepo, one Gradle multi-project build |
+| [0002](0002-hs256-jwt-with-tenancy-claims.md) | HS256 JWT with `role` + `clientIds` claims for v1 |
+| [0003](0003-synchronous-orchestration.md) | Synchronous orchestration + independent transactions |
+| [0004](0004-asset-service-owns-custody-state.md) | asset-service owns live custody; assignment-service owns history |
+| [0005](0005-public-reads-authenticated-writes.md) | Public reads, authenticated writes |
+| [0006](0006-flyway-owns-the-schema.md) | Flyway owns the schema under the `prod` profile |
