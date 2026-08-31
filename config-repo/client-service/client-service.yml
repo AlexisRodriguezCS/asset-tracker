@@ -1,0 +1,7 @@
+---
+# Served by config-server. client-service also ships a self-contained application.yml.
+spring:
+  application:
+    name: client-service
+demo:
+  config-source: config-server

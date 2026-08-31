@@ -1,0 +1,167 @@
+# Local, offline stack for asset-tracker.
+#
+#   docker compose -f infra/compose/docker-compose.yml up -d --build
+#   docker compose -f infra/compose/docker-compose.yml ps
+#   docker compose -f infra/compose/docker-compose.yml down
+#
+# Build context is the repo root so each service builds out of the Gradle
+# multi-project. Databases are in-memory H2 - data resets on restart; the
+# postgres overlay makes them persist.
+
+name: asset-tracker
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  networks: [att]
+  environment: &common-env
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+    CONFIG_SERVER_URL: http://config-server:8888
+    SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+  depends_on:
+    discovery-server:
+      condition: service_healthy
+    config-server:
+      condition: service_healthy
+
+x-healthcheck: &healthcheck
+  interval: 10s
+  timeout: 5s
+  retries: 12
+  start_period: 60s
+
+x-build: &build-root
+  context: ../..
+
+networks:
+  att:
+    driver: bridge
+
+services:
+  discovery-server:
+    build: { <<: *build-root, dockerfile: services/discovery-server/Dockerfile }
+    image: assettracker/discovery-server
+    container_name: discovery-server
+    restart: unless-stopped
+    networks: [att]
+    ports: ["8761:8761"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      <<: *healthcheck
+      start_period: 40s
+
+  config-server:
+    build: { <<: *build-root, dockerfile: services/config-server/Dockerfile }
+    image: assettracker/config-server
+    container_name: config-server
+    restart: unless-stopped
+    networks: [att]
+    ports: ["8888:8888"]
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      CONFIG_REPO_LOCATIONS: file:/config-repo,file:/config-repo/{application}
+    volumes:
+      - ../../config-repo:/config-repo:ro
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      <<: *healthcheck
+
+  api-gateway:
+    <<: *service-defaults
+    build: { <<: *build-root, dockerfile: services/api-gateway/Dockerfile }
+    image: assettracker/api-gateway
+    container_name: api-gateway
+    ports: ["8080:8080"]
+    environment:
+      <<: *common-env
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER:-asset-tracker-auth}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      ENTRA_ISSUER_URI: ${ENTRA_ISSUER_URI:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      <<: *healthcheck
+
+  auth-service:
+    <<: *service-defaults
+    build: { <<: *build-root, dockerfile: services/auth-service/Dockerfile }
+    image: assettracker/auth-service
+    container_name: auth-service
+    ports: ["8081:8081"]
+    environment:
+      <<: *common-env
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER:-asset-tracker-auth}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-3600000}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      <<: *healthcheck
+
+  client-service:
+    <<: *service-defaults
+    build: { <<: *build-root, dockerfile: services/client-service/Dockerfile }
+    image: assettracker/client-service
+    container_name: client-service
+    ports: ["8085:8085"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      <<: *healthcheck
+
+  people-service:
+    <<: *service-defaults
+    build: { <<: *build-root, dockerfile: services/people-service/Dockerfile }
+    image: assettracker/people-service
+    container_name: people-service
+    ports: ["8087:8087"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8087/actuator/health"]
+      <<: *healthcheck
+
+  location-service:
+    <<: *service-defaults
+    build: { <<: *build-root, dockerfile: services/location-service/Dockerfile }
+    image: assettracker/location-service
+    container_name: location-service
+    ports: ["8084:8084"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      <<: *healthcheck
+
+  asset-service:
+    <<: *service-defaults
+    build: { <<: *build-root, dockerfile: services/asset-service/Dockerfile }
+    image: assettracker/asset-service
+    container_name: asset-service
+    ports: ["8083:8083"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      <<: *healthcheck
+
+  assignment-service:
+    <<: *service-defaults
+    build: { <<: *build-root, dockerfile: services/assignment-service/Dockerfile }
+    image: assettracker/assignment-service
+    container_name: assignment-service
+    ports: ["8082:8082"]
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      asset-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      <<: *healthcheck
+
+  notification-service:
+    <<: *service-defaults
+    build: { <<: *build-root, dockerfile: services/notification-service/Dockerfile }
+    image: assettracker/notification-service
+    container_name: notification-service
+    ports: ["8086:8086"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/actuator/health"]
+      <<: *healthcheck

@@ -1,0 +1,56 @@
+plugins {
+    id 'org.springframework.boot' version '3.5.7' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
+    id 'com.diffplug.spotless' version '7.2.1' apply false
+}
+
+// Every Spring service in this monorepo shares the same Java version, Spring Cloud
+// BOM, and code-quality gates. Per-service build.gradle files only declare their
+// own dependencies and jar name.
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'checkstyle'
+    apply plugin: 'jacoco'
+    apply plugin: 'com.diffplug.spotless'
+
+    group = 'com.assettracker'
+    version = '0.0.1-SNAPSHOT'
+
+    java {
+        toolchain { languageVersion = JavaLanguageVersion.of(21) }
+    }
+
+    repositories { mavenCentral() }
+
+    ext {
+        set('springCloudVersion', '2025.0.0')
+    }
+
+    // :e2e is a plain REST-Assured test project with its own deps; everything
+    // else is a Spring Boot service.
+    if (name != 'e2e') {
+        apply plugin: 'org.springframework.boot'
+        apply plugin: 'io.spring.dependency-management'
+
+        dependencyManagement {
+            imports {
+                mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+            }
+        }
+
+        configurations {
+            compileOnly { extendsFrom annotationProcessor }
+        }
+
+        dependencies {
+            testImplementation 'org.springframework.boot:spring-boot-starter-test'
+            testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+        }
+    }
+
+    apply from: "$rootDir/gradle/quality.gradle"
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+    }
+}

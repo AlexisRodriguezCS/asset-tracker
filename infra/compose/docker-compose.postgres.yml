@@ -1,0 +1,78 @@
+# Overlay that swaps the JPA services from in-memory H2 to PostgreSQL and
+# activates the `prod` Spring profile (Flyway migrations, ddl-auto: validate).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build
+#
+# Data survives `docker compose restart <service>`. `docker compose down -v` wipes it.
+
+name: asset-tracker
+
+x-pg-env: &pg-env
+  SPRING_PROFILES_ACTIVE: prod
+  SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-att}
+  SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-att-dev-password}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    networks: [att]
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-att}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-att-dev-password}
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-att}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  auth-service:
+    environment:
+      <<: *pg-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/authdb
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  client-service:
+    environment:
+      <<: *pg-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/clientdb
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  people-service:
+    environment:
+      <<: *pg-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/peopledb
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  location-service:
+    environment:
+      <<: *pg-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/locationdb
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  asset-service:
+    environment:
+      <<: *pg-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/assetdb
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  assignment-service:
+    environment:
+      <<: *pg-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/assignmentdb
+    depends_on:
+      postgres: { condition: service_healthy }
+
+volumes:
+  pgdata:

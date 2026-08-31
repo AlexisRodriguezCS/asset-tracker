@@ -1,0 +1,7 @@
+---
+# Served by config-server. location-service also ships a self-contained application.yml.
+spring:
+  application:
+    name: location-service
+demo:
+  config-source: config-server

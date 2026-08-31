@@ -1,0 +1,32 @@
+---
+spring:
+  application:
+    name: config-server
+  profiles:
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          # Local dev resolves the sibling config-repo checkout; Docker overrides
+          # this with CONFIG_REPO_LOCATIONS=file:/config-repo,file:/config-repo/{application}
+          search-locations: ${CONFIG_REPO_LOCATIONS:file:../config-repo,file:../config-repo/{application}}
+      fail-fast: false
+
+server:
+  port: ${SERVER_PORT:8888}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true

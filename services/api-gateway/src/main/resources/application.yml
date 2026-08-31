@@ -1,0 +1,68 @@
+---
+spring:
+  application:
+    name: api-gateway
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: auth-service
+              uri: lb://auth-service
+              predicates: [ Path=/api/auth/** ]
+              filters: [ StripPrefix=1 ]
+            - id: client-service
+              uri: lb://client-service
+              predicates: [ Path=/api/clients/** ]
+              filters: [ StripPrefix=1 ]
+            - id: people-service
+              uri: lb://people-service
+              predicates: [ Path=/api/people/** ]
+              filters: [ StripPrefix=1 ]
+            - id: location-service
+              uri: lb://location-service
+              predicates: [ Path=/api/locations/** ]
+              filters: [ StripPrefix=1 ]
+            - id: asset-service
+              uri: lb://asset-service
+              predicates: [ Path=/api/assets/** ]
+              filters: [ StripPrefix=1 ]
+            - id: assignment-service
+              uri: lb://assignment-service
+              predicates: [ Path=/api/assignments/** ]
+              filters: [ StripPrefix=1 ]
+            - id: notification-service
+              uri: lb://notification-service
+              predicates: [ Path=/api/notifications/** ]
+              filters: [ StripPrefix=1 ]
+
+security:
+  # Local tokens issued by auth-service (HS256, shared secret).
+  jwt:
+    local:
+      issuer: ${JWT_ISSUER:asset-tracker-auth}
+      secret: ${JWT_SECRET:dev-only-not-a-real-secret-change-me-0000000000000000}
+  # When ENTRA_ISSUER_URI is set, "Sign in with Microsoft 365" tokens are also
+  # accepted. Leave blank to run with no Azure dependency.
+  entra:
+    issuer-uri: ${ENTRA_ISSUER_URI:}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true

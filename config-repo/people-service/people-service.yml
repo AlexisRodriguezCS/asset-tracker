@@ -1,0 +1,7 @@
+---
+# Served by config-server. people-service also ships a self-contained application.yml.
+spring:
+  application:
+    name: people-service
+demo:
+  config-source: config-server

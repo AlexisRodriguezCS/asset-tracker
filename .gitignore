@@ -1,0 +1,26 @@
+*.class
+build/
+.gradle/
+bin/
+out/
+!gradle/wrapper/gradle-wrapper.jar
+
+# node / next
+node_modules/
+.next/
+
+# env / secrets
+.env
+*.env
+!*.env.example
+.env*.local
+*.pem
+*.key
+
+# ide
+.idea/
+.vscode/
+*.iml
+
+# os
+.DS_Store

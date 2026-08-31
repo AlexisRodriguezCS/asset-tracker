@@ -1,0 +1,18 @@
+rootProject.name = 'asset-tracker'
+
+// Flat module names; sources live under services/ and e2e/.
+['discovery-server',
+ 'config-server',
+ 'api-gateway',
+ 'auth-service',
+ 'client-service',
+ 'people-service',
+ 'location-service',
+ 'asset-service',
+ 'assignment-service',
+ 'notification-service'].each { svc ->
+    include svc
+    project(":${svc}").projectDir = file("services/${svc}")
+}
+
+include 'e2e'

@@ -1,0 +1,19 @@
+description = 'End-to-end API tests: drive the running platform through the gateway.'
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'io.rest-assured:rest-assured:5.5.0'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+    testImplementation 'org.assertj:assertj-core:3.27.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// These tests only make sense against a running stack. They self-skip (JUnit
+// assumption) when the gateway isn't reachable, so `./gradlew build` stays green
+// in CI where the stack isn't up; a dedicated stage runs them for real.
+tasks.named('test') {
+    systemProperty 'e2e.baseUrl',
+        System.getProperty('e2e.baseUrl', System.getenv('E2E_BASE_URL') ?: 'http://localhost:8080')
+    testLogging { events 'passed', 'skipped', 'failed' }
+}

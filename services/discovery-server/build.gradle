@@ -1,0 +1,9 @@
+description = 'Service discovery (Spring Cloud Netflix Eureka).'
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-server'
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+}
+
+bootJar { archiveFileName = 'discovery-server.jar' }

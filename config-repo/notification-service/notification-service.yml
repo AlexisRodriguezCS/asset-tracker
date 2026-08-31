@@ -1,0 +1,10 @@
+---
+# Served by config-server (Spring Cloud Config, native backend). Each service also
+# ships a self-contained application.yml, so this file is supplementary.
+spring:
+  application:
+    name: notification-service
+server:
+  port: 8086
+demo:
+  config-source: config-server

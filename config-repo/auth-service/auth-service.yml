@@ -1,0 +1,13 @@
+---
+# Served by config-server. auth-service also ships a self-contained application.yml.
+spring:
+  application:
+    name: auth-service
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+server:
+  port: 8081
+demo:
+  config-source: config-server

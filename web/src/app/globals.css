@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --surface: 220 33% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --muted: 214 32% 95%;
+  --muted-foreground: 215 16% 42%;
+  --border: 214 32% 89%;
+  --primary: 243 75% 59%;
+  --primary-2: 268 75% 62%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 243 75% 96%;
+  --destructive: 0 72% 51%;
+  --success: 152 60% 36%;
+  --ring: 243 75% 59%;
+  --radius: 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: 224 47% 5%;
+    --surface: 224 44% 9%;
+    --foreground: 213 31% 95%;
+    --card: 224 44% 10%;
+    --muted: 220 33% 15%;
+    --muted-foreground: 215 20% 62%;
+    --border: 220 30% 18%;
+    --primary: 235 90% 72%;
+    --primary-2: 270 90% 74%;
+    --primary-foreground: 224 47% 7%;
+    --accent: 224 40% 16%;
+    --destructive: 0 70% 62%;
+    --success: 152 58% 48%;
+    --ring: 235 90% 72%;
+  }
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans), ui-sans-serif, system-ui, "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+.font-display {
+  font-family: var(--font-display), var(--font-sans), ui-sans-serif, system-ui,
+    sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* animated mesh backdrop - large soft radials, no hard edges */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -40%;
+  z-index: -1;
+  background: radial-gradient(
+      60rem 60rem at 20% 0%,
+      hsl(var(--primary) / 0.1),
+      transparent 70%
+    ),
+    radial-gradient(
+      70rem 70rem at 95% 10%,
+      hsl(var(--primary-2) / 0.09),
+      transparent 70%
+    ),
+    radial-gradient(
+      55rem 55rem at 60% 110%,
+      hsl(var(--primary) / 0.06),
+      transparent 70%
+    );
+  animation: drift 28s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  to {
+    transform: translate3d(0, -2%, 0) scale(1.04);
+  }
+}
+
+.text-gradient {
+  background: linear-gradient(
+    100deg,
+    hsl(var(--primary)),
+    hsl(var(--primary-2))
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bg-gradient-primary {
+  background-image: linear-gradient(
+    100deg,
+    hsl(var(--primary)),
+    hsl(var(--primary-2))
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+  }
+}

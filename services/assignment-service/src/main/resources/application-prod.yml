@@ -1,0 +1,21 @@
+---
+# Active when SPRING_PROFILES_ACTIVE=prod. Datasource comes entirely from the
+# environment; Flyway owns the schema and Hibernate only validates it.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    show-sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+  h2:
+    console:
+      enabled: false
