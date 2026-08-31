@@ -33,7 +33,8 @@ public class SecurityConfig {
     "/api/people/**",
     "/api/locations/**",
     "/api/assignments/**",
-    "/api/clients/**"
+    "/api/clients/**",
+    "/api/notifications/**"
   };
 
   private final SecurityProperties properties;

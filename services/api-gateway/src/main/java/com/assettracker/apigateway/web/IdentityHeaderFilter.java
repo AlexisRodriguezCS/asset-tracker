@@ -89,6 +89,27 @@ public class IdentityHeaderFilter extends OncePerRequestFilter {
           : Collections.enumeration(List.of(value));
     }
 
+    @Override
+    public Enumeration<String> getHeaderNames() {
+      // The gateway copies downstream headers by iterating getHeaderNames(); the
+      // injected ones must appear here (and the client's originals must not).
+      List<String> names = new java.util.ArrayList<>();
+      Enumeration<String> original = super.getHeaderNames();
+      while (original.hasMoreElements()) {
+        String n = original.nextElement();
+        if (!overrides.containsKey(normalise(n))) {
+          names.add(n);
+        }
+      }
+      overrides.forEach(
+          (k, v) -> {
+            if (v != null) {
+              names.add(k);
+            }
+          });
+      return Collections.enumeration(names);
+    }
+
     private static String normalise(String name) {
       return switch (name.toLowerCase()) {
         case "x-user-id" -> USER_ID;
