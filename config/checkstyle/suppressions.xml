@@ -6,7 +6,7 @@
 <suppressions>
   <!-- Tests: allow magic numbers, long fixtures, underscored method names, looser structure. -->
   <suppress files="[\\/]src[\\/]test[\\/]"
-            checks="MagicNumber|JavaNCSS|MethodLength|MultipleStringLiterals|MethodName|JavadocMethod"/>
+            checks="MagicNumber|JavaNCSS|MethodLength|MultipleStringLiterals|MethodName|JavadocMethod|VisibilityModifier"/>
 
   <!-- Spring Boot entrypoints are utility-shaped but need a public class + main. -->
   <suppress files="Application\.java$" checks="HideUtilityClassConstructor|FinalClass"/>
