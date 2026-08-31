@@ -9,7 +9,7 @@ COPY gradle gradle
 COPY config config
 COPY settings.gradle build.gradle ./
 COPY services/discovery-server services/discovery-server
-RUN ./gradlew :discovery-server:bootJar --no-daemon
+RUN chmod +x gradlew && ./gradlew :discovery-server:bootJar --no-daemon
 
 # ---------- runtime stage ----------
 FROM eclipse-temurin:21-jre-alpine

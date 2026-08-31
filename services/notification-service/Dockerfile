@@ -9,7 +9,7 @@ COPY gradle gradle
 COPY config config
 COPY settings.gradle build.gradle ./
 COPY services/notification-service services/notification-service
-RUN ./gradlew :notification-service:bootJar --no-daemon
+RUN chmod +x gradlew && ./gradlew :notification-service:bootJar --no-daemon
 
 # ---------- runtime stage ----------
 FROM eclipse-temurin:21-jre-alpine
