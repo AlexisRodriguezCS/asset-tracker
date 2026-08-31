@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,11 +26,14 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * REST endpoints for assets. The single {@code GET /assets} query drives every catalog view - "all
  * laptops" ({@code ?type=LAPTOP}), "what's on desk 14" ({@code ?holderType=LOCATION&holderId=14}),
- * "in for repair" ({@code ?status=IN_REPAIR}).
+ * "in for repair" ({@code ?status=IN_REPAIR}). Every write takes the acting tech's identity from
+ * the {@code X-User-Id} header the gateway forwards.
  */
 @RestController
 @RequestMapping("/assets")
 public class AssetController {
+
+  private static final String ACTOR = "X-User-Id";
 
   private final AssetService service;
 
@@ -38,8 +42,10 @@ public class AssetController {
   }
 
   @PostMapping
-  public ResponseEntity<AssetResponse> create(@Valid @RequestBody CreateAssetRequest request) {
-    AssetResponse body = AssetResponse.from(service.create(request));
+  public ResponseEntity<AssetResponse> create(
+      @Valid @RequestBody CreateAssetRequest request,
+      @RequestHeader(value = ACTOR, defaultValue = "system") String actor) {
+    AssetResponse body = AssetResponse.from(service.create(request, actor));
     return ResponseEntity.created(URI.create("/assets/" + body.id())).body(body);
   }
 
@@ -66,25 +72,34 @@ public class AssetController {
   }
 
   @PatchMapping("/{id}")
-  public AssetResponse update(@PathVariable Long id, @RequestBody UpdateAssetRequest request) {
-    return AssetResponse.from(service.update(id, request));
+  public AssetResponse update(
+      @PathVariable Long id,
+      @RequestBody UpdateAssetRequest request,
+      @RequestHeader(value = ACTOR, defaultValue = "system") String actor) {
+    return AssetResponse.from(service.update(id, request, actor));
   }
 
   @PostMapping("/{id}/status")
   public AssetResponse changeStatus(
-      @PathVariable Long id, @Valid @RequestBody ChangeStatusRequest request) {
-    return AssetResponse.from(service.changeStatus(id, request.status()));
+      @PathVariable Long id,
+      @Valid @RequestBody ChangeStatusRequest request,
+      @RequestHeader(value = ACTOR, defaultValue = "system") String actor) {
+    return AssetResponse.from(service.changeStatus(id, request.status(), actor));
   }
 
   // --- called by assignment-service ---------------------------------------
 
   @PostMapping("/{id}/assign")
-  public AssetResponse assign(@PathVariable Long id, @Valid @RequestBody AssignRequest request) {
-    return AssetResponse.from(service.assign(id, request));
+  public AssetResponse assign(
+      @PathVariable Long id,
+      @Valid @RequestBody AssignRequest request,
+      @RequestHeader(value = ACTOR, defaultValue = "system") String actor) {
+    return AssetResponse.from(service.assign(id, request, actor));
   }
 
   @PostMapping("/{id}/return")
-  public AssetResponse returnToStock(@PathVariable Long id) {
-    return AssetResponse.from(service.returnToStock(id));
+  public AssetResponse returnToStock(
+      @PathVariable Long id, @RequestHeader(value = ACTOR, defaultValue = "system") String actor) {
+    return AssetResponse.from(service.returnToStock(id, actor));
   }
 }

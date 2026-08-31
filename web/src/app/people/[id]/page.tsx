@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { getPerson, listAssets, GatewayError } from "@/lib/api";
+import { getPerson, listAssets, personAudit, GatewayError } from "@/lib/api";
 import { getSession } from "@/lib/session";
 import { Card } from "@/components/ui/card";
 import { AssetStatusBadge, PersonStatusBadge } from "@/components/ui/badge";
 import { OffboardButton } from "@/components/offboard-button";
+import { AuditFeed } from "@/components/audit-feed";
 import { label } from "@/lib/format";
 
 export default async function PersonDetailPage({
@@ -23,13 +24,14 @@ export default async function PersonDetailPage({
     throw e;
   }
 
-  const [session, held] = await Promise.all([
+  const [session, held, activity] = await Promise.all([
     getSession(),
     listAssets({
       clientId: person.clientId,
       holderType: "PERSON",
       holderId: person.id,
     }),
+    personAudit(person.clientId, person.id).catch(() => []),
   ]);
 
   return (
@@ -92,6 +94,14 @@ export default async function PersonDetailPage({
             ))}
           </ul>
         )}
+      </Card>
+
+      <Card className="mt-4">
+        <h2 className="text-sm font-semibold">Activity log</h2>
+        <p className="text-xs text-muted-foreground">
+          Recorded in the same transaction as the change.
+        </p>
+        <AuditFeed events={activity} />
       </Card>
     </div>
   );

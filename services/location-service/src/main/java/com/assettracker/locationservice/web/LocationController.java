@@ -12,14 +12,17 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** REST endpoints for locations. Lists are always scoped to a client. */
+/** REST endpoints for locations. Lists are always scoped to a client; writes are audited. */
 @RestController
 @RequestMapping("/locations")
 public class LocationController {
+
+  private static final String ACTOR = "X-User-Id";
 
   private final LocationService service;
 
@@ -29,8 +32,9 @@ public class LocationController {
 
   @PostMapping
   public ResponseEntity<LocationResponse> create(
-      @Valid @RequestBody CreateLocationRequest request) {
-    LocationResponse body = LocationResponse.from(service.create(request));
+      @Valid @RequestBody CreateLocationRequest request,
+      @RequestHeader(value = ACTOR, defaultValue = "system") String actor) {
+    LocationResponse body = LocationResponse.from(service.create(request, actor));
     return ResponseEntity.created(URI.create("/locations/" + body.id())).body(body);
   }
 

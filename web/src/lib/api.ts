@@ -1,6 +1,13 @@
 import "server-only";
 import { getSession } from "@/lib/session";
-import type { Asset, Assignment, Client, Location, Person } from "@/lib/types";
+import type {
+  Asset,
+  Assignment,
+  AuditEvent,
+  Client,
+  Location,
+  Person,
+} from "@/lib/types";
 
 const GATEWAY = process.env.GATEWAY_URL ?? "http://localhost:8080";
 
@@ -94,3 +101,16 @@ export const listLocations = (clientId: number, kind?: string) =>
 
 export const assignmentsForAsset = (assetId: number) =>
   gateway<Assignment[]>(`/api/assignments${qs({ assetId })}`);
+
+// --- audit trail (append-only, public read) ------------------------------
+
+export const assetAudit = (clientId: number, assetId: number) =>
+  gateway<AuditEvent[]>(`/api/assets/audit${qs({ clientId, assetId })}`);
+
+export const personAudit = (clientId: number, personId: number) =>
+  gateway<AuditEvent[]>(
+    `/api/people/audit${qs({ clientId, entityId: personId })}`,
+  );
+
+export const clientActivity = (clientId: number) =>
+  gateway<AuditEvent[]>(`/api/assets/audit${qs({ clientId })}`);

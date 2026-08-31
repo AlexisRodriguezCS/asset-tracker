@@ -1,5 +1,6 @@
 package com.assettracker.locationservice.service;
 
+import com.assettracker.locationservice.audit.AuditService;
 import com.assettracker.locationservice.entity.Location;
 import com.assettracker.locationservice.entity.LocationKind;
 import com.assettracker.locationservice.repository.LocationRepository;
@@ -13,13 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class LocationService {
 
   private final LocationRepository repository;
+  private final AuditService audit;
 
-  public LocationService(LocationRepository repository) {
+  public LocationService(LocationRepository repository, AuditService audit) {
     this.repository = repository;
+    this.audit = audit;
   }
 
   @Transactional
-  public Location create(CreateLocationRequest request) {
+  public Location create(CreateLocationRequest request, String actor) {
     if (repository.existsByQrTag(request.qrTag())) {
       throw new QrTagTakenException(request.qrTag());
     }
@@ -27,7 +30,15 @@ public class LocationService {
         new Location(request.clientId(), request.kind(), request.label(), request.qrTag());
     location.setBuilding(request.building());
     location.setFloor(request.floor());
-    return repository.save(location);
+    Location saved = repository.save(location);
+    audit.record(
+        saved.getClientId(),
+        actor,
+        "LOCATION_CREATED",
+        saved.getId(),
+        "added " + saved.getKind() + " " + saved.getLabel() + " (" + saved.getQrTag() + ")",
+        null);
+    return saved;
   }
 
   @Transactional(readOnly = true)

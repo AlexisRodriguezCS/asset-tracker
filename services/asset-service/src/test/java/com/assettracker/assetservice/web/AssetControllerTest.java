@@ -48,7 +48,7 @@ class AssetControllerTest {
 
   @Test
   void assigningAnAssignedAssetIs409() throws Exception {
-    when(service.assign(eq(1L), any()))
+    when(service.assign(eq(1L), any(), any()))
         .thenThrow(new AlreadyAssignedException(1L, HolderType.PERSON, 7L));
     mvc.perform(
             post("/assets/1/assign")

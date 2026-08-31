@@ -1,5 +1,6 @@
 package com.assettracker.peopleservice.service;
 
+import com.assettracker.peopleservice.audit.AuditService;
 import com.assettracker.peopleservice.entity.Person;
 import com.assettracker.peopleservice.entity.PersonStatus;
 import com.assettracker.peopleservice.repository.PersonRepository;
@@ -13,13 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class PersonService {
 
   private final PersonRepository repository;
+  private final AuditService audit;
 
-  public PersonService(PersonRepository repository) {
+  public PersonService(PersonRepository repository, AuditService audit) {
     this.repository = repository;
+    this.audit = audit;
   }
 
   @Transactional
-  public Person create(CreatePersonRequest request) {
+  public Person create(CreatePersonRequest request, String actor) {
     if (repository.existsByClientIdAndEmailIgnoreCase(request.clientId(), request.email())) {
       throw new EmailTakenException(request.email());
     }
@@ -28,7 +31,15 @@ public class PersonService {
     if (request.deskId() != null) {
       person.setDeskId(request.deskId());
     }
-    return repository.save(person);
+    Person saved = repository.save(person);
+    audit.record(
+        saved.getClientId(),
+        actor,
+        "PERSON_CREATED",
+        saved.getId(),
+        "added " + saved.getFullName() + " <" + saved.getEmail() + ">",
+        null);
+    return saved;
   }
 
   @Transactional(readOnly = true)
@@ -45,23 +56,47 @@ public class PersonService {
 
   /** Marks a person as offboarding - the signal for HR to collect their assets. */
   @Transactional
-  public Person beginOffboarding(Long id) {
+  public Person beginOffboarding(Long id, String actor) {
     Person person = getById(id);
     person.setStatus(PersonStatus.OFFBOARDING);
+    audit.record(
+        person.getClientId(),
+        actor,
+        "PERSON_OFFBOARDING",
+        person.getId(),
+        "started offboarding " + person.getFullName(),
+        null);
     return person;
   }
 
   @Transactional
-  public Person markDeparted(Long id) {
+  public Person markDeparted(Long id, String actor) {
     Person person = getById(id);
     person.setStatus(PersonStatus.DEPARTED);
+    audit.record(
+        person.getClientId(),
+        actor,
+        "PERSON_DEPARTED",
+        person.getId(),
+        "marked " + person.getFullName() + " departed",
+        null);
     return person;
   }
 
   @Transactional
-  public Person assignDesk(Long id, Long deskId) {
+  public Person assignDesk(Long id, Long deskId, String actor) {
     Person person = getById(id);
+    Long before = person.getDeskId();
     person.setDeskId(deskId);
+    audit.record(
+        person.getClientId(),
+        actor,
+        deskId == null ? "PERSON_DESK_CLEARED" : "PERSON_DESK_SET",
+        person.getId(),
+        (deskId == null
+            ? "cleared " + person.getFullName() + "'s desk"
+            : "set " + person.getFullName() + "'s desk to " + deskId),
+        "{\"before\":" + before + ",\"after\":" + deskId + "}");
     return person;
   }
 

@@ -90,6 +90,18 @@ export interface OffboardingResult {
   failed: number[];
 }
 
+export interface AuditEvent {
+  id: number;
+  clientId: number;
+  actor: string;
+  action: string;
+  entityType: string;
+  entityId: number;
+  summary: string;
+  detail: string | null;
+  at: string;
+}
+
 export interface TokenResponse {
   token: string;
   tokenType: string;

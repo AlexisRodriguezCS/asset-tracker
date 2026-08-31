@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.assettracker.assignmentservice.audit.AuditService;
 import com.assettracker.assignmentservice.client.AssetClient;
 import com.assettracker.assignmentservice.client.NotificationClient;
 import com.assettracker.assignmentservice.entity.Assignment;
@@ -30,6 +31,7 @@ class AssignmentServiceTest {
   @Mock AssetClient assetClient;
   @Mock NotificationClient notificationClient;
   @Mock AssignmentTransactions store;
+  @Mock AuditService audit;
   @InjectMocks AssignmentService service;
 
   private final CheckOutRequest checkOut =
@@ -45,13 +47,15 @@ class AssignmentServiceTest {
     Assignment result = service.checkOut(checkOut, "tech@acme.example");
 
     assertThat(result).isSameAs(saved);
-    verify(assetClient).assign(40L, "PERSON", 7L);
+    verify(assetClient).assign(eq(40L), eq("PERSON"), eq(7L), anyString());
     verify(notificationClient).send(eq(1L), eq("ASSET_CHECKED_OUT"), anyString());
   }
 
   @Test
   void aConflictFromAssetServiceAbortsWithNoHistoryRow() {
-    doThrow(new AssetUnavailableException(40L)).when(assetClient).assign(40L, "PERSON", 7L);
+    doThrow(new AssetUnavailableException(40L))
+        .when(assetClient)
+        .assign(40L, "PERSON", 7L, "tech@acme.example");
 
     assertThatThrownBy(() -> service.checkOut(checkOut, "tech@acme.example"))
         .isInstanceOf(AssetUnavailableException.class);
@@ -67,7 +71,7 @@ class AssignmentServiceTest {
 
     service.checkIn(40L, "tech@acme.example");
 
-    verify(assetClient).returnToStock(40L);
+    verify(assetClient).returnToStock(eq(40L), anyString());
     verify(store).close(40L, "tech@acme.example");
     verify(notificationClient).send(eq(1L), eq("ASSET_RETURNED"), anyString());
   }
@@ -76,7 +80,10 @@ class AssignmentServiceTest {
   void offboardingIsBestEffortPerAsset() {
     when(assetClient.assetsHeldByPerson(1L, 7L)).thenReturn(List.of(40L, 41L, 42L));
     // asset 41 will not come back (lenient: the 40L / 42L calls are the normal path)
-    lenient().doThrow(new RuntimeException("stuck")).when(assetClient).returnToStock(41L);
+    lenient()
+        .doThrow(new RuntimeException("stuck"))
+        .when(assetClient)
+        .returnToStock(eq(41L), anyString());
 
     OffboardingResult result = service.offboardPerson(1L, 7L, "hr@acme.example");
 

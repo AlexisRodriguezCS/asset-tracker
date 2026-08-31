@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import {
   getAsset,
   assignmentsForAsset,
+  assetAudit,
   listPeople,
   GatewayError,
 } from "@/lib/api";
@@ -12,6 +13,7 @@ import { currentClientId } from "@/lib/client";
 import { AssetStatusBadge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { AssetActions } from "@/components/asset-actions";
+import { AuditFeed } from "@/components/audit-feed";
 import { dateOnly, dateTime, label, money } from "@/lib/format";
 
 export default async function AssetDetailPage({
@@ -29,10 +31,11 @@ export default async function AssetDetailPage({
     throw e;
   }
 
-  const [session, clientId, history] = await Promise.all([
+  const [session, clientId, history, activity] = await Promise.all([
     getSession(),
     currentClientId(),
     assignmentsForAsset(asset.id).catch(() => []),
+    assetAudit(asset.clientId, asset.id).catch(() => []),
   ]);
   const people = session ? await listPeople(clientId).catch(() => []) : [];
 
@@ -118,6 +121,14 @@ export default async function AssetDetailPage({
               ))}
             </ol>
           )}
+        </Card>
+
+        <Card className="md:col-span-3">
+          <h2 className="text-sm font-semibold">Activity log</h2>
+          <p className="text-xs text-muted-foreground">
+            Who did what, recorded in the same transaction as the change.
+          </p>
+          <AuditFeed events={activity} />
         </Card>
       </div>
     </div>

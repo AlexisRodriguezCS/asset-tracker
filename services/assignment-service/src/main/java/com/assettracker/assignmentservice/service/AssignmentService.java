@@ -1,5 +1,6 @@
 package com.assettracker.assignmentservice.service;
 
+import com.assettracker.assignmentservice.audit.AuditService;
 import com.assettracker.assignmentservice.client.AssetClient;
 import com.assettracker.assignmentservice.client.NotificationClient;
 import com.assettracker.assignmentservice.entity.Assignment;
@@ -24,14 +25,17 @@ public class AssignmentService {
   private final AssetClient assetClient;
   private final NotificationClient notificationClient;
   private final AssignmentTransactions store;
+  private final AuditService audit;
 
   public AssignmentService(
       AssetClient assetClient,
       NotificationClient notificationClient,
-      AssignmentTransactions store) {
+      AssignmentTransactions store,
+      AuditService audit) {
     this.assetClient = assetClient;
     this.notificationClient = notificationClient;
     this.store = store;
+    this.audit = audit;
   }
 
   /**
@@ -41,7 +45,7 @@ public class AssignmentService {
    * @throws AssetNotMovableException asset-service returned 422 (retired / lost)
    */
   public Assignment checkOut(CheckOutRequest request, String actor) {
-    assetClient.assign(request.assetId(), request.holderType().name(), request.holderId());
+    assetClient.assign(request.assetId(), request.holderType().name(), request.holderId(), actor);
 
     Assignment assignment =
         store.open(
@@ -66,7 +70,7 @@ public class AssignmentService {
 
   /** Return an asset to the stockroom and close its open assignment. */
   public Assignment checkIn(Long assetId, String actor) {
-    assetClient.returnToStock(assetId);
+    assetClient.returnToStock(assetId, actor);
     Assignment closed = store.close(assetId, actor);
     notificationClient.send(
         closed.getClientId(), "ASSET_RETURNED", "Asset " + assetId + " returned to stock");
@@ -95,7 +99,7 @@ public class AssignmentService {
     OffboardingResult result = new OffboardingResult(personId);
     for (Long assetId : assetIds) {
       try {
-        assetClient.returnToStock(assetId);
+        assetClient.returnToStock(assetId, actor);
         store.close(assetId, actor);
         result.returned().add(assetId);
       } catch (RuntimeException ex) {
@@ -103,16 +107,22 @@ public class AssignmentService {
         result.failed().add(assetId);
       }
     }
-    notificationClient.send(
-        clientId,
-        "OFFBOARDING_COLLECTED",
-        "Offboarding person "
+    String summary =
+        "ran offboarding for person "
             + personId
             + ": "
             + result.returned().size()
-            + " returned, "
+            + " collected, "
             + result.failed().size()
-            + " outstanding");
+            + " outstanding";
+    audit.record(
+        clientId,
+        actor,
+        "OFFBOARDING_RUN",
+        personId,
+        summary,
+        "{\"returned\":" + result.returned() + ",\"failed\":" + result.failed() + "}");
+    notificationClient.send(clientId, "OFFBOARDING_COLLECTED", summary);
     return result;
   }
 

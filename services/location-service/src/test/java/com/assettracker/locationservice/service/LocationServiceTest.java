@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.assettracker.locationservice.audit.AuditService;
 import com.assettracker.locationservice.entity.Location;
 import com.assettracker.locationservice.entity.LocationKind;
 import com.assettracker.locationservice.repository.LocationRepository;
@@ -20,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class LocationServiceTest {
 
   @Mock LocationRepository repository;
+  @Mock AuditService audit;
   @InjectMocks LocationService service;
 
   @Test
@@ -27,7 +29,8 @@ class LocationServiceTest {
     when(repository.existsByQrTag("ACME-D-001")).thenReturn(true);
     CreateLocationRequest req =
         new CreateLocationRequest(1L, LocationKind.DESK, "Desk 001", "HQ", "2", "ACME-D-001");
-    assertThatThrownBy(() -> service.create(req)).isInstanceOf(QrTagTakenException.class);
+    assertThatThrownBy(() -> service.create(req, "tech@acme.example"))
+        .isInstanceOf(QrTagTakenException.class);
   }
 
   @Test
@@ -36,7 +39,8 @@ class LocationServiceTest {
     when(repository.save(any(Location.class))).thenAnswer(inv -> inv.getArgument(0));
     Location l =
         service.create(
-            new CreateLocationRequest(1L, LocationKind.DESK, "Desk 002", "HQ", "3", "ACME-D-002"));
+            new CreateLocationRequest(1L, LocationKind.DESK, "Desk 002", "HQ", "3", "ACME-D-002"),
+            "tech@acme.example");
     assertThat(l.getBuilding()).isEqualTo("HQ");
     assertThat(l.getFloor()).isEqualTo("3");
   }

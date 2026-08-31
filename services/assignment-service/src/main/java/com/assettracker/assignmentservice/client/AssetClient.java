@@ -13,9 +13,13 @@ import org.springframework.web.client.RestClient.Builder;
 /**
  * Talks to asset-service. The guarded transitions there are what give the orchestrator its failure
  * paths: a 409 becomes {@link AssetUnavailableException}, a 422 {@link AssetNotMovableException}.
+ * The acting tech's identity is forwarded as {@code X-User-Id} so asset-service's audit trail
+ * attributes the change to a person, not to {@code system}.
  */
 @Component
 public class AssetClient {
+
+  private static final String ACTOR_HEADER = "X-User-Id";
 
   private final RestClient client;
 
@@ -25,10 +29,11 @@ public class AssetClient {
   }
 
   /** Sets the asset's holder. Throws on 404 / 409 / 422. */
-  public void assign(Long assetId, String holderType, Long holderId) {
+  public void assign(Long assetId, String holderType, Long holderId, String actor) {
     client
         .post()
         .uri("/assets/{id}/assign", assetId)
+        .header(ACTOR_HEADER, actor)
         .body(Map.of("holderType", holderType, "holderId", holderId))
         .retrieve()
         .onStatus(
@@ -45,8 +50,13 @@ public class AssetClient {
   }
 
   /** Returns the asset to the stockroom. */
-  public void returnToStock(Long assetId) {
-    client.post().uri("/assets/{id}/return", assetId).retrieve().toBodilessEntity();
+  public void returnToStock(Long assetId, String actor) {
+    client
+        .post()
+        .uri("/assets/{id}/return", assetId)
+        .header(ACTOR_HEADER, actor)
+        .retrieve()
+        .toBodilessEntity();
   }
 
   /** ids of the assets currently held by a person - the offboarding worklist. */
