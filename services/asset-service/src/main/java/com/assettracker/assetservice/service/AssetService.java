@@ -31,7 +31,8 @@ public class AssetService {
 
   @Transactional
   public Asset create(CreateAssetRequest request, String actor) {
-    if (repository.existsByAssetTag(request.assetTag())) {
+    if (repository.existsActiveWithTag(
+        request.clientId(), request.assetTag(), request.type(), AssetStatus.ACTIVE)) {
       throw new AssetTagTakenException(request.assetTag());
     }
     Asset asset =
@@ -57,8 +58,13 @@ public class AssetService {
 
   @Transactional(readOnly = true)
   public List<Asset> search(
-      Long clientId, AssetType type, AssetStatus status, HolderType holderType, Long holderId) {
-    return repository.search(clientId, type, status, holderType, holderId);
+      Long clientId,
+      AssetType type,
+      AssetStatus status,
+      HolderType holderType,
+      Long holderId,
+      String assetTag) {
+    return repository.search(clientId, type, status, holderType, holderId, assetTag);
   }
 
   @Transactional(readOnly = true)
@@ -71,9 +77,13 @@ public class AssetService {
     return repository.findById(id).orElseThrow(() -> notFound("id", String.valueOf(id)));
   }
 
+  /** The current unit on a tag: the active one if any, otherwise the most recent retired unit. */
   @Transactional(readOnly = true)
   public Asset getByTag(String tag) {
-    return repository.findByAssetTag(tag).orElseThrow(() -> notFound("tag", tag));
+    return repository
+        .findFirstByAssetTagAndStatusInOrderByIdDesc(tag, AssetStatus.ACTIVE)
+        .or(() -> repository.findFirstByAssetTagOrderByIdDesc(tag))
+        .orElseThrow(() -> notFound("tag", tag));
   }
 
   @Transactional

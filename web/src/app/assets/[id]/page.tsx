@@ -5,6 +5,7 @@ import {
   getAsset,
   assignmentsForAsset,
   assetAudit,
+  listAssets,
   listPeople,
   GatewayError,
 } from "@/lib/api";
@@ -38,13 +39,17 @@ export default async function AssetDetailPage({
     throw e;
   }
 
-  const [session, clientId, history, activity] = await Promise.all([
+  const [session, clientId, history, activity, sameTag] = await Promise.all([
     getSession(),
     currentClientId(),
     assignmentsForAsset(asset.id).catch(() => []),
     assetAudit(asset.clientId, asset.id).catch(() => []),
+    listAssets({ clientId: asset.clientId, tag: asset.assetTag }).catch(
+      () => [],
+    ),
   ]);
   const people = session ? await listPeople(clientId).catch(() => []) : [];
+  const onTag = sameTag.filter((x) => x.id !== asset.id);
 
   return (
     <div className="animate-fade-in-up">
@@ -144,6 +149,41 @@ export default async function AssetDetailPage({
             </ol>
           )}
         </Card>
+
+        {onTag.length > 0 && (
+          <Card className="md:col-span-3">
+            <h2 className="text-sm font-semibold">
+              On tag{" "}
+              <span className="font-mono text-primary">{asset.assetTag}</span>
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Accessories bundled under this tag, plus any unit it has been
+              reassigned from.
+            </p>
+            <ul className="mt-3 divide-y divide-border text-sm">
+              {onTag.map((x) => (
+                <li
+                  key={x.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2.5"
+                >
+                  <div>
+                    <Link
+                      href={`/assets/${x.id}`}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {[x.make, x.model].filter(Boolean).join(" ") ||
+                        label(x.type)}
+                    </Link>
+                    <p className="font-mono text-xs text-muted-foreground">
+                      {label(x.type)} · SN {x.serialNumber}
+                    </p>
+                  </div>
+                  <AssetStatusBadge status={x.status} />
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
 
         <Card className="md:col-span-3">
           <h2 className="text-sm font-semibold">Activity log</h2>

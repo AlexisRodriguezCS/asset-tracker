@@ -9,21 +9,25 @@ import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.repository.AssetRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * Seeds a realistic spread of assets for every demo client: a stockroom of spare kit, laptops /
- * monitors / docks deployed to people and desks, and a handful in repair / broken / heading for
- * recycling so every status and the building-floor map have something to show (dev only).
+ * Seeds a realistic fleet for every demo client (dev only):
  *
- * <p>Person and desk ids referenced in the placements line up with {@code PeopleSeeder} and {@code
- * LocationSeeder} insert order on a fresh database. {@code AssignmentSeeder} in assignment-service
- * mirrors these placements.
+ * <ul>
+ *   <li>a person kit - laptop plus a charger and cable that <b>share the laptop's tag</b> - for
+ *       every seeded employee;
+ *   <li>a desk kit - monitor, dock and Thunderbolt cable sharing the desk's tag - at every home /
+ *       hot desk;
+ *   <li>loose stock, some of it in repair / broken / heading for recycling;
+ *   <li>a couple of retired accessories that still carry a laptop's tag, to show the
+ *       retire-and-replace pattern (the live unit and the dead one share one tag, one per type).
+ * </ul>
+ *
+ * <p>Person and desk ids match {@code PeopleSeeder} / {@code LocationSeeder} insert order.
  */
 @Component
 @Profile("!prod")
@@ -31,7 +35,25 @@ public class AssetSeeder implements CommandLineRunner {
 
   private static final String SEED_ACTOR = "system@seed";
 
-  private static final ClientPlan[] PLANS = {acme(), globex(), initech()};
+  private static final Gear MBP14 = new Gear("Apple", "MacBook Pro 14 M3", 249900);
+  private static final Gear MBA13 = new Gear("Apple", "MacBook Air 13 M3", 149900);
+  private static final Gear LAT = new Gear("Dell", "Latitude 7440", 149900);
+  private static final Gear TP14 = new Gear("Lenovo", "ThinkPad T14 Gen 5", 139900);
+  private static final Gear XPS13 = new Gear("Dell", "XPS 13 9340", 159900);
+  private static final Gear IPAD_AIR = new Gear("Apple", "iPad Air 11", 79900);
+  private static final Gear IPAD10 = new Gear("Apple", "iPad 10", 44900);
+  private static final Gear GTAB = new Gear("Samsung", "Galaxy Tab S9", 79900);
+  private static final Gear DELL_MON = new Gear("Dell", "U2723QE 27in 4K", 54900);
+  private static final Gear LG_MON = new Gear("LG", "27UP850 27in 4K", 44900);
+  private static final Gear DELL_P24 = new Gear("Dell", "P2422H 24in", 22900);
+  private static final Gear TS4 = new Gear("CalDigit", "TS4 Dock", 39900);
+  private static final Gear ANKER_DOCK = new Gear("Anker", "563 USB-C Dock", 19900);
+  private static final Gear DELL_WD19 = new Gear("Dell", "WD19 Dock", 18900);
+  private static final Gear CHG96 = new Gear("Apple", "96W USB-C Charger", 7900);
+  private static final Gear CHG70 = new Gear("Apple", "70W USB-C Charger", 5900);
+  private static final Gear CHG65 = new Gear("Dell", "65W USB-C Charger", 4900);
+  private static final Gear USBC = new Gear("Anker", "USB-C 2m Cable", 1900);
+  private static final Gear TBC = new Gear("CalDigit", "Thunderbolt 4 2m Cable", 4900);
 
   private final AssetRepository repository;
   private final AuditService audit;
@@ -46,72 +68,187 @@ public class AssetSeeder implements CommandLineRunner {
     if (repository.count() > 0) {
       return;
     }
-    for (ClientPlan plan : PLANS) {
-      seedClient(plan);
-    }
+    seedClient(1L, "ACME", AssetSeeder::acme);
+    seedClient(2L, "GLBX", AssetSeeder::globex);
+    seedClient(3L, "INTC", AssetSeeder::initech);
   }
 
-  private void seedClient(ClientPlan plan) {
-    Map<String, Integer> seq = new HashMap<>();
+  private void seedClient(
+      long clientId, String prefix, java.util.function.Consumer<List<Row>> plan) {
+    List<Row> rows = new ArrayList<>();
+    plan.accept(rows);
+
     List<Asset> built = new ArrayList<>();
-    for (Line line : plan.lines()) {
-      addLine(built, plan, line, seq);
+    for (int i = 0; i < rows.size(); i++) {
+      built.add(baseAsset(clientId, rows.get(i), i));
     }
-    List<Asset> assets = repository.saveAll(built);
-    for (Placement p : plan.placements()) {
-      place(plan.clientId(), assets.get(p.index() - 1), p);
-    }
-    for (StatusFix f : plan.fixes()) {
-      applyFix(plan.clientId(), assets.get(f.index() - 1), f);
+    List<Asset> saved = repository.saveAll(built);
+
+    for (int i = 0; i < rows.size(); i++) {
+      applyState(clientId, saved.get(i), rows.get(i), i);
     }
   }
 
-  private void addLine(List<Asset> out, ClientPlan plan, Line line, Map<String, Integer> seq) {
-    for (int i = 0; i < line.qty(); i++) {
-      int n = seq.merge(line.code(), 1, Integer::sum);
-      String suffix = String.format("%03d", n);
-      Asset a =
-          new Asset(
-              plan.clientId(),
-              line.type(),
-              plan.prefix() + "-" + line.make().toUpperCase() + "-SN" + suffix,
-              plan.prefix() + "-" + line.code() + "-" + suffix);
-      a.setMake(line.make());
-      a.setModel(line.model());
-      a.setCondition(AssetCondition.GOOD);
-      a.setPurchaseCostCents(line.costCents());
-      LocalDate bought = LocalDate.now().minusMonths(6L + n);
-      a.setPurchaseDate(bought);
-      a.setWarrantyEndsOn(bought.plusYears(3));
-      out.add(a);
+  private Asset baseAsset(long clientId, Row r, int seq) {
+    String serial = r.tag() + "-" + r.type().name().charAt(0) + "-" + String.format("%04d", seq);
+    Asset a = new Asset(clientId, r.type(), serial, r.tag());
+    a.setMake(r.gear().make());
+    a.setModel(r.gear().model());
+    a.setPurchaseCostCents(r.gear().costCents());
+    a.setCondition(r.condition());
+    LocalDate bought = LocalDate.now().minusMonths(8);
+    a.setPurchaseDate(bought);
+    a.setWarrantyEndsOn(bought.plusYears(3));
+    return a;
+  }
+
+  private void applyState(long clientId, Asset a, Row r, int seq) {
+    if (r.status() == AssetStatus.ASSIGNED) {
+      a.setDeployedOn(LocalDate.now().minusDays(15L + seq));
+      a.assignTo(r.holderType(), r.holderId());
+      repository.save(a);
+      audit.record(
+          clientId,
+          SEED_ACTOR,
+          "ASSET_ASSIGNED",
+          a.getId(),
+          "assigned " + describe(a) + " to " + r.holderType() + " " + r.holderId(),
+          null);
+      return;
+    }
+    if (r.status() != AssetStatus.IN_STOCK) {
+      a.setStatus(r.status());
+      repository.save(a);
+      audit.record(
+          clientId,
+          SEED_ACTOR,
+          "ASSET_STATUS_" + r.status().name(),
+          a.getId(),
+          "changed " + describe(a) + " status IN_STOCK -> " + r.status(),
+          null);
     }
   }
 
-  private void place(long clientId, Asset a, Placement p) {
-    a.setDeployedOn(LocalDate.now().minusDays(20L + p.index()));
-    a.assignTo(p.holderType(), p.holderId());
-    repository.save(a);
-    audit.record(
-        clientId,
-        SEED_ACTOR,
-        "ASSET_ASSIGNED",
-        a.getId(),
-        "assigned " + describe(a) + " to " + p.holderType() + " " + p.holderId(),
-        null);
+  // --- per-client plans ---------------------------------------------------
+
+  private static void acme(List<Row> out) {
+    personKit(out, "ACME", 1, 1L, MBP14, CHG96, USBC);
+    personKit(out, "ACME", 2, 2L, MBP14, CHG96, USBC);
+    personKit(out, "ACME", 3, 3L, LAT, CHG96, USBC);
+    personKit(out, "ACME", 4, 4L, LAT, CHG96, USBC);
+    deskKit(out, "ACME", 1, 4L, DELL_MON, TS4, TBC);
+    deskKit(out, "ACME", 3, 6L, DELL_MON, TS4, TBC);
+    deskKit(out, "ACME", 7, 10L, DELL_MON, TS4, TBC);
+    deskKit(out, "ACME", 11, 14L, DELL_MON, TS4, TBC);
+    stock(out, "ACME", "L", AssetType.LAPTOP, MBP14, 4, 5);
+    stock(out, "ACME", "T", AssetType.TABLET, IPAD_AIR, 3, 1);
+    stock(out, "ACME", "MON", AssetType.MONITOR, DELL_MON, 4, 1);
+    stock(out, "ACME", "DCK", AssetType.DOCK, TS4, 3, 1);
+    stock(out, "ACME", "CHG", AssetType.CHARGER, CHG96, 6, 1);
+    stock(out, "ACME", "CBL", AssetType.CABLE, USBC, 10, 1);
+    retire(out, "ACME-L-001", AssetType.CHARGER, CHG96, AssetStatus.LOST);
+    retire(out, "ACME-L-002", AssetType.CABLE, USBC, AssetStatus.RETIRED);
+    fix(out, "ACME-L-005", AssetStatus.IN_REPAIR, AssetCondition.FAIR);
+    fix(out, "ACME-MON-001", AssetStatus.BROKEN, AssetCondition.DAMAGED);
+    fix(out, "ACME-DCK-001", AssetStatus.PENDING_RECYCLE, AssetCondition.POOR);
+    fix(out, "ACME-CHG-001", AssetStatus.RECYCLED, AssetCondition.DAMAGED);
   }
 
-  private void applyFix(long clientId, Asset a, StatusFix f) {
-    AssetStatus before = a.getStatus();
-    a.setCondition(f.condition());
-    a.setStatus(f.status());
-    repository.save(a);
-    audit.record(
-        clientId,
-        SEED_ACTOR,
-        "ASSET_STATUS_" + f.status().name(),
-        a.getId(),
-        "changed " + describe(a) + " status " + before + " -> " + f.status(),
-        null);
+  private static void globex(List<Row> out) {
+    personKit(out, "GLBX", 1, 5L, MBA13, CHG70, USBC);
+    personKit(out, "GLBX", 2, 6L, MBA13, CHG70, USBC);
+    personKit(out, "GLBX", 3, 7L, TP14, CHG70, USBC);
+    personKit(out, "GLBX", 4, 8L, MBA13, CHG70, USBC);
+    deskKit(out, "GLBX", 1, 20L, LG_MON, ANKER_DOCK, TBC);
+    deskKit(out, "GLBX", 3, 22L, LG_MON, ANKER_DOCK, TBC);
+    deskKit(out, "GLBX", 5, 24L, LG_MON, ANKER_DOCK, TBC);
+    stock(out, "GLBX", "L", AssetType.LAPTOP, MBA13, 3, 5);
+    stock(out, "GLBX", "T", AssetType.TABLET, IPAD10, 2, 1);
+    stock(out, "GLBX", "MON", AssetType.MONITOR, LG_MON, 3, 1);
+    stock(out, "GLBX", "DCK", AssetType.DOCK, ANKER_DOCK, 2, 1);
+    stock(out, "GLBX", "CHG", AssetType.CHARGER, CHG70, 4, 1);
+    stock(out, "GLBX", "CBL", AssetType.CABLE, USBC, 6, 1);
+    retire(out, "GLBX-L-001", AssetType.CHARGER, CHG70, AssetStatus.LOST);
+    fix(out, "GLBX-L-005", AssetStatus.IN_REPAIR, AssetCondition.FAIR);
+    fix(out, "GLBX-MON-001", AssetStatus.BROKEN, AssetCondition.DAMAGED);
+    fix(out, "GLBX-DCK-001", AssetStatus.PENDING_RECYCLE, AssetCondition.POOR);
+  }
+
+  private static void initech(List<Row> out) {
+    personKit(out, "INTC", 1, 9L, XPS13, CHG65, USBC);
+    personKit(out, "INTC", 2, 10L, XPS13, CHG65, USBC);
+    personKit(out, "INTC", 3, 11L, XPS13, CHG65, USBC);
+    deskKit(out, "INTC", 1, 30L, DELL_P24, DELL_WD19, TBC);
+    deskKit(out, "INTC", 3, 32L, DELL_P24, DELL_WD19, TBC);
+    stock(out, "INTC", "L", AssetType.LAPTOP, XPS13, 2, 4);
+    stock(out, "INTC", "T", AssetType.TABLET, GTAB, 1, 1);
+    stock(out, "INTC", "MON", AssetType.MONITOR, DELL_P24, 2, 1);
+    stock(out, "INTC", "DCK", AssetType.DOCK, DELL_WD19, 1, 1);
+    stock(out, "INTC", "CHG", AssetType.CHARGER, CHG65, 3, 1);
+    stock(out, "INTC", "CBL", AssetType.CABLE, USBC, 4, 1);
+    retire(out, "INTC-L-001", AssetType.CABLE, USBC, AssetStatus.RETIRED);
+    fix(out, "INTC-MON-001", AssetStatus.BROKEN, AssetCondition.DAMAGED);
+    fix(out, "INTC-CBL-001", AssetStatus.RECYCLED, AssetCondition.DAMAGED);
+  }
+
+  // --- row builders -----------------------------------------------------
+
+  private static void personKit(
+      List<Row> out,
+      String pfx,
+      int laptopNo,
+      long personId,
+      Gear laptop,
+      Gear charger,
+      Gear cable) {
+    String tag = pfx + "-L-" + n3(laptopNo);
+    out.add(Row.deployed(AssetType.LAPTOP, laptop, tag, HolderType.PERSON, personId));
+    out.add(Row.deployed(AssetType.CHARGER, charger, tag, HolderType.PERSON, personId));
+    out.add(Row.deployed(AssetType.CABLE, cable, tag, HolderType.PERSON, personId));
+  }
+
+  private static void deskKit(
+      List<Row> out,
+      String pfx,
+      int deskNo,
+      long deskLocId,
+      Gear monitor,
+      Gear dock,
+      Gear tbCable) {
+    String tag = pfx + "-D-" + n3(deskNo);
+    out.add(Row.deployed(AssetType.MONITOR, monitor, tag, HolderType.LOCATION, deskLocId));
+    out.add(Row.deployed(AssetType.DOCK, dock, tag, HolderType.LOCATION, deskLocId));
+    out.add(Row.deployed(AssetType.CABLE, tbCable, tag, HolderType.LOCATION, deskLocId));
+  }
+
+  private static void stock(
+      List<Row> out, String pfx, String code, AssetType type, Gear gear, int qty, int startNo) {
+    for (int i = 0; i < qty; i++) {
+      out.add(Row.stocked(type, gear, pfx + "-" + code + "-" + n3(startNo + i)));
+    }
+  }
+
+  /**
+   * A dead accessory that still carries a laptop's tag (its live replacement is in a person kit).
+   */
+  private static void retire(List<Row> out, String tag, AssetType type, Gear gear, AssetStatus s) {
+    out.add(new Row(type, gear, tag, s, null, null, AssetCondition.POOR));
+  }
+
+  /** Pulls an already-added stock row out of service - no new asset, just a status change. */
+  private static void fix(List<Row> out, String tag, AssetStatus s, AssetCondition c) {
+    for (int i = 0; i < out.size(); i++) {
+      Row r = out.get(i);
+      if (r.tag().equals(tag) && r.status() == AssetStatus.IN_STOCK) {
+        out.set(i, new Row(r.type(), r.gear(), tag, s, null, null, c));
+        return;
+      }
+    }
+    throw new IllegalStateException("no in-stock row to pull for tag " + tag);
+  }
+
+  private static String n3(int n) {
+    return String.format("%03d", n);
   }
 
   private static String describe(Asset a) {
@@ -123,116 +260,23 @@ public class AssetSeeder implements CommandLineRunner {
     return (makeModel.isBlank() ? a.getType().name() : makeModel) + " (" + a.getAssetTag() + ")";
   }
 
-  // --- per-client plans -----------------------------------------------------
+  private record Gear(String make, String model, long costCents) {}
 
-  private static ClientPlan acme() {
-    Line[] lines = {
-      new Line(AssetType.LAPTOP, "Apple", "MacBook Pro 14 M3", 6, 249900, "L"),
-      new Line(AssetType.LAPTOP, "Dell", "Latitude 7440", 4, 149900, "L"),
-      new Line(AssetType.TABLET, "Apple", "iPad Air 11", 5, 79900, "T"),
-      new Line(AssetType.MONITOR, "Dell", "U2723QE 27in 4K", 8, 54900, "M"),
-      new Line(AssetType.DOCK, "CalDigit", "TS4", 6, 39900, "D"),
-      new Line(AssetType.CHARGER, "Apple", "96W USB-C", 10, 7900, "C"),
-      new Line(AssetType.CABLE, "Anker", "USB-C 2m", 20, 1900, "K"),
-    };
-    Placement[] placements = {
-      new Placement(1, HolderType.PERSON, 1L),
-      new Placement(30, HolderType.PERSON, 1L),
-      new Placement(40, HolderType.PERSON, 1L),
-      new Placement(16, HolderType.LOCATION, 4L),
-      new Placement(24, HolderType.LOCATION, 4L),
-      new Placement(2, HolderType.PERSON, 2L),
-      new Placement(11, HolderType.PERSON, 2L),
-      new Placement(31, HolderType.PERSON, 2L),
-      new Placement(41, HolderType.PERSON, 2L),
-      new Placement(7, HolderType.PERSON, 3L),
-      new Placement(32, HolderType.PERSON, 3L),
-      new Placement(17, HolderType.LOCATION, 6L),
-      new Placement(25, HolderType.LOCATION, 6L),
-      new Placement(8, HolderType.PERSON, 4L),
-      new Placement(42, HolderType.PERSON, 4L),
-      new Placement(18, HolderType.LOCATION, 10L),
-      new Placement(26, HolderType.LOCATION, 10L),
-      new Placement(19, HolderType.LOCATION, 14L),
-    };
-    StatusFix[] fixes = {
-      new StatusFix(6, AssetStatus.IN_REPAIR, AssetCondition.FAIR),
-      new StatusFix(10, AssetStatus.BROKEN, AssetCondition.DAMAGED),
-      new StatusFix(23, AssetStatus.RETIRED, AssetCondition.POOR),
-      new StatusFix(29, AssetStatus.PENDING_RECYCLE, AssetCondition.POOR),
-      new StatusFix(39, AssetStatus.RECYCLED, AssetCondition.DAMAGED),
-      new StatusFix(59, AssetStatus.LOST, AssetCondition.GOOD),
-    };
-    return new ClientPlan(1L, "ACME", lines, placements, fixes);
+  private record Row(
+      AssetType type,
+      Gear gear,
+      String tag,
+      AssetStatus status,
+      HolderType holderType,
+      Long holderId,
+      AssetCondition condition) {
+
+    static Row deployed(AssetType type, Gear gear, String tag, HolderType ht, Long hid) {
+      return new Row(type, gear, tag, AssetStatus.ASSIGNED, ht, hid, AssetCondition.GOOD);
+    }
+
+    static Row stocked(AssetType type, Gear gear, String tag) {
+      return new Row(type, gear, tag, AssetStatus.IN_STOCK, null, null, AssetCondition.GOOD);
+    }
   }
-
-  private static ClientPlan globex() {
-    Line[] lines = {
-      new Line(AssetType.LAPTOP, "Apple", "MacBook Air 13 M3", 4, 149900, "L"),
-      new Line(AssetType.LAPTOP, "Lenovo", "ThinkPad T14", 2, 139900, "L"),
-      new Line(AssetType.TABLET, "Apple", "iPad 10", 2, 44900, "T"),
-      new Line(AssetType.MONITOR, "LG", "27UP850 27in 4K", 4, 44900, "M"),
-      new Line(AssetType.DOCK, "Anker", "563 USB-C", 3, 19900, "D"),
-      new Line(AssetType.CHARGER, "Apple", "70W USB-C", 5, 5900, "C"),
-      new Line(AssetType.CABLE, "Anker", "USB-C 2m", 8, 1900, "K"),
-    };
-    Placement[] placements = {
-      new Placement(1, HolderType.PERSON, 5L),
-      new Placement(16, HolderType.PERSON, 5L),
-      new Placement(21, HolderType.PERSON, 5L),
-      new Placement(9, HolderType.LOCATION, 20L),
-      new Placement(13, HolderType.LOCATION, 20L),
-      new Placement(2, HolderType.PERSON, 6L),
-      new Placement(22, HolderType.PERSON, 6L),
-      new Placement(5, HolderType.PERSON, 7L),
-      new Placement(17, HolderType.PERSON, 7L),
-      new Placement(10, HolderType.LOCATION, 22L),
-      new Placement(3, HolderType.PERSON, 8L),
-      new Placement(11, HolderType.LOCATION, 24L),
-    };
-    StatusFix[] fixes = {
-      new StatusFix(4, AssetStatus.IN_REPAIR, AssetCondition.FAIR),
-      new StatusFix(6, AssetStatus.BROKEN, AssetCondition.DAMAGED),
-      new StatusFix(12, AssetStatus.PENDING_RECYCLE, AssetCondition.POOR),
-      new StatusFix(28, AssetStatus.LOST, AssetCondition.GOOD),
-    };
-    return new ClientPlan(2L, "GLBX", lines, placements, fixes);
-  }
-
-  private static ClientPlan initech() {
-    Line[] lines = {
-      new Line(AssetType.LAPTOP, "Dell", "XPS 13", 3, 159900, "L"),
-      new Line(AssetType.TABLET, "Samsung", "Galaxy Tab S9", 1, 79900, "T"),
-      new Line(AssetType.MONITOR, "Dell", "P2422H 24in", 3, 22900, "M"),
-      new Line(AssetType.DOCK, "Dell", "WD19", 2, 18900, "D"),
-      new Line(AssetType.CHARGER, "Dell", "65W USB-C", 4, 4900, "C"),
-      new Line(AssetType.CABLE, "Anker", "USB-C 2m", 6, 1900, "K"),
-    };
-    Placement[] placements = {
-      new Placement(1, HolderType.PERSON, 9L),
-      new Placement(10, HolderType.PERSON, 9L),
-      new Placement(5, HolderType.LOCATION, 30L),
-      new Placement(8, HolderType.LOCATION, 30L),
-      new Placement(2, HolderType.PERSON, 10L),
-      new Placement(14, HolderType.PERSON, 10L),
-      new Placement(3, HolderType.PERSON, 11L),
-      new Placement(6, HolderType.LOCATION, 32L),
-    };
-    StatusFix[] fixes = {
-      new StatusFix(4, AssetStatus.BROKEN, AssetCondition.DAMAGED),
-      new StatusFix(7, AssetStatus.RETIRED, AssetCondition.POOR),
-      new StatusFix(19, AssetStatus.RECYCLED, AssetCondition.DAMAGED),
-    };
-    return new ClientPlan(3L, "INTC", lines, placements, fixes);
-  }
-
-  private record ClientPlan(
-      long clientId, String prefix, Line[] lines, Placement[] placements, StatusFix[] fixes) {}
-
-  private record Line(
-      AssetType type, String make, String model, int qty, long costCents, String code) {}
-
-  private record Placement(int index, HolderType holderType, Long holderId) {}
-
-  private record StatusFix(int index, AssetStatus status, AssetCondition condition) {}
 }

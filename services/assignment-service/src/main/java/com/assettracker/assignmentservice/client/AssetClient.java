@@ -78,4 +78,36 @@ public class AssetClient {
         ? List.of()
         : rows.stream().map(r -> ((Number) r.get("id")).longValue()).toList();
   }
+
+  /**
+   * Every asset a client currently has deployed - used to seed custody history on a fresh stack.
+   */
+  @SuppressWarnings("unchecked")
+  public List<Deployed> deployedAssets(Long clientId) {
+    List<Map<String, Object>> rows =
+        client
+            .get()
+            .uri(
+                uri ->
+                    uri.path("/assets")
+                        .queryParam("clientId", clientId)
+                        .queryParam("status", "ASSIGNED")
+                        .build())
+            .retrieve()
+            .body(List.class);
+    if (rows == null) {
+      return List.of();
+    }
+    return rows.stream()
+        .map(
+            r ->
+                new Deployed(
+                    ((Number) r.get("id")).longValue(),
+                    (String) r.get("holderType"),
+                    ((Number) r.get("holderId")).longValue()))
+        .toList();
+  }
+
+  /** A currently-deployed asset and where it sits. */
+  public record Deployed(Long assetId, String holderType, Long holderId) {}
 }

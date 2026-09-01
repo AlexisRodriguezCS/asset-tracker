@@ -39,7 +39,8 @@ class AssetServiceTest {
 
   @Test
   void createRejectsADuplicateTag() {
-    when(repository.existsByAssetTag("TAG-1")).thenReturn(true);
+    when(repository.existsActiveWithTag(eq(1L), eq("TAG-1"), eq(AssetType.LAPTOP), any()))
+        .thenReturn(true);
     CreateAssetRequest req =
         new CreateAssetRequest(
             1L, AssetType.LAPTOP, null, null, "SN-1", "TAG-1", null, null, null, null, null, null);
@@ -49,7 +50,8 @@ class AssetServiceTest {
 
   @Test
   void createPersistsAndAuditsWithTheActor() {
-    when(repository.existsByAssetTag("TAG-2")).thenReturn(false);
+    when(repository.existsActiveWithTag(eq(1L), eq("TAG-2"), eq(AssetType.CABLE), any()))
+        .thenReturn(false);
     when(repository.save(any(Asset.class))).thenAnswer(inv -> inv.getArgument(0));
     CreateAssetRequest req =
         new CreateAssetRequest(

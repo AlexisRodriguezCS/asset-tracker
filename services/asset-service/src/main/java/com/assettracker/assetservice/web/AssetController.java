@@ -55,8 +55,9 @@ public class AssetController {
       @RequestParam(required = false) AssetType type,
       @RequestParam(required = false) AssetStatus status,
       @RequestParam(required = false) HolderType holderType,
-      @RequestParam(required = false) Long holderId) {
-    return service.search(clientId, type, status, holderType, holderId).stream()
+      @RequestParam(required = false) Long holderId,
+      @RequestParam(required = false) String tag) {
+    return service.search(clientId, type, status, holderType, holderId, tag).stream()
         .map(AssetResponse::from)
         .toList();
   }

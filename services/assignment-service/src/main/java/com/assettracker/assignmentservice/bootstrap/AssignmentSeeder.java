@@ -1,88 +1,43 @@
 package com.assettracker.assignmentservice.bootstrap;
 
 import com.assettracker.assignmentservice.audit.AuditService;
+import com.assettracker.assignmentservice.client.AssetClient;
+import com.assettracker.assignmentservice.client.AssetClient.Deployed;
 import com.assettracker.assignmentservice.entity.Assignment;
 import com.assettracker.assignmentservice.entity.HolderType;
 import com.assettracker.assignmentservice.repository.AssignmentRepository;
+import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
- * Opens the custody episodes that match the assets {@code asset-service} seeds as deployed, so the
- * console's custody history has data on a fresh dev stack.
- *
- * <p>This mirrors {@code AssetSeeder}: same placements per client, and {@code assetIdBase} is the
- * running total of the inventory sizes of the earlier clients (ACME 59, GLOBEX 28), because asset
- * ids are a single IDENTITY sequence.
+ * Opens a custody episode for every asset {@code asset-service} reports as deployed, so the
+ * console's custody history is populated on a fresh dev stack. It asks asset-service directly
+ * (rather than mirroring a hard-coded id map), retrying while the stack warms up.
  */
 @Component
 @Profile("!prod")
+@Order(100)
 public class AssignmentSeeder implements CommandLineRunner {
 
+  private static final Logger log = LoggerFactory.getLogger(AssignmentSeeder.class);
   private static final String SEED_ACTOR = "system@seed";
-
-  private static final ClientBlock[] BLOCKS = {
-    new ClientBlock(
-        1L,
-        0,
-        new Row[] {
-          new Row(1, HolderType.PERSON, 1L),
-          new Row(30, HolderType.PERSON, 1L),
-          new Row(40, HolderType.PERSON, 1L),
-          new Row(16, HolderType.LOCATION, 4L),
-          new Row(24, HolderType.LOCATION, 4L),
-          new Row(2, HolderType.PERSON, 2L),
-          new Row(11, HolderType.PERSON, 2L),
-          new Row(31, HolderType.PERSON, 2L),
-          new Row(41, HolderType.PERSON, 2L),
-          new Row(7, HolderType.PERSON, 3L),
-          new Row(32, HolderType.PERSON, 3L),
-          new Row(17, HolderType.LOCATION, 6L),
-          new Row(25, HolderType.LOCATION, 6L),
-          new Row(8, HolderType.PERSON, 4L),
-          new Row(42, HolderType.PERSON, 4L),
-          new Row(18, HolderType.LOCATION, 10L),
-          new Row(26, HolderType.LOCATION, 10L),
-          new Row(19, HolderType.LOCATION, 14L),
-        }),
-    new ClientBlock(
-        2L,
-        59,
-        new Row[] {
-          new Row(1, HolderType.PERSON, 5L),
-          new Row(16, HolderType.PERSON, 5L),
-          new Row(21, HolderType.PERSON, 5L),
-          new Row(9, HolderType.LOCATION, 20L),
-          new Row(13, HolderType.LOCATION, 20L),
-          new Row(2, HolderType.PERSON, 6L),
-          new Row(22, HolderType.PERSON, 6L),
-          new Row(5, HolderType.PERSON, 7L),
-          new Row(17, HolderType.PERSON, 7L),
-          new Row(10, HolderType.LOCATION, 22L),
-          new Row(3, HolderType.PERSON, 8L),
-          new Row(11, HolderType.LOCATION, 24L),
-        }),
-    new ClientBlock(
-        3L,
-        87,
-        new Row[] {
-          new Row(1, HolderType.PERSON, 9L),
-          new Row(10, HolderType.PERSON, 9L),
-          new Row(5, HolderType.LOCATION, 30L),
-          new Row(8, HolderType.LOCATION, 30L),
-          new Row(2, HolderType.PERSON, 10L),
-          new Row(14, HolderType.PERSON, 10L),
-          new Row(3, HolderType.PERSON, 11L),
-          new Row(6, HolderType.LOCATION, 32L),
-        }),
-  };
+  private static final long[] CLIENT_IDS = {1L, 2L, 3L};
+  private static final int MAX_ATTEMPTS = 20;
+  private static final long RETRY_DELAY_MS = 3000L;
 
   private final AssignmentRepository repository;
+  private final AssetClient assetClient;
   private final AuditService audit;
 
-  public AssignmentSeeder(AssignmentRepository repository, AuditService audit) {
+  public AssignmentSeeder(
+      AssignmentRepository repository, AssetClient assetClient, AuditService audit) {
     this.repository = repository;
+    this.assetClient = assetClient;
     this.audit = audit;
   }
 
@@ -91,30 +46,54 @@ public class AssignmentSeeder implements CommandLineRunner {
     if (repository.count() > 0) {
       return;
     }
-    for (ClientBlock block : BLOCKS) {
-      for (Row r : block.rows()) {
-        long assetId = block.assetIdBase() + r.index();
-        Assignment saved =
-            repository.save(
-                new Assignment(
-                    block.clientId(),
-                    assetId,
-                    r.holderType(),
-                    r.holderId(),
-                    SEED_ACTOR,
-                    r.holderType() == HolderType.PERSON ? "issued to employee" : "set up at desk"));
-        audit.record(
-            block.clientId(),
-            SEED_ACTOR,
-            "ASSET_CHECKED_OUT",
-            saved.getId(),
-            "checked out asset " + assetId + " to " + r.holderType() + " " + r.holderId(),
-            null);
-      }
+    for (long clientId : CLIENT_IDS) {
+      List<Deployed> deployed = fetchWithRetry(clientId);
+      deployed.forEach(d -> open(clientId, d));
     }
   }
 
-  private record ClientBlock(long clientId, int assetIdBase, Row[] rows) {}
+  private List<Deployed> fetchWithRetry(long clientId) {
+    for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        List<Deployed> deployed = assetClient.deployedAssets(clientId);
+        if (!deployed.isEmpty()) {
+          return deployed;
+        }
+      } catch (RuntimeException ex) {
+        log.debug("seed: asset-service not ready for client {} (try {})", clientId, attempt);
+      }
+      sleep();
+    }
+    log.warn(
+        "seed: gave up waiting for asset-service; client {} custody history left empty", clientId);
+    return List.of();
+  }
 
-  private record Row(int index, HolderType holderType, Long holderId) {}
+  private void open(long clientId, Deployed d) {
+    HolderType holderType = HolderType.valueOf(d.holderType());
+    Assignment saved =
+        repository.save(
+            new Assignment(
+                clientId,
+                d.assetId(),
+                holderType,
+                d.holderId(),
+                SEED_ACTOR,
+                holderType == HolderType.PERSON ? "issued to employee" : "set up at desk"));
+    audit.record(
+        clientId,
+        SEED_ACTOR,
+        "ASSET_CHECKED_OUT",
+        saved.getId(),
+        "checked out asset " + d.assetId() + " to " + holderType + " " + d.holderId(),
+        null);
+  }
+
+  private static void sleep() {
+    try {
+      Thread.sleep(RETRY_DELAY_MS);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+    }
+  }
 }

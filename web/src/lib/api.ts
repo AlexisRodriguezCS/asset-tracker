@@ -85,6 +85,7 @@ export const listAssets = (params: {
   status?: string;
   holderType?: string;
   holderId?: number;
+  tag?: string;
 }) => gateway<Asset[]>(`/api/assets${qs(params)}`);
 
 export const getAsset = (id: string | number) =>
