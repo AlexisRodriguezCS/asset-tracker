@@ -27,7 +27,9 @@ public class AssignmentSeeder implements CommandLineRunner {
   private static final Logger log = LoggerFactory.getLogger(AssignmentSeeder.class);
   private static final String SEED_ACTOR = "system@seed";
   private static final long[] CLIENT_IDS = {1L, 2L, 3L};
-  private static final int MAX_ATTEMPTS = 20;
+  // A cold full-stack boot can take a couple of minutes for asset-service to
+  // register in Eureka and appear in this service's load-balancer cache.
+  private static final int MAX_ATTEMPTS = 60;
   private static final long RETRY_DELAY_MS = 3000L;
 
   private final AssignmentRepository repository;
