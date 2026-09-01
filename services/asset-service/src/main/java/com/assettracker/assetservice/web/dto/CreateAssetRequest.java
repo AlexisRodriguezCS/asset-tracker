@@ -1,5 +1,6 @@
 package com.assettracker.assetservice.web.dto;
 
+import com.assettracker.assetservice.entity.AssetCondition;
 import com.assettracker.assetservice.entity.AssetType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -13,6 +14,9 @@ public record CreateAssetRequest(
     String model,
     @NotBlank String serialNumber,
     @NotBlank String assetTag,
+    AssetCondition condition,
     LocalDate purchaseDate,
+    LocalDate deployedOn,
+    LocalDate warrantyEndsOn,
     Long purchaseCostCents,
     String notes) {}

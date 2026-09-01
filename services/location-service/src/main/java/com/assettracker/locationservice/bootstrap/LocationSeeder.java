@@ -9,13 +9,32 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
-/** Seeds a site, a floor of rooms, and a row of desks for client 1 (dev only). */
+/**
+ * Seeds sites, a stockroom, and desks for each demo client. Desks are spread across buildings and
+ * floors so the console's building / floor map has something to group (dev only).
+ *
+ * <p>Insert order is fixed: {@code PeopleSeeder} and {@code AssetSeeder} reference the desk ids
+ * this produces on a fresh database (IDENTITY from 1).
+ */
 @Component
 @Profile("!prod")
 public class LocationSeeder implements CommandLineRunner {
 
-  private static final long ACME = 1L;
-  private static final int DESK_COUNT = 12;
+  private static final Site[] SITES = {
+    new Site(
+        1L,
+        "ACME",
+        List.of("HQ", "HQ", "Annex"),
+        new DeskRow[] {
+          new DeskRow("HQ", "2", 6), new DeskRow("HQ", "3", 4), new DeskRow("Annex", "1", 4),
+        }),
+    new Site(
+        2L,
+        "GLBX",
+        List.of("Tower"),
+        new DeskRow[] {new DeskRow("Tower", "1", 5), new DeskRow("Tower", "2", 3)}),
+    new Site(3L, "INTC", List.of("Office"), new DeskRow[] {new DeskRow("Office", "1", 4)}),
+  };
 
   private final LocationRepository repository;
 
@@ -29,15 +48,45 @@ public class LocationSeeder implements CommandLineRunner {
       return;
     }
     List<Location> seed = new ArrayList<>();
-    seed.add(new Location(ACME, LocationKind.SITE, "HQ", "ACME-SITE-HQ"));
-    seed.add(
-        withPlace(new Location(ACME, LocationKind.ROOM, "Stockroom", "ACME-RM-STK"), "HQ", "1"));
-    for (int i = 1; i <= DESK_COUNT; i++) {
-      String n = String.format("%03d", i);
-      seed.add(
-          withPlace(new Location(ACME, LocationKind.DESK, "Desk " + n, "ACME-D-" + n), "HQ", "2"));
+    for (Site site : SITES) {
+      seedSite(seed, site);
     }
     repository.saveAll(seed);
+  }
+
+  private static void seedSite(List<Location> seed, Site site) {
+    for (String building : distinct(site.buildings())) {
+      seed.add(
+          new Location(
+              site.clientId(), LocationKind.SITE, building, site.code() + "-SITE-" + building));
+    }
+    seed.add(
+        withPlace(
+            new Location(site.clientId(), LocationKind.ROOM, "Stockroom", site.code() + "-RM-STK"),
+            site.buildings().get(0),
+            "1"));
+    int desk = 0;
+    for (DeskRow row : site.deskRows()) {
+      for (int i = 0; i < row.count(); i++) {
+        String n = String.format("%03d", ++desk);
+        seed.add(
+            withPlace(
+                new Location(
+                    site.clientId(), LocationKind.DESK, "Desk " + n, site.code() + "-D-" + n),
+                row.building(),
+                row.floor()));
+      }
+    }
+  }
+
+  private static List<String> distinct(List<String> values) {
+    List<String> out = new ArrayList<>();
+    for (String v : values) {
+      if (!out.contains(v)) {
+        out.add(v);
+      }
+    }
+    return out;
   }
 
   private static Location withPlace(Location l, String building, String floor) {
@@ -45,4 +94,8 @@ public class LocationSeeder implements CommandLineRunner {
     l.setFloor(floor);
     return l;
   }
+
+  private record Site(long clientId, String code, List<String> buildings, DeskRow[] deskRows) {}
+
+  private record DeskRow(String building, String floor, int count) {}
 }

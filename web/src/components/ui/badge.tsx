@@ -36,6 +36,9 @@ const ASSET_TONE: Record<string, Tone> = {
   IN_STOCK: "success",
   ASSIGNED: "info",
   IN_REPAIR: "warn",
+  BROKEN: "danger",
+  PENDING_RECYCLE: "warn",
+  RECYCLED: "neutral",
   RETIRED: "neutral",
   LOST: "danger",
 };
@@ -43,6 +46,13 @@ const PERSON_TONE: Record<string, Tone> = {
   ACTIVE: "success",
   OFFBOARDING: "warn",
   DEPARTED: "neutral",
+};
+const CONDITION_TONE: Record<string, Tone> = {
+  NEW: "success",
+  GOOD: "success",
+  FAIR: "warn",
+  POOR: "warn",
+  DAMAGED: "danger",
 };
 
 export function AssetStatusBadge({ status }: { status: string }) {
@@ -54,4 +64,10 @@ export function AssetStatusBadge({ status }: { status: string }) {
 }
 export function PersonStatusBadge({ status }: { status: string }) {
   return <Badge tone={PERSON_TONE[status] ?? "neutral"}>{status}</Badge>;
+}
+export function ConditionBadge({ condition }: { condition: string | null }) {
+  if (!condition) return <span className="text-muted-foreground">—</span>;
+  return (
+    <Badge tone={CONDITION_TONE[condition] ?? "neutral"}>{condition}</Badge>
+  );
 }

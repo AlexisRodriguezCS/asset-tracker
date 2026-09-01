@@ -2,10 +2,10 @@ import Link from "next/link";
 import { currentClientId } from "@/lib/client";
 import { listAssets } from "@/lib/api";
 import { getSession } from "@/lib/session";
-import { AssetStatusBadge } from "@/components/ui/badge";
+import { AssetStatusBadge, ConditionBadge } from "@/components/ui/badge";
 import { StatStrip } from "@/components/ui/stat";
 import { PageHeader, TableCard } from "@/components/ui/page-header";
-import { label, money } from "@/lib/format";
+import { dateOnly, disposition, isPast, label } from "@/lib/format";
 import type { AssetStatus, AssetType } from "@/lib/types";
 
 const TYPES: AssetType[] = [
@@ -18,6 +18,17 @@ const TYPES: AssetType[] = [
   "CABLE",
   "PERIPHERAL",
   "OTHER",
+];
+
+const STATUSES: AssetStatus[] = [
+  "IN_STOCK",
+  "ASSIGNED",
+  "IN_REPAIR",
+  "BROKEN",
+  "PENDING_RECYCLE",
+  "RECYCLED",
+  "RETIRED",
+  "LOST",
 ];
 
 export default async function AssetsPage({
@@ -37,7 +48,8 @@ export default async function AssetsPage({
     listAssets({ clientId, type: sp.type, status: sp.status }),
   ]);
 
-  const count = (s: AssetStatus) => all.filter((a) => a.status === s).length;
+  const count = (...ss: AssetStatus[]) =>
+    all.filter((a) => ss.includes(a.status)).length;
   const link = (p: Record<string, string>) => {
     const q = new URLSearchParams(p).toString();
     return q ? `/?${q}` : "/";
@@ -69,29 +81,29 @@ export default async function AssetsPage({
             active: !sp.status && !sp.type,
           },
           {
-            label: "In stock",
+            label: "In storage",
             value: count("IN_STOCK"),
             tone: "success",
             href: link({ status: "IN_STOCK" }),
             active: sp.status === "IN_STOCK",
           },
           {
-            label: "Assigned",
+            label: "In use",
             value: count("ASSIGNED"),
             tone: "primary",
             href: link({ status: "ASSIGNED" }),
             active: sp.status === "ASSIGNED",
           },
           {
-            label: "In repair",
-            value: count("IN_REPAIR"),
+            label: "Repair",
+            value: count("IN_REPAIR", "BROKEN"),
             tone: "warn",
             href: link({ status: "IN_REPAIR" }),
             active: sp.status === "IN_REPAIR",
           },
           {
-            label: "Retired / lost",
-            value: count("RETIRED") + count("LOST"),
+            label: "End of life",
+            value: count("PENDING_RECYCLE", "RECYCLED", "RETIRED", "LOST"),
             tone: "danger",
             href: link({ status: "RETIRED" }),
             active: sp.status === "RETIRED",
@@ -99,25 +111,44 @@ export default async function AssetsPage({
         ]}
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Type
-        </span>
-        <Chip href="/" active={!sp.type}>
-          All
-        </Chip>
-        {TYPES.map((t) => (
+      <div className="space-y-2">
+        <ChipRow heading="Type">
           <Chip
-            key={t}
-            href={link({
-              type: t,
-              ...(sp.status ? { status: sp.status } : {}),
-            })}
-            active={sp.type === t}
+            href={link(sp.status ? { status: sp.status } : {})}
+            active={!sp.type}
           >
-            {label(t)}
+            All
           </Chip>
-        ))}
+          {TYPES.map((t) => (
+            <Chip
+              key={t}
+              href={link({
+                type: t,
+                ...(sp.status ? { status: sp.status } : {}),
+              })}
+              active={sp.type === t}
+            >
+              {label(t)}
+            </Chip>
+          ))}
+        </ChipRow>
+        <ChipRow heading="Status">
+          <Chip
+            href={link(sp.type ? { type: sp.type } : {})}
+            active={!sp.status}
+          >
+            Any
+          </Chip>
+          {STATUSES.map((s) => (
+            <Chip
+              key={s}
+              href={link({ status: s, ...(sp.type ? { type: sp.type } : {}) })}
+              active={sp.status === s}
+            >
+              {label(s)}
+            </Chip>
+          ))}
+        </ChipRow>
       </div>
 
       <TableCard>
@@ -126,10 +157,11 @@ export default async function AssetsPage({
             <th className="px-4 py-3 font-medium">Tag</th>
             <th className="px-4 py-3 font-medium">Type</th>
             <th className="px-4 py-3 font-medium">Make / model</th>
-            <th className="px-4 py-3 font-medium">Serial</th>
+            <th className="px-4 py-3 font-medium">Condition</th>
             <th className="px-4 py-3 font-medium">Status</th>
+            <th className="px-4 py-3 font-medium">Location</th>
             <th className="px-4 py-3 font-medium">Holder</th>
-            <th className="px-4 py-3 font-medium">Cost</th>
+            <th className="px-4 py-3 font-medium">Warranty</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/70">
@@ -149,26 +181,40 @@ export default async function AssetsPage({
                   <span className="text-muted-foreground">—</span>
                 )}
               </td>
-              <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
-                {a.serialNumber}
+              <td className="px-4 py-2.5">
+                <ConditionBadge condition={a.condition} />
               </td>
               <td className="px-4 py-2.5">
                 <AssetStatusBadge status={a.status} />
+              </td>
+              <td className="px-4 py-2.5 text-muted-foreground">
+                {disposition(a.status)}
               </td>
               <td className="px-4 py-2.5 text-muted-foreground">
                 {a.holderType === "STOCKROOM"
                   ? "Stockroom"
                   : `${label(a.holderType)} #${a.holderId}`}
               </td>
-              <td className="px-4 py-2.5 tabular-nums text-muted-foreground">
-                {money(a.purchaseCostCents)}
+              <td className="px-4 py-2.5 text-muted-foreground">
+                {a.warrantyEndsOn ? (
+                  <span
+                    className={
+                      isPast(a.warrantyEndsOn) ? "text-destructive" : ""
+                    }
+                  >
+                    {dateOnly(a.warrantyEndsOn)}
+                    {isPast(a.warrantyEndsOn) && " · expired"}
+                  </span>
+                ) : (
+                  "—"
+                )}
               </td>
             </tr>
           ))}
           {assets.length === 0 && (
             <tr>
               <td
-                colSpan={7}
+                colSpan={8}
                 className="px-4 py-12 text-center text-muted-foreground"
               >
                 No assets match this filter.
@@ -177,6 +223,23 @@ export default async function AssetsPage({
           )}
         </tbody>
       </TableCard>
+    </div>
+  );
+}
+
+function ChipRow({
+  heading,
+  children,
+}: {
+  heading: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="w-12 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {heading}
+      </span>
+      {children}
     </div>
   );
 }

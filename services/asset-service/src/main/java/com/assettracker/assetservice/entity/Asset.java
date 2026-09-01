@@ -55,7 +55,16 @@ public class Asset {
   /** id of the person or location holding it; null when in the stockroom. */
   private Long holderId;
 
+  @Enumerated(EnumType.STRING)
+  private AssetCondition condition;
+
   private LocalDate purchaseDate;
+
+  /** When the asset was first put into service / handed out. */
+  private LocalDate deployedOn;
+
+  /** Manufacturer or vendor warranty expiry. */
+  private LocalDate warrantyEndsOn;
 
   private Long purchaseCostCents;
 
@@ -82,7 +91,7 @@ public class Asset {
 
   /** Places the asset with a person or location. Rejects if it is not free to move. */
   public void assignTo(HolderType newHolderType, Long newHolderId) {
-    if (status == AssetStatus.RETIRED || status == AssetStatus.LOST) {
+    if (isEndOfLife(status)) {
       throw new IllegalStateException("asset is " + status);
     }
     if (status == AssetStatus.ASSIGNED) {
@@ -91,11 +100,14 @@ public class Asset {
     this.holderType = newHolderType;
     this.holderId = newHolderId;
     this.status = AssetStatus.ASSIGNED;
+    if (deployedOn == null) {
+      this.deployedOn = LocalDate.now();
+    }
   }
 
   /** Returns the asset to the stockroom. */
   public void returnToStock() {
-    if (status == AssetStatus.RETIRED || status == AssetStatus.LOST) {
+    if (isEndOfLife(status)) {
       throw new IllegalStateException("asset is " + status);
     }
     this.holderType = HolderType.STOCKROOM;
@@ -104,11 +116,19 @@ public class Asset {
   }
 
   public void setStatus(AssetStatus newStatus) {
-    if (newStatus == AssetStatus.RETIRED || newStatus == AssetStatus.LOST) {
+    if (isEndOfLife(newStatus)) {
       this.holderType = HolderType.STOCKROOM;
       this.holderId = null;
     }
     this.status = newStatus;
+  }
+
+  /** End-of-life states cannot be assigned or returned, and carry no holder. */
+  private static boolean isEndOfLife(AssetStatus s) {
+    return s == AssetStatus.RETIRED
+        || s == AssetStatus.LOST
+        || s == AssetStatus.RECYCLED
+        || s == AssetStatus.PENDING_RECYCLE;
   }
 
   public Long getId() {
@@ -159,12 +179,36 @@ public class Asset {
     return holderId;
   }
 
+  public AssetCondition getCondition() {
+    return condition;
+  }
+
+  public void setCondition(AssetCondition condition) {
+    this.condition = condition;
+  }
+
   public LocalDate getPurchaseDate() {
     return purchaseDate;
   }
 
   public void setPurchaseDate(LocalDate purchaseDate) {
     this.purchaseDate = purchaseDate;
+  }
+
+  public LocalDate getDeployedOn() {
+    return deployedOn;
+  }
+
+  public void setDeployedOn(LocalDate deployedOn) {
+    this.deployedOn = deployedOn;
+  }
+
+  public LocalDate getWarrantyEndsOn() {
+    return warrantyEndsOn;
+  }
+
+  public void setWarrantyEndsOn(LocalDate warrantyEndsOn) {
+    this.warrantyEndsOn = warrantyEndsOn;
   }
 
   public Long getPurchaseCostCents() {

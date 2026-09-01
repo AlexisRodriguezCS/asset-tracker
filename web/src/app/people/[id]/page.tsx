@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { getPerson, listAssets, personAudit, GatewayError } from "@/lib/api";
+import {
+  getPerson,
+  listAssets,
+  listLocations,
+  personAudit,
+  GatewayError,
+} from "@/lib/api";
 import { getSession } from "@/lib/session";
 import { Card } from "@/components/ui/card";
 import { AssetStatusBadge, PersonStatusBadge } from "@/components/ui/badge";
@@ -24,7 +30,7 @@ export default async function PersonDetailPage({
     throw e;
   }
 
-  const [session, held, activity] = await Promise.all([
+  const [session, held, activity, desks] = await Promise.all([
     getSession(),
     listAssets({
       clientId: person.clientId,
@@ -32,7 +38,16 @@ export default async function PersonDetailPage({
       holderId: person.id,
     }),
     personAudit(person.clientId, person.id).catch(() => []),
+    person.deskId
+      ? listLocations(person.clientId, "DESK").catch(() => [])
+      : Promise.resolve([]),
   ]);
+  const desk = desks.find((d) => d.id === person.deskId) ?? null;
+  const deskText = desk
+    ? `${desk.label}${desk.building ? ` · ${desk.building}` : ""}${desk.floor ? ` · floor ${desk.floor}` : ""}`
+    : person.deskId
+      ? `desk #${person.deskId}`
+      : "no desk";
 
   return (
     <div className="animate-fade-in-up">
@@ -52,7 +67,7 @@ export default async function PersonDetailPage({
       <p className="mt-1 text-sm text-muted-foreground">
         {person.email}
         {person.department ? ` · ${person.department}` : ""}
-        {person.deskId ? ` · desk #${person.deskId}` : " · no desk"}
+        {` · ${deskText}`}
       </p>
 
       <Card className="mt-6">

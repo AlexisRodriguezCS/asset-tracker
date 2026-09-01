@@ -38,7 +38,10 @@ public class AssetService {
         new Asset(request.clientId(), request.type(), request.serialNumber(), request.assetTag());
     asset.setMake(request.make());
     asset.setModel(request.model());
+    asset.setCondition(request.condition());
     asset.setPurchaseDate(request.purchaseDate());
+    asset.setDeployedOn(request.deployedOn());
+    asset.setWarrantyEndsOn(request.warrantyEndsOn());
     asset.setPurchaseCostCents(request.purchaseCostCents());
     asset.setNotes(request.notes());
     Asset saved = repository.save(asset);
@@ -77,15 +80,12 @@ public class AssetService {
   public Asset update(Long id, UpdateAssetRequest request, String actor) {
     Asset asset = getById(id);
     String before = "make=" + asset.getMake() + " model=" + asset.getModel();
-    if (request.make() != null) {
-      asset.setMake(request.make());
-    }
-    if (request.model() != null) {
-      asset.setModel(request.model());
-    }
-    if (request.notes() != null) {
-      asset.setNotes(request.notes());
-    }
+    setIfPresent(request.make(), asset::setMake);
+    setIfPresent(request.model(), asset::setModel);
+    setIfPresent(request.notes(), asset::setNotes);
+    setIfPresent(request.condition(), asset::setCondition);
+    setIfPresent(request.deployedOn(), asset::setDeployedOn);
+    setIfPresent(request.warrantyEndsOn(), asset::setWarrantyEndsOn);
     audit.record(
         asset.getClientId(),
         actor,
@@ -146,6 +146,12 @@ public class AssetService {
         "changed " + describe(asset) + " status " + before + " -> " + status,
         null);
     return asset;
+  }
+
+  private static <T> void setIfPresent(T value, java.util.function.Consumer<T> setter) {
+    if (value != null) {
+      setter.accept(value);
+    }
   }
 
   private static String describe(Asset a) {

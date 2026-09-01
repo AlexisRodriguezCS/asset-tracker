@@ -22,8 +22,13 @@ export type AssetStatus =
   | "IN_STOCK"
   | "ASSIGNED"
   | "IN_REPAIR"
+  | "BROKEN"
+  | "PENDING_RECYCLE"
+  | "RECYCLED"
   | "RETIRED"
   | "LOST";
+
+export type AssetCondition = "NEW" | "GOOD" | "FAIR" | "POOR" | "DAMAGED";
 
 export type HolderType = "PERSON" | "LOCATION" | "STOCKROOM";
 
@@ -36,9 +41,12 @@ export interface Asset {
   serialNumber: string;
   assetTag: string;
   status: AssetStatus;
+  condition: AssetCondition | null;
   holderType: HolderType;
   holderId: number | null;
   purchaseDate: string | null;
+  deployedOn: string | null;
+  warrantyEndsOn: string | null;
   purchaseCostCents: number | null;
   notes: string | null;
   createdAt: string;

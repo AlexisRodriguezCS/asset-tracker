@@ -41,7 +41,8 @@ class AssetServiceTest {
   void createRejectsADuplicateTag() {
     when(repository.existsByAssetTag("TAG-1")).thenReturn(true);
     CreateAssetRequest req =
-        new CreateAssetRequest(1L, AssetType.LAPTOP, null, null, "SN-1", "TAG-1", null, null, null);
+        new CreateAssetRequest(
+            1L, AssetType.LAPTOP, null, null, "SN-1", "TAG-1", null, null, null, null, null, null);
     assertThatThrownBy(() -> service.create(req, "tech@acme.example"))
         .isInstanceOf(AssetTagTakenException.class);
   }
@@ -52,7 +53,18 @@ class AssetServiceTest {
     when(repository.save(any(Asset.class))).thenAnswer(inv -> inv.getArgument(0));
     CreateAssetRequest req =
         new CreateAssetRequest(
-            1L, AssetType.CABLE, "Anker", "USB-C", "SN-2", "TAG-2", null, 1900L, null);
+            1L,
+            AssetType.CABLE,
+            "Anker",
+            "USB-C",
+            "SN-2",
+            "TAG-2",
+            null,
+            null,
+            null,
+            null,
+            1900L,
+            null);
 
     Asset created = service.create(req, "tech@acme.example");
 

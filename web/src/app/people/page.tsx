@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { currentClientId } from "@/lib/client";
-import { listPeople } from "@/lib/api";
+import { listPeople, listLocations } from "@/lib/api";
 import { PersonStatusBadge } from "@/components/ui/badge";
 import { StatStrip } from "@/components/ui/stat";
 import { PageHeader, TableCard } from "@/components/ui/page-header";
 
 export default async function PeoplePage() {
   const clientId = await currentClientId();
-  const people = await listPeople(clientId);
+  const [people, desks] = await Promise.all([
+    listPeople(clientId),
+    listLocations(clientId, "DESK").catch(() => []),
+  ]);
+  const deskLabel = new Map(desks.map((d) => [d.id, d.label]));
 
   const n = (s: string) => people.filter((p) => p.status === s).length;
 
@@ -60,11 +64,7 @@ export default async function PeoplePage() {
                 )}
               </td>
               <td className="px-4 py-2.5 text-muted-foreground">
-                {p.deskId ? (
-                  <span className="font-mono text-xs">#{p.deskId}</span>
-                ) : (
-                  "—"
-                )}
+                {p.deskId ? (deskLabel.get(p.deskId) ?? `#${p.deskId}`) : "—"}
               </td>
               <td className="px-4 py-2.5">
                 <PersonStatusBadge status={p.status} />

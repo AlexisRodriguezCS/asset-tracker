@@ -14,7 +14,14 @@ import { AssetStatusBadge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { AssetActions } from "@/components/asset-actions";
 import { AuditFeed } from "@/components/audit-feed";
-import { dateOnly, dateTime, label, money } from "@/lib/format";
+import {
+  dateOnly,
+  dateTime,
+  disposition,
+  isPast,
+  label,
+  money,
+} from "@/lib/format";
 
 export default async function AssetDetailPage({
   params,
@@ -66,6 +73,11 @@ export default async function AssetDetailPage({
           <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <Field k="Type" v={label(asset.type)} />
             <Field
+              k="Condition"
+              v={asset.condition ? label(asset.condition) : "—"}
+            />
+            <Field k="Location" v={disposition(asset.status)} />
+            <Field
               k="Holder"
               v={
                 asset.holderType === "STOCKROOM"
@@ -74,6 +86,16 @@ export default async function AssetDetailPage({
               }
             />
             <Field k="Purchased" v={dateOnly(asset.purchaseDate)} />
+            <Field k="Deployed" v={dateOnly(asset.deployedOn)} />
+            <Field
+              k="Warranty ends"
+              v={
+                asset.warrantyEndsOn
+                  ? dateOnly(asset.warrantyEndsOn) +
+                    (isPast(asset.warrantyEndsOn) ? " · expired" : "")
+                  : "—"
+              }
+            />
             <Field k="Cost" v={money(asset.purchaseCostCents)} />
             {asset.notes && (
               <div className="col-span-2">
