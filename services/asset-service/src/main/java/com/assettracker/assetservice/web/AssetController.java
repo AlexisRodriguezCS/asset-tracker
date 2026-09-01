@@ -56,10 +56,16 @@ public class AssetController {
       @RequestParam(required = false) AssetStatus status,
       @RequestParam(required = false) HolderType holderType,
       @RequestParam(required = false) Long holderId,
-      @RequestParam(required = false) String tag) {
-    return service.search(clientId, type, status, holderType, holderId, tag).stream()
+      @RequestParam(required = false) String tag,
+      @RequestParam(required = false) String category) {
+    return service.search(clientId, type, status, holderType, holderId, tag, category).stream()
         .map(AssetResponse::from)
         .toList();
+  }
+
+  @GetMapping("/categories")
+  public List<String> categories(@RequestParam Long clientId) {
+    return service.categories(clientId);
   }
 
   @GetMapping("/{id}")

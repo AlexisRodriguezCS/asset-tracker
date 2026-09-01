@@ -30,7 +30,7 @@ class AssetControllerTest {
   @Test
   void searchReturnsTheMatchingAssets() throws Exception {
     Asset a = new Asset(1L, AssetType.LAPTOP, "SN-1", "TAG-1");
-    when(service.search(eq(1L), eq(AssetType.LAPTOP), any(), any(), any(), any()))
+    when(service.search(eq(1L), eq(AssetType.LAPTOP), any(), any(), any(), any(), any()))
         .thenReturn(List.of(a));
 
     mvc.perform(get("/assets").param("clientId", "1").param("type", "LAPTOP"))

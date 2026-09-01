@@ -43,7 +43,19 @@ class AssetServiceTest {
         .thenReturn(true);
     CreateAssetRequest req =
         new CreateAssetRequest(
-            1L, AssetType.LAPTOP, null, null, "SN-1", "TAG-1", null, null, null, null, null, null);
+            1L,
+            AssetType.LAPTOP,
+            null,
+            null,
+            "SN-1",
+            "TAG-1",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
     assertThatThrownBy(() -> service.create(req, "tech@acme.example"))
         .isInstanceOf(AssetTagTakenException.class);
   }
@@ -61,6 +73,7 @@ class AssetServiceTest {
             "USB-C",
             "SN-2",
             "TAG-2",
+            null,
             null,
             null,
             null,

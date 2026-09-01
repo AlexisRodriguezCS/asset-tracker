@@ -17,9 +17,11 @@ const ACTIVE = ["IN_STOCK", "ASSIGNED", "IN_REPAIR"];
 export function AssetAdmin({
   asset,
   signedIn,
+  categories = [],
 }: {
   asset: Asset;
   signedIn: boolean;
+  categories?: string[];
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<"none" | "edit" | "replace">("none");
@@ -40,6 +42,7 @@ export function AssetAdmin({
       tag: asset.assetTag,
       make: asset.make ?? "",
       model: asset.model ?? "",
+      category: asset.category ?? "",
     });
     if (asset.holderType !== "STOCKROOM" && asset.holderId != null) {
       params.set("reassignTo", `${asset.holderType}:${asset.holderId}`);
@@ -69,7 +72,12 @@ export function AssetAdmin({
       {mode === "edit" && (
         <div className="space-y-3">
           <p className="text-sm font-medium">Edit details</p>
-          <AssetForm mode="edit" asset={asset} onDone={() => setMode("none")} />
+          <AssetForm
+            mode="edit"
+            asset={asset}
+            categories={categories}
+            onDone={() => setMode("none")}
+          />
           <Button size="sm" variant="ghost" onClick={() => setMode("none")}>
             Cancel
           </Button>

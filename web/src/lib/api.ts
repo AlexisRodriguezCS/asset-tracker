@@ -86,7 +86,11 @@ export const listAssets = (params: {
   holderType?: string;
   holderId?: number;
   tag?: string;
+  category?: string;
 }) => gateway<Asset[]>(`/api/assets${qs(params)}`);
+
+export const listCategories = (clientId: number) =>
+  gateway<string[]>(`/api/assets/categories${qs({ clientId })}`);
 
 export const getAsset = (id: string | number) =>
   gateway<Asset>(`/api/assets/${id}`);

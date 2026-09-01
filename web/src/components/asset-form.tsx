@@ -14,6 +14,7 @@ const TYPES: AssetType[] = [
   "DOCK",
   "CHARGER",
   "CABLE",
+  "HOTSPOT",
   "PERIPHERAL",
   "OTHER",
 ];
@@ -24,6 +25,7 @@ type Prefill = {
   assetTag?: string;
   make?: string;
   model?: string;
+  category?: string;
   /** "PERSON:1" / "LOCATION:4" - check the new unit straight out to that holder. */
   reassignTo?: string;
 };
@@ -33,9 +35,15 @@ type Props =
       mode: "create";
       clientId: number;
       prefill?: Prefill;
+      categories?: string[];
       onDone?: () => void;
     }
-  | { mode: "edit"; asset: Asset; onDone?: () => void };
+  | {
+      mode: "edit";
+      asset: Asset;
+      categories?: string[];
+      onDone?: () => void;
+    };
 
 /** Create or edit an asset. Writes go through the authenticated BFF proxy. */
 export function AssetForm(props: Props) {
@@ -50,6 +58,7 @@ export function AssetForm(props: Props) {
   const [make, setMake] = useState(pf?.make ?? a?.make ?? "");
   const [model, setModel] = useState(pf?.model ?? a?.model ?? "");
   const [condition, setCondition] = useState<string>(a?.condition ?? "GOOD");
+  const [category, setCategory] = useState(pf?.category ?? a?.category ?? "");
   const [costUsd, setCostUsd] = useState(
     a?.purchaseCostCents != null ? String(a.purchaseCostCents / 100) : "",
   );
@@ -84,6 +93,7 @@ export function AssetForm(props: Props) {
       make: trimmed(make),
       model: trimmed(model),
       condition,
+      category: trimmed(category),
       deployedOn: trimmed(deployedOn),
       warrantyEndsOn: trimmed(warrantyEndsOn),
       notes: trimmed(notes),
@@ -186,6 +196,19 @@ export function AssetForm(props: Props) {
           onChange={setCondition}
           options={CONDITIONS}
         />
+        <Field label="Category">
+          <Input
+            list="asset-categories"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="e.g. Field kit, Loaner pool"
+          />
+          <datalist id="asset-categories">
+            {(props.categories ?? []).map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </Field>
         {!edit && (
           <>
             <Field label="Purchase cost (USD)">

@@ -58,6 +58,9 @@ public class Asset {
   @Enumerated(EnumType.STRING)
   private AssetCondition condition;
 
+  /** Free-text, per-client grouping the tech chooses (e.g. "Field kit", "Loaner pool"). */
+  private String category;
+
   private LocalDate purchaseDate;
 
   /** When the asset was first put into service / handed out. */
@@ -185,6 +188,14 @@ public class Asset {
 
   public void setCondition(AssetCondition condition) {
     this.condition = condition;
+  }
+
+  public String getCategory() {
+    return category;
+  }
+
+  public void setCategory(String category) {
+    this.category = category;
   }
 
   public LocalDate getPurchaseDate() {

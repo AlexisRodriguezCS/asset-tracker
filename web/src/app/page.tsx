@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { currentClientId } from "@/lib/client";
-import { listAssets } from "@/lib/api";
+import { listAssets, listCategories } from "@/lib/api";
 import { getSession } from "@/lib/session";
 import { AssetStatusBadge, ConditionBadge } from "@/components/ui/badge";
 import { StatStrip } from "@/components/ui/stat";
@@ -17,6 +17,7 @@ const TYPES: AssetType[] = [
   "DOCK",
   "CHARGER",
   "CABLE",
+  "HOTSPOT",
   "PERIPHERAL",
   "OTHER",
 ];
@@ -35,7 +36,12 @@ const STATUSES: AssetStatus[] = [
 export default async function AssetsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; status?: string; q?: string }>;
+  searchParams: Promise<{
+    type?: string;
+    status?: string;
+    q?: string;
+    category?: string;
+  }>;
 }) {
   const [clientId, sp, session] = await Promise.all([
     currentClientId(),
@@ -44,15 +50,21 @@ export default async function AssetsPage({
   ]);
 
   // the unfiltered set drives the stat strip; the table uses the active filter
-  const [all, filtered] = await Promise.all([
+  const [all, filtered, categories] = await Promise.all([
     listAssets({ clientId }),
-    listAssets({ clientId, type: sp.type, status: sp.status }),
+    listAssets({
+      clientId,
+      type: sp.type,
+      status: sp.status,
+      category: sp.category,
+    }),
+    listCategories(clientId).catch(() => []),
   ]);
 
   const term = (sp.q ?? "").trim().toLowerCase();
   const assets = term
     ? filtered.filter((a) =>
-        [a.assetTag, a.serialNumber, a.make, a.model]
+        [a.assetTag, a.serialNumber, a.make, a.model, a.category]
           .filter(Boolean)
           .some((v) => (v as string).toLowerCase().includes(term)),
       )
@@ -65,6 +77,14 @@ export default async function AssetsPage({
     const s = new URLSearchParams(merged).toString();
     return s ? `/?${s}` : "/";
   };
+  // filters that survive when you click a chip in another row
+  const keepType: Record<string, string> = sp.type ? { type: sp.type } : {};
+  const keepStatus: Record<string, string> = sp.status
+    ? { status: sp.status }
+    : {};
+  const keepCat: Record<string, string> = sp.category
+    ? { category: sp.category }
+    : {};
 
   return (
     <div className="animate-fade-in-up space-y-6">
@@ -132,19 +152,13 @@ export default async function AssetsPage({
 
       <div className="space-y-2">
         <ChipRow heading="Type">
-          <Chip
-            href={link(sp.status ? { status: sp.status } : {})}
-            active={!sp.type}
-          >
+          <Chip href={link({ ...keepStatus, ...keepCat })} active={!sp.type}>
             All
           </Chip>
           {TYPES.map((t) => (
             <Chip
               key={t}
-              href={link({
-                type: t,
-                ...(sp.status ? { status: sp.status } : {}),
-              })}
+              href={link({ type: t, ...keepStatus, ...keepCat })}
               active={sp.type === t}
             >
               {label(t)}
@@ -152,22 +166,38 @@ export default async function AssetsPage({
           ))}
         </ChipRow>
         <ChipRow heading="Status">
-          <Chip
-            href={link(sp.type ? { type: sp.type } : {})}
-            active={!sp.status}
-          >
+          <Chip href={link({ ...keepType, ...keepCat })} active={!sp.status}>
             Any
           </Chip>
           {STATUSES.map((s) => (
             <Chip
               key={s}
-              href={link({ status: s, ...(sp.type ? { type: sp.type } : {}) })}
+              href={link({ status: s, ...keepType, ...keepCat })}
               active={sp.status === s}
             >
               {label(s)}
             </Chip>
           ))}
         </ChipRow>
+        {categories.length > 0 && (
+          <ChipRow heading="Category">
+            <Chip
+              href={link({ ...keepType, ...keepStatus })}
+              active={!sp.category}
+            >
+              All
+            </Chip>
+            {categories.map((c) => (
+              <Chip
+                key={c}
+                href={link({ category: c, ...keepType, ...keepStatus })}
+                active={sp.category === c}
+              >
+                {c}
+              </Chip>
+            ))}
+          </ChipRow>
+        )}
       </div>
 
       <TableCard>
@@ -198,6 +228,11 @@ export default async function AssetsPage({
               <td className="px-4 py-2.5">
                 {[a.make, a.model].filter(Boolean).join(" ") || (
                   <span className="text-muted-foreground">—</span>
+                )}
+                {a.category && (
+                  <span className="block text-xs text-muted-foreground">
+                    {a.category}
+                  </span>
                 )}
               </td>
               <td className="px-4 py-2.5">

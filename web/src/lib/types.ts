@@ -15,6 +15,7 @@ export type AssetType =
   | "DOCK"
   | "CHARGER"
   | "CABLE"
+  | "HOTSPOT"
   | "PERIPHERAL"
   | "OTHER";
 
@@ -42,6 +43,7 @@ export interface Asset {
   assetTag: string;
   status: AssetStatus;
   condition: AssetCondition | null;
+  category: string | null;
   holderType: HolderType;
   holderId: number | null;
   purchaseDate: string | null;

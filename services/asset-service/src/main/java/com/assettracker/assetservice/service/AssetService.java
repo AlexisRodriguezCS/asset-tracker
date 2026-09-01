@@ -40,6 +40,7 @@ public class AssetService {
     asset.setMake(request.make());
     asset.setModel(request.model());
     asset.setCondition(request.condition());
+    asset.setCategory(request.category());
     asset.setPurchaseDate(request.purchaseDate());
     asset.setDeployedOn(request.deployedOn());
     asset.setWarrantyEndsOn(request.warrantyEndsOn());
@@ -63,8 +64,15 @@ public class AssetService {
       AssetStatus status,
       HolderType holderType,
       Long holderId,
-      String assetTag) {
-    return repository.search(clientId, type, status, holderType, holderId, assetTag);
+      String assetTag,
+      String category) {
+    return repository.search(clientId, type, status, holderType, holderId, assetTag, category);
+  }
+
+  /** Distinct, non-blank category values this client has used - drives the filter chips. */
+  @Transactional(readOnly = true)
+  public List<String> categories(Long clientId) {
+    return repository.findDistinctCategories(clientId);
   }
 
   @Transactional(readOnly = true)
@@ -94,6 +102,7 @@ public class AssetService {
     setIfPresent(request.model(), asset::setModel);
     setIfPresent(request.notes(), asset::setNotes);
     setIfPresent(request.condition(), asset::setCondition);
+    setIfPresent(request.category(), asset::setCategory);
     setIfPresent(request.deployedOn(), asset::setDeployedOn);
     setIfPresent(request.warrantyEndsOn(), asset::setWarrantyEndsOn);
     audit.record(

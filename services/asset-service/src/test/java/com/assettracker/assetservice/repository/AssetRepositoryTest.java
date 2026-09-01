@@ -35,19 +35,19 @@ class AssetRepositoryTest {
 
   @Test
   void allLaptopsForAClient() {
-    List<Asset> result = repository.search(1L, AssetType.LAPTOP, null, null, null, null);
+    List<Asset> result = repository.search(1L, AssetType.LAPTOP, null, null, null, null, null);
     assertThat(result).extracting(Asset::getSerialNumber).containsExactlyInAnyOrder("SN-A", "SN-B");
   }
 
   @Test
   void whatIsOnDeskThree() {
-    List<Asset> result = repository.search(1L, null, null, HolderType.LOCATION, 3L, null);
+    List<Asset> result = repository.search(1L, null, null, HolderType.LOCATION, 3L, null, null);
     assertThat(result).extracting(Asset::getSerialNumber).containsExactly("SN-C");
   }
 
   @Test
   void inStockOnly() {
-    List<Asset> result = repository.search(1L, null, AssetStatus.IN_STOCK, null, null, null);
+    List<Asset> result = repository.search(1L, null, AssetStatus.IN_STOCK, null, null, null, null);
     assertThat(result).extracting(Asset::getSerialNumber).containsExactly("SN-B");
   }
 
@@ -58,7 +58,7 @@ class AssetRepositoryTest {
     Asset newCharger = new Asset(1L, AssetType.CHARGER, "SN-NEW", "TAG-A");
     repository.saveAll(List.of(oldCharger, newCharger));
 
-    List<Asset> onTag = repository.search(1L, null, null, null, null, "TAG-A");
+    List<Asset> onTag = repository.search(1L, null, null, null, null, "TAG-A", null);
     assertThat(onTag)
         .extracting(Asset::getSerialNumber)
         .containsExactlyInAnyOrder("SN-A", "SN-OLD", "SN-NEW");
@@ -82,7 +82,7 @@ class AssetRepositoryTest {
 
   @Test
   void neverLeaksAnotherClientsAssets() {
-    List<Asset> result = repository.search(1L, AssetType.LAPTOP, null, null, null, null);
+    List<Asset> result = repository.search(1L, AssetType.LAPTOP, null, null, null, null, null);
     assertThat(result).extracting(Asset::getClientId).containsOnly(1L);
   }
 }

@@ -6,6 +6,7 @@ import {
   assignmentsForAsset,
   assetAudit,
   listAssets,
+  listCategories,
   listPeople,
   GatewayError,
 } from "@/lib/api";
@@ -49,7 +50,12 @@ export default async function AssetDetailPage({
       () => [],
     ),
   ]);
-  const people = session ? await listPeople(clientId).catch(() => []) : [];
+  const [people, categories] = session
+    ? await Promise.all([
+        listPeople(clientId).catch(() => []),
+        listCategories(asset.clientId).catch(() => []),
+      ])
+    : [[], []];
   const onTag = sameTag.filter((x) => x.id !== asset.id);
 
   return (
@@ -78,6 +84,7 @@ export default async function AssetDetailPage({
 
           <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <Field k="Type" v={label(asset.type)} />
+            <Field k="Category" v={asset.category ?? "—"} />
             <Field
               k="Condition"
               v={asset.condition ? label(asset.condition) : "—"}
@@ -116,7 +123,11 @@ export default async function AssetDetailPage({
               people={people}
               signedIn={Boolean(session)}
             />
-            <AssetAdmin asset={asset} signedIn={Boolean(session)} />
+            <AssetAdmin
+              asset={asset}
+              signedIn={Boolean(session)}
+              categories={categories}
+            />
           </div>
         </Card>
 

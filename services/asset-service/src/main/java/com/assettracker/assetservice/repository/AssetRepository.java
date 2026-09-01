@@ -42,9 +42,19 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
 
   List<Asset> findByHolderTypeAndHolderId(HolderType holderType, Long holderId);
 
+  /** Distinct non-blank category values a client has used, alphabetical. */
+  @Query(
+      """
+      select distinct a.category from Asset a
+      where a.clientId = :clientId and a.category is not null and a.category <> ''
+      order by a.category
+      """)
+  List<String> findDistinctCategories(@Param("clientId") Long clientId);
+
   /**
    * The one list query behind every catalog view. Any of {@code type} / {@code status} / {@code
-   * holderType} / {@code holderId} / {@code assetTag} may be null to widen the filter.
+   * holderType} / {@code holderId} / {@code assetTag} / {@code category} may be null to widen the
+   * filter.
    */
   @Query(
       """
@@ -55,6 +65,7 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
         and (:holderType is null or a.holderType = :holderType)
         and (:holderId is null or a.holderId = :holderId)
         and (:assetTag is null or a.assetTag = :assetTag)
+        and (:category is null or a.category = :category)
       order by a.type, a.assetTag
       """)
   List<Asset> search(
@@ -63,5 +74,6 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
       @Param("status") AssetStatus status,
       @Param("holderType") HolderType holderType,
       @Param("holderId") Long holderId,
-      @Param("assetTag") String assetTag);
+      @Param("assetTag") String assetTag,
+      @Param("category") String category);
 }

@@ -54,6 +54,7 @@ public class AssetSeeder implements CommandLineRunner {
   private static final Gear CHG65 = new Gear("Dell", "65W USB-C Charger", 4900);
   private static final Gear USBC = new Gear("Anker", "USB-C 2m Cable", 1900);
   private static final Gear TBC = new Gear("CalDigit", "Thunderbolt 4 2m Cable", 4900);
+  private static final Gear HS = new Gear("Netgear", "Nighthawk M6 5G Hotspot", 59900);
 
   private final AssetRepository repository;
   private final AuditService audit;
@@ -96,10 +97,24 @@ public class AssetSeeder implements CommandLineRunner {
     a.setModel(r.gear().model());
     a.setPurchaseCostCents(r.gear().costCents());
     a.setCondition(r.condition());
+    a.setCategory(defaultCategory(r.type()));
     LocalDate bought = LocalDate.now().minusMonths(8);
     a.setPurchaseDate(bought);
     a.setWarrantyEndsOn(bought.plusYears(3));
     return a;
+  }
+
+  /** A starter category per kind - techs edit these freely and add their own. */
+  private static String defaultCategory(AssetType t) {
+    return switch (t) {
+      case LAPTOP -> "Standard build";
+      case TABLET -> "Field device";
+      case PHONE -> "Mobile";
+      case MONITOR, DOCK -> "Desk kit";
+      case CHARGER, CABLE -> "Accessory pool";
+      case HOTSPOT -> "Travel kit";
+      default -> null;
+    };
   }
 
   private void applyState(long clientId, Asset a, Row r, int seq) {
@@ -149,6 +164,9 @@ public class AssetSeeder implements CommandLineRunner {
     stock(out, "ACME", "DCK", AssetType.DOCK, TS4, 3, 1);
     stock(out, "ACME", "CHG", AssetType.CHARGER, CHG96, 6, 1);
     stock(out, "ACME", "CBL", AssetType.CABLE, USBC, 10, 1);
+    hotspot(out, "ACME", 1, 1L);
+    hotspot(out, "ACME", 2, 3L);
+    stock(out, "ACME", "HS", AssetType.HOTSPOT, HS, 2, 3);
     retire(out, "ACME-L-001", AssetType.CHARGER, CHG96, AssetStatus.LOST);
     retire(out, "ACME-L-002", AssetType.CABLE, USBC, AssetStatus.RETIRED);
     fix(out, "ACME-L-005", AssetStatus.IN_REPAIR, AssetCondition.FAIR);
@@ -173,6 +191,9 @@ public class AssetSeeder implements CommandLineRunner {
     stock(out, "GLBX", "DCK", AssetType.DOCK, ANKER_DOCK, 2, 1);
     stock(out, "GLBX", "CHG", AssetType.CHARGER, CHG70, 4, 1);
     stock(out, "GLBX", "CBL", AssetType.CABLE, USBC, 6, 1);
+    hotspot(out, "GLBX", 1, 5L);
+    hotspot(out, "GLBX", 2, 7L);
+    stock(out, "GLBX", "HS", AssetType.HOTSPOT, HS, 1, 3);
     retire(out, "GLBX-L-001", AssetType.CHARGER, CHG70, AssetStatus.LOST);
     fix(out, "GLBX-L-005", AssetStatus.IN_REPAIR, AssetCondition.FAIR);
     fix(out, "GLBX-MON-001", AssetStatus.BROKEN, AssetCondition.DAMAGED);
@@ -192,6 +213,8 @@ public class AssetSeeder implements CommandLineRunner {
     stock(out, "INTC", "DCK", AssetType.DOCK, DELL_WD19, 1, 1);
     stock(out, "INTC", "CHG", AssetType.CHARGER, CHG65, 3, 1);
     stock(out, "INTC", "CBL", AssetType.CABLE, USBC, 4, 1);
+    hotspot(out, "INTC", 1, 9L);
+    stock(out, "INTC", "HS", AssetType.HOTSPOT, HS, 1, 2);
     retire(out, "INTC-L-001", AssetType.CABLE, USBC, AssetStatus.RETIRED);
     fix(out, "INTC-MON-001", AssetStatus.BROKEN, AssetCondition.DAMAGED);
     fix(out, "INTC-CBL-001", AssetStatus.RECYCLED, AssetCondition.DAMAGED);
@@ -232,6 +255,14 @@ public class AssetSeeder implements CommandLineRunner {
     for (int i = 0; i < qty; i++) {
       out.add(Row.stocked(type, gear, pfx + "-" + code + "-" + n3(startNo + i)));
     }
+  }
+
+  /**
+   * A 5G hotspot issued to a person - shows the tech-added HOTSPOT type / "Travel kit" category.
+   */
+  private static void hotspot(List<Row> out, String pfx, int no, long personId) {
+    out.add(
+        Row.deployed(AssetType.HOTSPOT, HS, pfx + "-HS-" + n3(no), HolderType.PERSON, personId));
   }
 
   /**

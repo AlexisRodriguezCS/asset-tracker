@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { currentClientId } from "@/lib/client";
+import { listCategories } from "@/lib/api";
 import { AssetForm } from "@/components/asset-form";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -15,6 +16,7 @@ export default async function NewAssetPage({
     tag?: string;
     make?: string;
     model?: string;
+    category?: string;
     reassignTo?: string;
   }>;
 }) {
@@ -24,6 +26,7 @@ export default async function NewAssetPage({
     searchParams,
   ]);
   if (!session) redirect("/login");
+  const categories = await listCategories(clientId).catch(() => []);
 
   const replacing = Boolean(sp.tag);
 
@@ -49,11 +52,13 @@ export default async function NewAssetPage({
         <AssetForm
           mode="create"
           clientId={clientId}
+          categories={categories}
           prefill={{
             type: sp.type,
             assetTag: sp.tag,
             make: sp.make,
             model: sp.model,
+            category: sp.category,
             reassignTo: sp.reassignTo,
           }}
         />

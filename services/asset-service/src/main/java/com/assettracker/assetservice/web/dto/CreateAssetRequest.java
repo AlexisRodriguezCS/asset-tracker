@@ -15,6 +15,7 @@ public record CreateAssetRequest(
     @NotBlank String serialNumber,
     @NotBlank String assetTag,
     AssetCondition condition,
+    String category,
     LocalDate purchaseDate,
     LocalDate deployedOn,
     LocalDate warrantyEndsOn,
