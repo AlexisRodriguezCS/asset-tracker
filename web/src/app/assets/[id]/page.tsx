@@ -14,6 +14,7 @@ import { currentClientId } from "@/lib/client";
 import { AssetStatusBadge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { AssetActions } from "@/components/asset-actions";
+import { AssetAdmin } from "@/components/asset-admin";
 import { AuditFeed } from "@/components/audit-feed";
 import {
   dateOnly,
@@ -115,6 +116,7 @@ export default async function AssetDetailPage({
               people={people}
               signedIn={Boolean(session)}
             />
+            <AssetAdmin asset={asset} signedIn={Boolean(session)} />
           </div>
         </Card>
 

@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { AssetStatusBadge, ConditionBadge } from "@/components/ui/badge";
 import { StatStrip } from "@/components/ui/stat";
 import { PageHeader, TableCard } from "@/components/ui/page-header";
+import { Button } from "@/components/ui/button";
 import { dateOnly, disposition, isPast, label } from "@/lib/format";
 import type { AssetStatus, AssetType } from "@/lib/types";
 
@@ -61,7 +62,11 @@ export default async function AssetsPage({
         title="Assets"
         subtitle={`${all.length} tracked for this client`}
         action={
-          !session && (
+          session ? (
+            <Link href="/assets/new">
+              <Button size="sm">Add asset</Button>
+            </Link>
+          ) : (
             <Link
               href="/login"
               className="text-sm text-muted-foreground hover:text-foreground"
