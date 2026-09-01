@@ -140,6 +140,9 @@ public class AssetSeeder implements CommandLineRunner {
     deskKit(out, "ACME", 3, 6L, DELL_MON, TS4, TBC);
     deskKit(out, "ACME", 7, 10L, DELL_MON, TS4, TBC);
     deskKit(out, "ACME", 11, 14L, DELL_MON, TS4, TBC);
+    deskKit(out, "ACME", 13, 16L, DELL_MON, TS4, TBC);
+    deskKit(out, "ACME", 19, 22L, DELL_MON, TS4, TBC);
+    deskKit(out, "ACME", 24, 27L, DELL_MON, TS4, TBC);
     stock(out, "ACME", "L", AssetType.LAPTOP, MBP14, 4, 5);
     stock(out, "ACME", "T", AssetType.TABLET, IPAD_AIR, 3, 1);
     stock(out, "ACME", "MON", AssetType.MONITOR, DELL_MON, 4, 1);
@@ -159,9 +162,11 @@ public class AssetSeeder implements CommandLineRunner {
     personKit(out, "GLBX", 2, 6L, MBA13, CHG70, USBC);
     personKit(out, "GLBX", 3, 7L, TP14, CHG70, USBC);
     personKit(out, "GLBX", 4, 8L, MBA13, CHG70, USBC);
-    deskKit(out, "GLBX", 1, 20L, LG_MON, ANKER_DOCK, TBC);
-    deskKit(out, "GLBX", 3, 22L, LG_MON, ANKER_DOCK, TBC);
-    deskKit(out, "GLBX", 5, 24L, LG_MON, ANKER_DOCK, TBC);
+    deskKit(out, "GLBX", 1, 34L, LG_MON, ANKER_DOCK, TBC);
+    deskKit(out, "GLBX", 3, 36L, LG_MON, ANKER_DOCK, TBC);
+    deskKit(out, "GLBX", 5, 38L, LG_MON, ANKER_DOCK, TBC);
+    deskKit(out, "GLBX", 7, 40L, LG_MON, ANKER_DOCK, TBC);
+    deskKit(out, "GLBX", 12, 45L, LG_MON, ANKER_DOCK, TBC);
     stock(out, "GLBX", "L", AssetType.LAPTOP, MBA13, 3, 5);
     stock(out, "GLBX", "T", AssetType.TABLET, IPAD10, 2, 1);
     stock(out, "GLBX", "MON", AssetType.MONITOR, LG_MON, 3, 1);
@@ -178,8 +183,9 @@ public class AssetSeeder implements CommandLineRunner {
     personKit(out, "INTC", 1, 9L, XPS13, CHG65, USBC);
     personKit(out, "INTC", 2, 10L, XPS13, CHG65, USBC);
     personKit(out, "INTC", 3, 11L, XPS13, CHG65, USBC);
-    deskKit(out, "INTC", 1, 30L, DELL_P24, DELL_WD19, TBC);
-    deskKit(out, "INTC", 3, 32L, DELL_P24, DELL_WD19, TBC);
+    deskKit(out, "INTC", 1, 50L, DELL_P24, DELL_WD19, TBC);
+    deskKit(out, "INTC", 3, 52L, DELL_P24, DELL_WD19, TBC);
+    deskKit(out, "INTC", 5, 54L, DELL_P24, DELL_WD19, TBC);
     stock(out, "INTC", "L", AssetType.LAPTOP, XPS13, 2, 4);
     stock(out, "INTC", "T", AssetType.TABLET, GTAB, 1, 1);
     stock(out, "INTC", "MON", AssetType.MONITOR, DELL_P24, 2, 1);

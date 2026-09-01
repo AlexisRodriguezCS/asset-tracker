@@ -101,7 +101,7 @@ sequenceDiagram
     alt asset already ASSIGNED
         S-->>A: 409
         A-->>G: 409 ASSET_UNAVAILABLE
-    else asset RETIRED / LOST
+    else asset retired / lost / recycled
         S-->>A: 422
         A-->>G: 422 ASSET_NOT_MOVABLE
     else free to move

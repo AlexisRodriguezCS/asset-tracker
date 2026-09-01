@@ -35,7 +35,7 @@ const STATUSES: AssetStatus[] = [
 export default async function AssetsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; status?: string }>;
+  searchParams: Promise<{ type?: string; status?: string; q?: string }>;
 }) {
   const [clientId, sp, session] = await Promise.all([
     currentClientId(),
@@ -44,23 +44,37 @@ export default async function AssetsPage({
   ]);
 
   // the unfiltered set drives the stat strip; the table uses the active filter
-  const [all, assets] = await Promise.all([
+  const [all, filtered] = await Promise.all([
     listAssets({ clientId }),
     listAssets({ clientId, type: sp.type, status: sp.status }),
   ]);
 
+  const term = (sp.q ?? "").trim().toLowerCase();
+  const assets = term
+    ? filtered.filter((a) =>
+        [a.assetTag, a.serialNumber, a.make, a.model]
+          .filter(Boolean)
+          .some((v) => (v as string).toLowerCase().includes(term)),
+      )
+    : filtered;
+
   const count = (...ss: AssetStatus[]) =>
     all.filter((a) => ss.includes(a.status)).length;
   const link = (p: Record<string, string>) => {
-    const q = new URLSearchParams(p).toString();
-    return q ? `/?${q}` : "/";
+    const merged = { ...(term ? { q: sp.q as string } : {}), ...p };
+    const s = new URLSearchParams(merged).toString();
+    return s ? `/?${s}` : "/";
   };
 
   return (
     <div className="animate-fade-in-up space-y-6">
       <PageHeader
         title="Assets"
-        subtitle={`${all.length} tracked for this client`}
+        subtitle={
+          term
+            ? `${assets.length} of ${all.length} match "${sp.q}"`
+            : `${all.length} tracked for this client`
+        }
         action={
           session ? (
             <Link href="/assets/new">

@@ -25,7 +25,7 @@ export default async function NewAssetPage({
   ]);
   if (!session) redirect("/login");
 
-  const replacing = Boolean(sp.tag && sp.reassignTo !== undefined);
+  const replacing = Boolean(sp.tag);
 
   return (
     <div className="max-w-2xl animate-fade-in-up">

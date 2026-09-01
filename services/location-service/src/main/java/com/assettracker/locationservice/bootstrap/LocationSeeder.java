@@ -10,11 +10,12 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * Seeds sites, a stockroom, and desks for each demo client. Desks are spread across buildings and
- * floors so the console's building / floor map has something to group (dev only).
+ * Seeds sites, a stockroom, and desks for each demo client. Desks are spread across several
+ * buildings and floors so the console's building / floor map has real structure (dev only).
  *
  * <p>Insert order is fixed: {@code PeopleSeeder} and {@code AssetSeeder} reference the desk ids
- * this produces on a fresh database (IDENTITY from 1).
+ * this produces on a fresh database (IDENTITY from 1). If the desk layout changes, the home-desk
+ * ids in those seeders must be recomputed.
  */
 @Component
 @Profile("!prod")
@@ -24,16 +25,28 @@ public class LocationSeeder implements CommandLineRunner {
     new Site(
         1L,
         "ACME",
-        List.of("HQ", "HQ", "Annex"),
+        List.of("HQ", "Annex"),
         new DeskRow[] {
-          new DeskRow("HQ", "2", 6), new DeskRow("HQ", "3", 4), new DeskRow("Annex", "1", 4),
+          new DeskRow("HQ", "2", 6),
+          new DeskRow("HQ", "3", 6),
+          new DeskRow("HQ", "4", 6),
+          new DeskRow("Annex", "1", 5),
+          new DeskRow("Annex", "2", 5),
         }),
     new Site(
         2L,
         "GLBX",
         List.of("Tower"),
-        new DeskRow[] {new DeskRow("Tower", "1", 5), new DeskRow("Tower", "2", 3)}),
-    new Site(3L, "INTC", List.of("Office"), new DeskRow[] {new DeskRow("Office", "1", 4)}),
+        new DeskRow[] {
+          new DeskRow("Tower", "1", 5), new DeskRow("Tower", "2", 5), new DeskRow("Tower", "3", 4),
+        }),
+    new Site(
+        3L,
+        "INTC",
+        List.of("Office"),
+        new DeskRow[] {
+          new DeskRow("Office", "1", 4), new DeskRow("Office", "2", 4),
+        }),
   };
 
   private final LocationRepository repository;
@@ -55,7 +68,7 @@ public class LocationSeeder implements CommandLineRunner {
   }
 
   private static void seedSite(List<Location> seed, Site site) {
-    for (String building : distinct(site.buildings())) {
+    for (String building : site.buildings()) {
       seed.add(
           new Location(
               site.clientId(), LocationKind.SITE, building, site.code() + "-SITE-" + building));
@@ -77,16 +90,6 @@ public class LocationSeeder implements CommandLineRunner {
                 row.floor()));
       }
     }
-  }
-
-  private static List<String> distinct(List<String> values) {
-    List<String> out = new ArrayList<>();
-    for (String v : values) {
-      if (!out.contains(v)) {
-        out.add(v);
-      }
-    }
-    return out;
   }
 
   private static Location withPlace(Location l, String building, String floor) {
