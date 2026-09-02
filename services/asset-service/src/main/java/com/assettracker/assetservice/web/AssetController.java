@@ -1,7 +1,6 @@
 package com.assettracker.assetservice.web;
 
 import com.assettracker.assetservice.entity.AssetStatus;
-import com.assettracker.assetservice.entity.AssetType;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.service.AssetService;
 import com.assettracker.assetservice.web.dto.AssetResponse;
@@ -52,20 +51,14 @@ public class AssetController {
   @GetMapping
   public List<AssetResponse> search(
       @RequestParam Long clientId,
-      @RequestParam(required = false) AssetType type,
+      @RequestParam(required = false) String type,
       @RequestParam(required = false) AssetStatus status,
       @RequestParam(required = false) HolderType holderType,
       @RequestParam(required = false) Long holderId,
-      @RequestParam(required = false) String tag,
-      @RequestParam(required = false) String category) {
-    return service.search(clientId, type, status, holderType, holderId, tag, category).stream()
+      @RequestParam(required = false) String tag) {
+    return service.search(clientId, type, status, holderType, holderId, tag).stream()
         .map(AssetResponse::from)
         .toList();
-  }
-
-  @GetMapping("/categories")
-  public List<String> categories(@RequestParam Long clientId) {
-    return service.categories(clientId);
   }
 
   @GetMapping("/{id}")

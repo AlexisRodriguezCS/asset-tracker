@@ -7,17 +7,12 @@ export interface Client {
   status: string;
 }
 
-export type AssetType =
-  | "LAPTOP"
-  | "TABLET"
-  | "PHONE"
-  | "MONITOR"
-  | "DOCK"
-  | "CHARGER"
-  | "CABLE"
-  | "HOTSPOT"
-  | "PERIPHERAL"
-  | "OTHER";
+/** A type name a client manages; {@link Asset.type} holds the name string. */
+export interface AssetTypeDef {
+  id: number;
+  clientId: number;
+  name: string;
+}
 
 export type AssetStatus =
   | "IN_STOCK"
@@ -36,14 +31,13 @@ export type HolderType = "PERSON" | "LOCATION" | "STOCKROOM";
 export interface Asset {
   id: number;
   clientId: number;
-  type: AssetType;
+  type: string;
   make: string | null;
   model: string | null;
   serialNumber: string;
   assetTag: string;
   status: AssetStatus;
   condition: AssetCondition | null;
-  category: string | null;
   holderType: HolderType;
   holderId: number | null;
   purchaseDate: string | null;

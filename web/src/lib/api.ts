@@ -2,6 +2,7 @@ import "server-only";
 import { getSession } from "@/lib/session";
 import type {
   Asset,
+  AssetTypeDef,
   Assignment,
   AuditEvent,
   Client,
@@ -86,11 +87,10 @@ export const listAssets = (params: {
   holderType?: string;
   holderId?: number;
   tag?: string;
-  category?: string;
 }) => gateway<Asset[]>(`/api/assets${qs(params)}`);
 
-export const listCategories = (clientId: number) =>
-  gateway<string[]>(`/api/assets/categories${qs({ clientId })}`);
+export const listAssetTypes = (clientId: number) =>
+  gateway<AssetTypeDef[]>(`/api/assets/types${qs({ clientId })}`);
 
 export const getAsset = (id: string | number) =>
   gateway<Asset>(`/api/assets/${id}`);

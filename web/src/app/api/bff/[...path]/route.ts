@@ -18,6 +18,8 @@ const ALLOW: RegExp[] = [
   /^assets$/,
   /^assets\/\d+$/,
   /^assets\/\d+\/status$/,
+  /^assets\/types$/,
+  /^assets\/types\/\d+(\?.*)?$/,
   /^people$/,
   /^people\/\d+\/(offboarding|departed|desk)$/,
   /^locations$/,
@@ -73,5 +75,8 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   return forward(req, (await ctx.params).path);
 }
 export async function PATCH(req: NextRequest, ctx: Ctx) {
+  return forward(req, (await ctx.params).path);
+}
+export async function DELETE(req: NextRequest, ctx: Ctx) {
   return forward(req, (await ctx.params).path);
 }

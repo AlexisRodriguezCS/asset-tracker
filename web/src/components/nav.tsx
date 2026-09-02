@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Boxes, Users, MapPin, BarChart3, Search } from "lucide-react";
+import { Boxes, Users, MapPin, BarChart3, Shapes, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClientPicker } from "@/components/client-picker";
 import { cn } from "@/lib/cn";
@@ -31,7 +31,11 @@ export function Nav({
   const [q, setQ] = useState("");
 
   const links = email
-    ? [...LINKS, { href: "/reports", label: "Reports", icon: BarChart3 }]
+    ? [
+        ...LINKS,
+        { href: "/types", label: "Types", icon: Shapes },
+        { href: "/reports", label: "Reports", icon: BarChart3 },
+      ]
     : LINKS;
 
   async function logout() {

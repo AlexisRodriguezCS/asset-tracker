@@ -4,7 +4,6 @@ import { currentClientId } from "@/lib/client";
 import { listLocations, listAssets } from "@/lib/api";
 import { StatStrip } from "@/components/ui/stat";
 import { PageHeader } from "@/components/ui/page-header";
-import { label } from "@/lib/format";
 import type { Asset, Location } from "@/lib/types";
 
 export default async function DesksPage({
@@ -192,7 +191,7 @@ function DeskCard({ desk, items }: { desk: Location; items: Asset[] }) {
                 href={`/assets/${a.id}`}
                 className="text-primary hover:underline"
               >
-                {[a.make, a.model].filter(Boolean).join(" ") || label(a.type)}
+                {[a.make, a.model].filter(Boolean).join(" ") || a.type}
               </Link>
               <span className="font-mono text-[11px] text-muted-foreground">
                 {a.assetTag}

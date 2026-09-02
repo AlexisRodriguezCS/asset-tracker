@@ -9,6 +9,5 @@ public record UpdateAssetRequest(
     String model,
     String notes,
     AssetCondition condition,
-    String category,
     LocalDate deployedOn,
     LocalDate warrantyEndsOn) {}

@@ -3,7 +3,6 @@ package com.assettracker.assetservice.service;
 import com.assettracker.assetservice.audit.AuditService;
 import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.AssetStatus;
-import com.assettracker.assetservice.entity.AssetType;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.repository.AssetRepository;
 import com.assettracker.assetservice.web.dto.AssignRequest;
@@ -40,7 +39,6 @@ public class AssetService {
     asset.setMake(request.make());
     asset.setModel(request.model());
     asset.setCondition(request.condition());
-    asset.setCategory(request.category());
     asset.setPurchaseDate(request.purchaseDate());
     asset.setDeployedOn(request.deployedOn());
     asset.setWarrantyEndsOn(request.warrantyEndsOn());
@@ -60,19 +58,12 @@ public class AssetService {
   @Transactional(readOnly = true)
   public List<Asset> search(
       Long clientId,
-      AssetType type,
+      String type,
       AssetStatus status,
       HolderType holderType,
       Long holderId,
-      String assetTag,
-      String category) {
-    return repository.search(clientId, type, status, holderType, holderId, assetTag, category);
-  }
-
-  /** Distinct, non-blank category values this client has used - drives the filter chips. */
-  @Transactional(readOnly = true)
-  public List<String> categories(Long clientId) {
-    return repository.findDistinctCategories(clientId);
+      String assetTag) {
+    return repository.search(clientId, type, status, holderType, holderId, assetTag);
   }
 
   @Transactional(readOnly = true)
@@ -102,7 +93,6 @@ public class AssetService {
     setIfPresent(request.model(), asset::setModel);
     setIfPresent(request.notes(), asset::setNotes);
     setIfPresent(request.condition(), asset::setCondition);
-    setIfPresent(request.category(), asset::setCategory);
     setIfPresent(request.deployedOn(), asset::setDeployedOn);
     setIfPresent(request.warrantyEndsOn(), asset::setWarrantyEndsOn);
     audit.record(
@@ -180,7 +170,7 @@ public class AssetService {
             java.util.stream.Stream.of(a.getMake(), a.getModel())
                 .filter(s -> s != null && !s.isBlank())
                 .toList());
-    return (makeModel.isBlank() ? a.getType().name() : makeModel) + " (" + a.getAssetTag() + ")";
+    return (makeModel.isBlank() ? a.getType() : makeModel) + " (" + a.getAssetTag() + ")";
   }
 
   private static AssetNotFoundException notFound(String field, String value) {

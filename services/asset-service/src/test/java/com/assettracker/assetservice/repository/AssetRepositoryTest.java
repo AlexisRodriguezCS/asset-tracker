@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.AssetStatus;
-import com.assettracker.assetservice.entity.AssetType;
 import com.assettracker.assetservice.entity.HolderType;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,45 +19,45 @@ class AssetRepositoryTest {
 
   @BeforeEach
   void seed() {
-    Asset laptopForPerson = new Asset(1L, AssetType.LAPTOP, "SN-A", "TAG-A");
+    Asset laptopForPerson = new Asset(1L, "Laptop", "SN-A", "TAG-A");
     laptopForPerson.assignTo(HolderType.PERSON, 7L);
 
-    Asset laptopInStock = new Asset(1L, AssetType.LAPTOP, "SN-B", "TAG-B");
+    Asset laptopInStock = new Asset(1L, "Laptop", "SN-B", "TAG-B");
 
-    Asset cableOnDesk = new Asset(1L, AssetType.CABLE, "SN-C", "TAG-C");
+    Asset cableOnDesk = new Asset(1L, "Cable", "SN-C", "TAG-C");
     cableOnDesk.assignTo(HolderType.LOCATION, 3L);
 
-    Asset otherClient = new Asset(2L, AssetType.LAPTOP, "SN-D", "TAG-D");
+    Asset otherClient = new Asset(2L, "Laptop", "SN-D", "TAG-D");
 
     repository.saveAll(List.of(laptopForPerson, laptopInStock, cableOnDesk, otherClient));
   }
 
   @Test
   void allLaptopsForAClient() {
-    List<Asset> result = repository.search(1L, AssetType.LAPTOP, null, null, null, null, null);
+    List<Asset> result = repository.search(1L, "Laptop", null, null, null, null);
     assertThat(result).extracting(Asset::getSerialNumber).containsExactlyInAnyOrder("SN-A", "SN-B");
   }
 
   @Test
   void whatIsOnDeskThree() {
-    List<Asset> result = repository.search(1L, null, null, HolderType.LOCATION, 3L, null, null);
+    List<Asset> result = repository.search(1L, null, null, HolderType.LOCATION, 3L, null);
     assertThat(result).extracting(Asset::getSerialNumber).containsExactly("SN-C");
   }
 
   @Test
   void inStockOnly() {
-    List<Asset> result = repository.search(1L, null, AssetStatus.IN_STOCK, null, null, null, null);
+    List<Asset> result = repository.search(1L, null, AssetStatus.IN_STOCK, null, null, null);
     assertThat(result).extracting(Asset::getSerialNumber).containsExactly("SN-B");
   }
 
   @Test
   void everythingOnATag() {
-    Asset oldCharger = new Asset(1L, AssetType.CHARGER, "SN-OLD", "TAG-A");
+    Asset oldCharger = new Asset(1L, "Charger", "SN-OLD", "TAG-A");
     oldCharger.setStatus(AssetStatus.LOST);
-    Asset newCharger = new Asset(1L, AssetType.CHARGER, "SN-NEW", "TAG-A");
+    Asset newCharger = new Asset(1L, "Charger", "SN-NEW", "TAG-A");
     repository.saveAll(List.of(oldCharger, newCharger));
 
-    List<Asset> onTag = repository.search(1L, null, null, null, null, "TAG-A", null);
+    List<Asset> onTag = repository.search(1L, null, null, null, null, "TAG-A");
     assertThat(onTag)
         .extracting(Asset::getSerialNumber)
         .containsExactlyInAnyOrder("SN-A", "SN-OLD", "SN-NEW");
@@ -66,23 +65,22 @@ class AssetRepositoryTest {
 
   @Test
   void aTagSlotIsFreeOnceTheOldUnitLeavesService() {
-    Asset oldCharger = new Asset(1L, AssetType.CHARGER, "SN-OLD", "TAG-A");
+    Asset oldCharger = new Asset(1L, "Charger", "SN-OLD", "TAG-A");
     oldCharger.setStatus(AssetStatus.LOST);
     repository.save(oldCharger);
 
-    assertThat(repository.existsActiveWithTag(1L, "TAG-A", AssetType.CHARGER, AssetStatus.ACTIVE))
+    assertThat(repository.existsActiveWithTag(1L, "TAG-A", "Charger", AssetStatus.ACTIVE))
         .isFalse();
 
-    Asset newCharger = new Asset(1L, AssetType.CHARGER, "SN-NEW", "TAG-A");
+    Asset newCharger = new Asset(1L, "Charger", "SN-NEW", "TAG-A");
     repository.save(newCharger);
 
-    assertThat(repository.existsActiveWithTag(1L, "TAG-A", AssetType.CHARGER, AssetStatus.ACTIVE))
-        .isTrue();
+    assertThat(repository.existsActiveWithTag(1L, "TAG-A", "Charger", AssetStatus.ACTIVE)).isTrue();
   }
 
   @Test
   void neverLeaksAnotherClientsAssets() {
-    List<Asset> result = repository.search(1L, AssetType.LAPTOP, null, null, null, null, null);
+    List<Asset> result = repository.search(1L, "Laptop", null, null, null, null);
     assertThat(result).extracting(Asset::getClientId).containsOnly(1L);
   }
 }

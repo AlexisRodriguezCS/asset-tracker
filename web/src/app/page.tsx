@@ -2,7 +2,7 @@ import Link from "next/link";
 import { currentClientId } from "@/lib/client";
 import {
   listAssets,
-  listCategories,
+  listAssetTypes,
   listLocations,
   listPeople,
 } from "@/lib/api";
@@ -12,20 +12,7 @@ import { StatStrip } from "@/components/ui/stat";
 import { PageHeader, TableCard } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { dateOnly, disposition, isPast, label } from "@/lib/format";
-import type { AssetStatus, AssetType } from "@/lib/types";
-
-const TYPES: AssetType[] = [
-  "LAPTOP",
-  "TABLET",
-  "PHONE",
-  "MONITOR",
-  "DOCK",
-  "CHARGER",
-  "CABLE",
-  "HOTSPOT",
-  "PERIPHERAL",
-  "OTHER",
-];
+import type { AssetStatus } from "@/lib/types";
 
 const STATUSES: AssetStatus[] = [
   "IN_STOCK",
@@ -45,7 +32,6 @@ export default async function AssetsPage({
     type?: string;
     status?: string;
     q?: string;
-    category?: string;
   }>;
 }) {
   const [clientId, sp, session] = await Promise.all([
@@ -55,15 +41,10 @@ export default async function AssetsPage({
   ]);
 
   // the unfiltered set drives the stat strip; the table uses the active filter
-  const [all, filtered, categories, people, desks] = await Promise.all([
+  const [all, filtered, types, people, desks] = await Promise.all([
     listAssets({ clientId }),
-    listAssets({
-      clientId,
-      type: sp.type,
-      status: sp.status,
-      category: sp.category,
-    }),
-    listCategories(clientId).catch(() => []),
+    listAssets({ clientId, type: sp.type, status: sp.status }),
+    listAssetTypes(clientId).catch(() => []),
     listPeople(clientId).catch(() => []),
     listLocations(clientId, "DESK").catch(() => []),
   ]);
@@ -80,14 +61,7 @@ export default async function AssetsPage({
   const term = (sp.q ?? "").trim().toLowerCase();
   const assets = term
     ? filtered.filter((a) =>
-        [
-          a.assetTag,
-          a.serialNumber,
-          a.make,
-          a.model,
-          a.category,
-          holderLabel(a),
-        ]
+        [a.assetTag, a.serialNumber, a.make, a.model, a.type, holderLabel(a)]
           .filter(Boolean)
           .some((v) => (v as string).toLowerCase().includes(term)),
       )
@@ -104,9 +78,6 @@ export default async function AssetsPage({
   const keepType: Record<string, string> = sp.type ? { type: sp.type } : {};
   const keepStatus: Record<string, string> = sp.status
     ? { status: sp.status }
-    : {};
-  const keepCat: Record<string, string> = sp.category
-    ? { category: sp.category }
     : {};
 
   return (
@@ -175,52 +146,41 @@ export default async function AssetsPage({
 
       <div className="space-y-2">
         <ChipRow heading="Type">
-          <Chip href={link({ ...keepStatus, ...keepCat })} active={!sp.type}>
+          <Chip href={link({ ...keepStatus })} active={!sp.type}>
             All
           </Chip>
-          {TYPES.map((t) => (
+          {types.map((t) => (
             <Chip
-              key={t}
-              href={link({ type: t, ...keepStatus, ...keepCat })}
-              active={sp.type === t}
+              key={t.id}
+              href={link({ type: t.name, ...keepStatus })}
+              active={sp.type === t.name}
             >
-              {label(t)}
+              {t.name}
             </Chip>
           ))}
+          {session && (
+            <Link
+              href="/types"
+              className="ml-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Manage
+            </Link>
+          )}
         </ChipRow>
         <ChipRow heading="Status">
-          <Chip href={link({ ...keepType, ...keepCat })} active={!sp.status}>
+          <Chip href={link({ ...keepType })} active={!sp.status}>
             All
           </Chip>
           {STATUSES.map((s) => (
             <Chip
               key={s}
-              href={link({ status: s, ...keepType, ...keepCat })}
+              href={link({ status: s, ...keepType })}
               active={sp.status === s}
             >
               {label(s)}
             </Chip>
           ))}
         </ChipRow>
-        {categories.length > 0 && (
-          <ChipRow heading="Category">
-            <Chip
-              href={link({ ...keepType, ...keepStatus })}
-              active={!sp.category}
-            >
-              All
-            </Chip>
-            {categories.map((c) => (
-              <Chip
-                key={c}
-                href={link({ category: c, ...keepType, ...keepStatus })}
-                active={sp.category === c}
-              >
-                {c}
-              </Chip>
-            ))}
-          </ChipRow>
-        )}
       </div>
 
       <TableCard>
@@ -247,15 +207,10 @@ export default async function AssetsPage({
                   {a.assetTag}
                 </Link>
               </td>
-              <td className="px-4 py-2">{label(a.type)}</td>
-              <td className="px-4 py-2 leading-tight">
+              <td className="px-4 py-2">{a.type}</td>
+              <td className="px-4 py-2">
                 {[a.make, a.model].filter(Boolean).join(" ") || (
                   <span className="text-muted-foreground">—</span>
-                )}
-                {a.category && (
-                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                    {a.category}
-                  </span>
                 )}
               </td>
               <td className="px-4 py-2">

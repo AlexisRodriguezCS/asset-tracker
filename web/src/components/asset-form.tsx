@@ -4,20 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { Asset, AssetCondition, AssetType } from "@/lib/types";
+import type { Asset, AssetCondition } from "@/lib/types";
 
-const TYPES: AssetType[] = [
-  "LAPTOP",
-  "TABLET",
-  "PHONE",
-  "MONITOR",
-  "DOCK",
-  "CHARGER",
-  "CABLE",
-  "HOTSPOT",
-  "PERIPHERAL",
-  "OTHER",
-];
 const CONDITIONS: AssetCondition[] = ["NEW", "GOOD", "FAIR", "POOR", "DAMAGED"];
 
 type Prefill = {
@@ -25,7 +13,6 @@ type Prefill = {
   assetTag?: string;
   make?: string;
   model?: string;
-  category?: string;
   /** "PERSON:1" / "LOCATION:4" - check the new unit straight out to that holder. */
   reassignTo?: string;
 };
@@ -34,14 +21,14 @@ type Props =
   | {
       mode: "create";
       clientId: number;
+      types: string[];
       prefill?: Prefill;
-      categories?: string[];
       onDone?: () => void;
     }
   | {
       mode: "edit";
       asset: Asset;
-      categories?: string[];
+      types?: string[];
       onDone?: () => void;
     };
 
@@ -52,13 +39,15 @@ export function AssetForm(props: Props) {
   const a = edit ? props.asset : undefined;
   const pf = edit ? undefined : props.prefill;
 
-  const [type, setType] = useState<string>(pf?.type ?? "LAPTOP");
+  const typeOptions = props.types ?? [];
+  const [type, setType] = useState<string>(
+    pf?.type ?? a?.type ?? typeOptions[0] ?? "",
+  );
   const [assetTag, setAssetTag] = useState(pf?.assetTag ?? a?.assetTag ?? "");
   const [serialNumber, setSerialNumber] = useState("");
   const [make, setMake] = useState(pf?.make ?? a?.make ?? "");
   const [model, setModel] = useState(pf?.model ?? a?.model ?? "");
   const [condition, setCondition] = useState<string>(a?.condition ?? "GOOD");
-  const [category, setCategory] = useState(pf?.category ?? a?.category ?? "");
   const [costUsd, setCostUsd] = useState(
     a?.purchaseCostCents != null ? String(a.purchaseCostCents / 100) : "",
   );
@@ -93,7 +82,6 @@ export function AssetForm(props: Props) {
       make: trimmed(make),
       model: trimmed(model),
       condition,
-      category: trimmed(category),
       deployedOn: trimmed(deployedOn),
       warrantyEndsOn: trimmed(warrantyEndsOn),
       notes: trimmed(notes),
@@ -161,12 +149,19 @@ export function AssetForm(props: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         {!edit && (
           <>
-            <Select
-              label="Type"
-              value={type}
-              onChange={setType}
-              options={TYPES}
-            />
+            <Field label="Type">
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+              >
+                {typeOptions.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </Field>
             <Field label="Asset tag">
               <Input
                 required
@@ -196,19 +191,6 @@ export function AssetForm(props: Props) {
           onChange={setCondition}
           options={CONDITIONS}
         />
-        <Field label="Category">
-          <Input
-            list="asset-categories"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder="e.g. Field kit, Loaner pool"
-          />
-          <datalist id="asset-categories">
-            {(props.categories ?? []).map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
-        </Field>
         {!edit && (
           <>
             <Field label="Purchase cost (USD)">

@@ -2,7 +2,6 @@ package com.assettracker.assetservice.repository;
 
 import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.AssetStatus;
-import com.assettracker.assetservice.entity.AssetType;
 import com.assettracker.assetservice.entity.HolderType;
 import java.util.Collection;
 import java.util.List;
@@ -21,6 +20,9 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
 
   Optional<Asset> findFirstByAssetTagOrderByIdDesc(String assetTag);
 
+  /** Every asset of a client currently on a type name - the "what breaks if I delete it" list. */
+  List<Asset> findByClientIdAndType(Long clientId, String type);
+
   /**
    * True when a client already has an in-service asset of this type on the tag. A tag may carry one
    * active asset per type (a laptop plus its bundled charger and cable), and a retired / lost /
@@ -37,24 +39,14 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
   boolean existsActiveWithTag(
       @Param("clientId") Long clientId,
       @Param("assetTag") String assetTag,
-      @Param("type") AssetType type,
+      @Param("type") String type,
       @Param("statuses") Collection<AssetStatus> statuses);
 
   List<Asset> findByHolderTypeAndHolderId(HolderType holderType, Long holderId);
 
-  /** Distinct non-blank category values a client has used, alphabetical. */
-  @Query(
-      """
-      select distinct a.category from Asset a
-      where a.clientId = :clientId and a.category is not null and a.category <> ''
-      order by a.category
-      """)
-  List<String> findDistinctCategories(@Param("clientId") Long clientId);
-
   /**
    * The one list query behind every catalog view. Any of {@code type} / {@code status} / {@code
-   * holderType} / {@code holderId} / {@code assetTag} / {@code category} may be null to widen the
-   * filter.
+   * holderType} / {@code holderId} / {@code assetTag} may be null to widen the filter.
    */
   @Query(
       """
@@ -65,15 +57,13 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
         and (:holderType is null or a.holderType = :holderType)
         and (:holderId is null or a.holderId = :holderId)
         and (:assetTag is null or a.assetTag = :assetTag)
-        and (:category is null or a.category = :category)
       order by a.type, a.assetTag
       """)
   List<Asset> search(
       @Param("clientId") Long clientId,
-      @Param("type") AssetType type,
+      @Param("type") String type,
       @Param("status") AssetStatus status,
       @Param("holderType") HolderType holderType,
       @Param("holderId") Long holderId,
-      @Param("assetTag") String assetTag,
-      @Param("category") String category);
+      @Param("assetTag") String assetTag);
 }

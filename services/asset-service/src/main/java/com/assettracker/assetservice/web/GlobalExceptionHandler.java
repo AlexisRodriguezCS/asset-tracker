@@ -3,6 +3,11 @@ package com.assettracker.assetservice.web;
 import com.assettracker.assetservice.entity.AlreadyAssignedException;
 import com.assettracker.assetservice.service.AssetNotFoundException;
 import com.assettracker.assetservice.service.AssetTagTakenException;
+import com.assettracker.assetservice.type.AssetTypeExistsException;
+import com.assettracker.assetservice.type.AssetTypeInUseException;
+import com.assettracker.assetservice.type.AssetTypeInUseException.LinkedAsset;
+import java.time.Instant;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -23,9 +28,25 @@ public class GlobalExceptionHandler {
     return build(HttpStatus.CONFLICT, "ASSET_TAG_TAKEN", ex.getMessage());
   }
 
+  @ExceptionHandler(AssetTypeExistsException.class)
+  public ResponseEntity<ApiError> handleTypeExists(AssetTypeExistsException ex) {
+    return build(HttpStatus.CONFLICT, "TYPE_EXISTS", ex.getMessage());
+  }
+
+  @ExceptionHandler(AssetTypeInUseException.class)
+  public ResponseEntity<TypeInUseError> handleTypeInUse(AssetTypeInUseException ex) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(new TypeInUseError("TYPE_IN_USE", ex.getMessage(), ex.getAssets(), Instant.now()));
+  }
+
   @ExceptionHandler(AlreadyAssignedException.class)
   public ResponseEntity<ApiError> handleAlreadyAssigned(AlreadyAssignedException ex) {
     return build(HttpStatus.CONFLICT, "ALREADY_ASSIGNED", ex.getMessage());
+  }
+
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<ApiError> handleBadRequest(IllegalArgumentException ex) {
+    return build(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage());
   }
 
   @ExceptionHandler(IllegalStateException.class)
@@ -46,4 +67,8 @@ public class GlobalExceptionHandler {
   private static ResponseEntity<ApiError> build(HttpStatus status, String code, String message) {
     return ResponseEntity.status(status).body(ApiError.of(status.value(), code, message));
   }
+
+  /** 409 body when a type still has assets and no {@code reassignTo} was given. */
+  public record TypeInUseError(
+      String code, String message, List<LinkedAsset> assets, Instant timestamp) {}
 }

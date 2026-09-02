@@ -42,7 +42,7 @@ export default async function ReportsPage() {
     return personById.get(a.holderId)?.department ?? "Unknown dept";
   };
 
-  const byType = tally(assets, (a) => label(a.type));
+  const byType = tally(assets, (a) => a.type);
   const byStatus = tally(assets, (a) => label(a.status));
   const byCondition = tally(assets, (a) =>
     a.condition ? label(a.condition) : "Unrated",
@@ -58,7 +58,7 @@ export default async function ReportsPage() {
   const replacements = [...slot.entries()]
     .map(([k, rows]) => {
       const [tag, type] = k.split("||");
-      return { tag, type: label(type), n: rows.length - 1 };
+      return { tag, type, n: rows.length - 1 };
     })
     .filter((r) => r.n > 0)
     .sort((a, b) => b.n - a.n);
@@ -84,7 +84,7 @@ export default async function ReportsPage() {
     .map((e) => assetById.get(e.entityId))
     .filter((a): a is Asset => Boolean(a));
   const incidentsByDept = tally(incidents, deptOf);
-  const incidentsByType = tally(incidents, (a) => label(a.type));
+  const incidentsByType = tally(incidents, (a) => a.type);
 
   const totalCost = assets
     .filter((a) => ["ASSIGNED", "IN_STOCK", "IN_REPAIR"].includes(a.status))

@@ -6,7 +6,7 @@ import {
   assignmentsForAsset,
   assetAudit,
   listAssets,
-  listCategories,
+  listAssetTypes,
   listLocations,
   listPeople,
   GatewayError,
@@ -52,8 +52,8 @@ export default async function AssetDetailPage({
       listPeople(asset.clientId).catch(() => []),
       listLocations(asset.clientId, "DESK").catch(() => []),
     ]);
-  const categories = session
-    ? await listCategories(asset.clientId).catch(() => [])
+  const types = session
+    ? (await listAssetTypes(asset.clientId).catch(() => [])).map((t) => t.name)
     : [];
   const onTag = sameTag.filter((x) => x.id !== asset.id);
 
@@ -80,7 +80,7 @@ export default async function AssetDetailPage({
             <div>
               <h1 className="font-display text-2xl font-semibold tracking-tight">
                 {[asset.make, asset.model].filter(Boolean).join(" ") ||
-                  label(asset.type)}
+                  asset.type}
               </h1>
               <p className="mt-1 font-mono text-xs text-muted-foreground">
                 {asset.assetTag} · SN {asset.serialNumber}
@@ -90,8 +90,7 @@ export default async function AssetDetailPage({
           </div>
 
           <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-            <Field k="Type" v={label(asset.type)} />
-            <Field k="Category" v={asset.category ?? "—"} />
+            <Field k="Type" v={asset.type} />
             <Field
               k="Condition"
               v={asset.condition ? label(asset.condition) : "—"}
@@ -126,7 +125,7 @@ export default async function AssetDetailPage({
             <AssetAdmin
               asset={asset}
               signedIn={Boolean(session)}
-              categories={categories}
+              types={types}
             />
           </div>
         </Card>
@@ -184,11 +183,10 @@ export default async function AssetDetailPage({
                       href={`/assets/${x.id}`}
                       className="font-medium text-primary hover:underline"
                     >
-                      {[x.make, x.model].filter(Boolean).join(" ") ||
-                        label(x.type)}
+                      {[x.make, x.model].filter(Boolean).join(" ") || x.type}
                     </Link>
                     <p className="font-mono text-xs text-muted-foreground">
-                      {label(x.type)} · SN {x.serialNumber}
+                      {x.type} · SN {x.serialNumber}
                     </p>
                   </div>
                   <AssetStatusBadge status={x.status} />

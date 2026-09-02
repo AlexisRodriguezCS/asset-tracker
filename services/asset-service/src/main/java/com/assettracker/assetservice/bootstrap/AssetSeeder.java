@@ -4,7 +4,6 @@ import com.assettracker.assetservice.audit.AuditService;
 import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.AssetCondition;
 import com.assettracker.assetservice.entity.AssetStatus;
-import com.assettracker.assetservice.entity.AssetType;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.repository.AssetRepository;
 import java.time.LocalDate;
@@ -12,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,13 +27,23 @@ import org.springframework.stereotype.Component;
  *       retire-and-replace pattern (the live unit and the dead one share one tag, one per type).
  * </ul>
  *
- * <p>Person and desk ids match {@code PeopleSeeder} / {@code LocationSeeder} insert order.
+ * <p>Person and desk ids match {@code PeopleSeeder} / {@code LocationSeeder} insert order; type
+ * names match {@code AssetTypeSeeder}.
  */
 @Component
 @Profile("!prod")
+@Order(20)
 public class AssetSeeder implements CommandLineRunner {
 
   private static final String SEED_ACTOR = "system@seed";
+
+  private static final String LAPTOP = "Laptop";
+  private static final String TABLET = "Tablet";
+  private static final String MONITOR = "Monitor";
+  private static final String DOCK = "Dock";
+  private static final String CHARGER = "Charger";
+  private static final String CABLE = "Cable";
+  private static final String HOTSPOT = "Hotspot";
 
   private static final Gear MBP14 = new Gear("Apple", "MacBook Pro 14 M3", 249900);
   private static final Gear MBA13 = new Gear("Apple", "MacBook Air 13 M3", 149900);
@@ -91,30 +101,16 @@ public class AssetSeeder implements CommandLineRunner {
   }
 
   private Asset baseAsset(long clientId, Row r, int seq) {
-    String serial = r.tag() + "-" + r.type().name().charAt(0) + "-" + String.format("%04d", seq);
+    String serial = r.tag() + "-" + r.type().charAt(0) + "-" + String.format("%04d", seq);
     Asset a = new Asset(clientId, r.type(), serial, r.tag());
     a.setMake(r.gear().make());
     a.setModel(r.gear().model());
     a.setPurchaseCostCents(r.gear().costCents());
     a.setCondition(r.condition());
-    a.setCategory(defaultCategory(r.type()));
     LocalDate bought = LocalDate.now().minusMonths(8);
     a.setPurchaseDate(bought);
     a.setWarrantyEndsOn(bought.plusYears(3));
     return a;
-  }
-
-  /** A starter category per kind - techs edit these freely and add their own. */
-  private static String defaultCategory(AssetType t) {
-    return switch (t) {
-      case LAPTOP -> "Standard build";
-      case TABLET -> "Field device";
-      case PHONE -> "Mobile";
-      case MONITOR, DOCK -> "Desk kit";
-      case CHARGER, CABLE -> "Accessory pool";
-      case HOTSPOT -> "Travel kit";
-      default -> null;
-    };
   }
 
   private void applyState(long clientId, Asset a, Row r, int seq) {
@@ -158,17 +154,17 @@ public class AssetSeeder implements CommandLineRunner {
     deskKit(out, "ACME", 13, 16L, DELL_MON, TS4, TBC);
     deskKit(out, "ACME", 19, 22L, DELL_MON, TS4, TBC);
     deskKit(out, "ACME", 24, 27L, DELL_MON, TS4, TBC);
-    stock(out, "ACME", "L", AssetType.LAPTOP, MBP14, 4, 5);
-    stock(out, "ACME", "T", AssetType.TABLET, IPAD_AIR, 3, 1);
-    stock(out, "ACME", "MON", AssetType.MONITOR, DELL_MON, 4, 1);
-    stock(out, "ACME", "DCK", AssetType.DOCK, TS4, 3, 1);
-    stock(out, "ACME", "CHG", AssetType.CHARGER, CHG96, 6, 1);
-    stock(out, "ACME", "CBL", AssetType.CABLE, USBC, 10, 1);
+    stock(out, "ACME", "L", LAPTOP, MBP14, 4, 5);
+    stock(out, "ACME", "T", TABLET, IPAD_AIR, 3, 1);
+    stock(out, "ACME", "MON", MONITOR, DELL_MON, 4, 1);
+    stock(out, "ACME", "DCK", DOCK, TS4, 3, 1);
+    stock(out, "ACME", "CHG", CHARGER, CHG96, 6, 1);
+    stock(out, "ACME", "CBL", CABLE, USBC, 10, 1);
     hotspot(out, "ACME", 1, 1L);
     hotspot(out, "ACME", 2, 3L);
-    stock(out, "ACME", "HS", AssetType.HOTSPOT, HS, 2, 3);
-    retire(out, "ACME-L-001", AssetType.CHARGER, CHG96, AssetStatus.LOST);
-    retire(out, "ACME-L-002", AssetType.CABLE, USBC, AssetStatus.RETIRED);
+    stock(out, "ACME", "HS", HOTSPOT, HS, 2, 3);
+    retire(out, "ACME-L-001", CHARGER, CHG96, AssetStatus.LOST);
+    retire(out, "ACME-L-002", CABLE, USBC, AssetStatus.RETIRED);
     fix(out, "ACME-L-005", AssetStatus.IN_REPAIR, AssetCondition.FAIR);
     fix(out, "ACME-MON-001", AssetStatus.BROKEN, AssetCondition.DAMAGED);
     fix(out, "ACME-DCK-001", AssetStatus.PENDING_RECYCLE, AssetCondition.POOR);
@@ -185,16 +181,16 @@ public class AssetSeeder implements CommandLineRunner {
     deskKit(out, "GLBX", 5, 38L, LG_MON, ANKER_DOCK, TBC);
     deskKit(out, "GLBX", 7, 40L, LG_MON, ANKER_DOCK, TBC);
     deskKit(out, "GLBX", 12, 45L, LG_MON, ANKER_DOCK, TBC);
-    stock(out, "GLBX", "L", AssetType.LAPTOP, MBA13, 3, 5);
-    stock(out, "GLBX", "T", AssetType.TABLET, IPAD10, 2, 1);
-    stock(out, "GLBX", "MON", AssetType.MONITOR, LG_MON, 3, 1);
-    stock(out, "GLBX", "DCK", AssetType.DOCK, ANKER_DOCK, 2, 1);
-    stock(out, "GLBX", "CHG", AssetType.CHARGER, CHG70, 4, 1);
-    stock(out, "GLBX", "CBL", AssetType.CABLE, USBC, 6, 1);
+    stock(out, "GLBX", "L", LAPTOP, MBA13, 3, 5);
+    stock(out, "GLBX", "T", TABLET, IPAD10, 2, 1);
+    stock(out, "GLBX", "MON", MONITOR, LG_MON, 3, 1);
+    stock(out, "GLBX", "DCK", DOCK, ANKER_DOCK, 2, 1);
+    stock(out, "GLBX", "CHG", CHARGER, CHG70, 4, 1);
+    stock(out, "GLBX", "CBL", CABLE, USBC, 6, 1);
     hotspot(out, "GLBX", 1, 5L);
     hotspot(out, "GLBX", 2, 7L);
-    stock(out, "GLBX", "HS", AssetType.HOTSPOT, HS, 1, 3);
-    retire(out, "GLBX-L-001", AssetType.CHARGER, CHG70, AssetStatus.LOST);
+    stock(out, "GLBX", "HS", HOTSPOT, HS, 1, 3);
+    retire(out, "GLBX-L-001", CHARGER, CHG70, AssetStatus.LOST);
     fix(out, "GLBX-L-005", AssetStatus.IN_REPAIR, AssetCondition.FAIR);
     fix(out, "GLBX-MON-001", AssetStatus.BROKEN, AssetCondition.DAMAGED);
     fix(out, "GLBX-DCK-001", AssetStatus.PENDING_RECYCLE, AssetCondition.POOR);
@@ -207,15 +203,15 @@ public class AssetSeeder implements CommandLineRunner {
     deskKit(out, "INTC", 1, 50L, DELL_P24, DELL_WD19, TBC);
     deskKit(out, "INTC", 3, 52L, DELL_P24, DELL_WD19, TBC);
     deskKit(out, "INTC", 5, 54L, DELL_P24, DELL_WD19, TBC);
-    stock(out, "INTC", "L", AssetType.LAPTOP, XPS13, 2, 4);
-    stock(out, "INTC", "T", AssetType.TABLET, GTAB, 1, 1);
-    stock(out, "INTC", "MON", AssetType.MONITOR, DELL_P24, 2, 1);
-    stock(out, "INTC", "DCK", AssetType.DOCK, DELL_WD19, 1, 1);
-    stock(out, "INTC", "CHG", AssetType.CHARGER, CHG65, 3, 1);
-    stock(out, "INTC", "CBL", AssetType.CABLE, USBC, 4, 1);
+    stock(out, "INTC", "L", LAPTOP, XPS13, 2, 4);
+    stock(out, "INTC", "T", TABLET, GTAB, 1, 1);
+    stock(out, "INTC", "MON", MONITOR, DELL_P24, 2, 1);
+    stock(out, "INTC", "DCK", DOCK, DELL_WD19, 1, 1);
+    stock(out, "INTC", "CHG", CHARGER, CHG65, 3, 1);
+    stock(out, "INTC", "CBL", CABLE, USBC, 4, 1);
     hotspot(out, "INTC", 1, 9L);
-    stock(out, "INTC", "HS", AssetType.HOTSPOT, HS, 1, 2);
-    retire(out, "INTC-L-001", AssetType.CABLE, USBC, AssetStatus.RETIRED);
+    stock(out, "INTC", "HS", HOTSPOT, HS, 1, 2);
+    retire(out, "INTC-L-001", CABLE, USBC, AssetStatus.RETIRED);
     fix(out, "INTC-MON-001", AssetStatus.BROKEN, AssetCondition.DAMAGED);
     fix(out, "INTC-CBL-001", AssetStatus.RECYCLED, AssetCondition.DAMAGED);
   }
@@ -231,9 +227,9 @@ public class AssetSeeder implements CommandLineRunner {
       Gear charger,
       Gear cable) {
     String tag = pfx + "-L-" + n3(laptopNo);
-    out.add(Row.deployed(AssetType.LAPTOP, laptop, tag, HolderType.PERSON, personId));
-    out.add(Row.deployed(AssetType.CHARGER, charger, tag, HolderType.PERSON, personId));
-    out.add(Row.deployed(AssetType.CABLE, cable, tag, HolderType.PERSON, personId));
+    out.add(Row.deployed(LAPTOP, laptop, tag, HolderType.PERSON, personId));
+    out.add(Row.deployed(CHARGER, charger, tag, HolderType.PERSON, personId));
+    out.add(Row.deployed(CABLE, cable, tag, HolderType.PERSON, personId));
   }
 
   private static void deskKit(
@@ -245,30 +241,27 @@ public class AssetSeeder implements CommandLineRunner {
       Gear dock,
       Gear tbCable) {
     String tag = pfx + "-D-" + n3(deskNo);
-    out.add(Row.deployed(AssetType.MONITOR, monitor, tag, HolderType.LOCATION, deskLocId));
-    out.add(Row.deployed(AssetType.DOCK, dock, tag, HolderType.LOCATION, deskLocId));
-    out.add(Row.deployed(AssetType.CABLE, tbCable, tag, HolderType.LOCATION, deskLocId));
+    out.add(Row.deployed(MONITOR, monitor, tag, HolderType.LOCATION, deskLocId));
+    out.add(Row.deployed(DOCK, dock, tag, HolderType.LOCATION, deskLocId));
+    out.add(Row.deployed(CABLE, tbCable, tag, HolderType.LOCATION, deskLocId));
   }
 
   private static void stock(
-      List<Row> out, String pfx, String code, AssetType type, Gear gear, int qty, int startNo) {
+      List<Row> out, String pfx, String code, String type, Gear gear, int qty, int startNo) {
     for (int i = 0; i < qty; i++) {
       out.add(Row.stocked(type, gear, pfx + "-" + code + "-" + n3(startNo + i)));
     }
   }
 
-  /**
-   * A 5G hotspot issued to a person - shows the tech-added HOTSPOT type / "Travel kit" category.
-   */
+  /** A 5G hotspot issued to a person - shows the tech-added Hotspot type. */
   private static void hotspot(List<Row> out, String pfx, int no, long personId) {
-    out.add(
-        Row.deployed(AssetType.HOTSPOT, HS, pfx + "-HS-" + n3(no), HolderType.PERSON, personId));
+    out.add(Row.deployed(HOTSPOT, HS, pfx + "-HS-" + n3(no), HolderType.PERSON, personId));
   }
 
   /**
    * A dead accessory that still carries a laptop's tag (its live replacement is in a person kit).
    */
-  private static void retire(List<Row> out, String tag, AssetType type, Gear gear, AssetStatus s) {
+  private static void retire(List<Row> out, String tag, String type, Gear gear, AssetStatus s) {
     out.add(new Row(type, gear, tag, s, null, null, AssetCondition.POOR));
   }
 
@@ -294,13 +287,13 @@ public class AssetSeeder implements CommandLineRunner {
                 + " "
                 + (a.getModel() == null ? "" : a.getModel()))
             .trim();
-    return (makeModel.isBlank() ? a.getType().name() : makeModel) + " (" + a.getAssetTag() + ")";
+    return (makeModel.isBlank() ? a.getType() : makeModel) + " (" + a.getAssetTag() + ")";
   }
 
   private record Gear(String make, String model, long costCents) {}
 
   private record Row(
-      AssetType type,
+      String type,
       Gear gear,
       String tag,
       AssetStatus status,
@@ -308,11 +301,11 @@ public class AssetSeeder implements CommandLineRunner {
       Long holderId,
       AssetCondition condition) {
 
-    static Row deployed(AssetType type, Gear gear, String tag, HolderType ht, Long hid) {
+    static Row deployed(String type, Gear gear, String tag, HolderType ht, Long hid) {
       return new Row(type, gear, tag, AssetStatus.ASSIGNED, ht, hid, AssetCondition.GOOD);
     }
 
-    static Row stocked(AssetType type, Gear gear, String tag) {
+    static Row stocked(String type, Gear gear, String tag) {
       return new Row(type, gear, tag, AssetStatus.IN_STOCK, null, null, AssetCondition.GOOD);
     }
   }

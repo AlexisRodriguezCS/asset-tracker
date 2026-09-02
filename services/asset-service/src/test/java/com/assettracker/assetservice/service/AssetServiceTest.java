@@ -10,7 +10,6 @@ import static org.mockito.Mockito.when;
 
 import com.assettracker.assetservice.audit.AuditService;
 import com.assettracker.assetservice.entity.Asset;
-import com.assettracker.assetservice.entity.AssetType;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.repository.AssetRepository;
 import com.assettracker.assetservice.web.dto.AssignRequest;
@@ -34,52 +33,26 @@ class AssetServiceTest {
 
   @BeforeEach
   void setUp() {
-    stored = new Asset(1L, AssetType.LAPTOP, "SN-1", "TAG-1");
+    stored = new Asset(1L, "Laptop", "SN-1", "TAG-1");
   }
 
   @Test
   void createRejectsADuplicateTag() {
-    when(repository.existsActiveWithTag(eq(1L), eq("TAG-1"), eq(AssetType.LAPTOP), any()))
-        .thenReturn(true);
+    when(repository.existsActiveWithTag(eq(1L), eq("TAG-1"), eq("Laptop"), any())).thenReturn(true);
     CreateAssetRequest req =
         new CreateAssetRequest(
-            1L,
-            AssetType.LAPTOP,
-            null,
-            null,
-            "SN-1",
-            "TAG-1",
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null);
+            1L, "Laptop", null, null, "SN-1", "TAG-1", null, null, null, null, null, null);
     assertThatThrownBy(() -> service.create(req, "tech@acme.example"))
         .isInstanceOf(AssetTagTakenException.class);
   }
 
   @Test
   void createPersistsAndAuditsWithTheActor() {
-    when(repository.existsActiveWithTag(eq(1L), eq("TAG-2"), eq(AssetType.CABLE), any()))
-        .thenReturn(false);
+    when(repository.existsActiveWithTag(eq(1L), eq("TAG-2"), eq("Cable"), any())).thenReturn(false);
     when(repository.save(any(Asset.class))).thenAnswer(inv -> inv.getArgument(0));
     CreateAssetRequest req =
         new CreateAssetRequest(
-            1L,
-            AssetType.CABLE,
-            "Anker",
-            "USB-C",
-            "SN-2",
-            "TAG-2",
-            null,
-            null,
-            null,
-            null,
-            null,
-            1900L,
-            null);
+            1L, "Cable", "Anker", "USB-C", "SN-2", "TAG-2", null, null, null, null, 1900L, null);
 
     Asset created = service.create(req, "tech@acme.example");
 

@@ -29,9 +29,9 @@ public class Asset {
   @Column(nullable = false)
   private Long clientId;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private AssetType type;
+  /** The type name, one of the client's managed {@link AssetType} rows. */
+  @Column(nullable = false, length = 64)
+  private String type;
 
   private String make;
 
@@ -58,9 +58,6 @@ public class Asset {
   @Enumerated(EnumType.STRING)
   private AssetCondition condition;
 
-  /** Free-text, per-client grouping the tech chooses (e.g. "Field kit", "Loaner pool"). */
-  private String category;
-
   private LocalDate purchaseDate;
 
   /** When the asset was first put into service / handed out. */
@@ -82,7 +79,7 @@ public class Asset {
     // for JPA
   }
 
-  public Asset(Long clientId, AssetType type, String serialNumber, String assetTag) {
+  public Asset(Long clientId, String type, String serialNumber, String assetTag) {
     this.clientId = clientId;
     this.type = type;
     this.serialNumber = serialNumber;
@@ -142,8 +139,12 @@ public class Asset {
     return clientId;
   }
 
-  public AssetType getType() {
+  public String getType() {
     return type;
+  }
+
+  public void setType(String type) {
+    this.type = type;
   }
 
   public String getMake() {
@@ -188,14 +189,6 @@ public class Asset {
 
   public void setCondition(AssetCondition condition) {
     this.condition = condition;
-  }
-
-  public String getCategory() {
-    return category;
-  }
-
-  public void setCategory(String category) {
-    this.category = category;
   }
 
   public LocalDate getPurchaseDate() {

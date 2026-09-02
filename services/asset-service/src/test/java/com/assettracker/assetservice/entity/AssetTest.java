@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class AssetTest {
 
   private Asset newAsset() {
-    return new Asset(1L, AssetType.LAPTOP, "SN-1", "TAG-1");
+    return new Asset(1L, "Laptop", "SN-1", "TAG-1");
   }
 
   @Test

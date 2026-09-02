@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.assettracker.assetservice.entity.AlreadyAssignedException;
 import com.assettracker.assetservice.entity.Asset;
-import com.assettracker.assetservice.entity.AssetType;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.service.AssetNotFoundException;
 import com.assettracker.assetservice.service.AssetService;
@@ -29,11 +28,10 @@ class AssetControllerTest {
 
   @Test
   void searchReturnsTheMatchingAssets() throws Exception {
-    Asset a = new Asset(1L, AssetType.LAPTOP, "SN-1", "TAG-1");
-    when(service.search(eq(1L), eq(AssetType.LAPTOP), any(), any(), any(), any(), any()))
-        .thenReturn(List.of(a));
+    Asset a = new Asset(1L, "Laptop", "SN-1", "TAG-1");
+    when(service.search(eq(1L), eq("Laptop"), any(), any(), any(), any())).thenReturn(List.of(a));
 
-    mvc.perform(get("/assets").param("clientId", "1").param("type", "LAPTOP"))
+    mvc.perform(get("/assets").param("clientId", "1").param("type", "Laptop"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].assetTag").value("TAG-1"))
         .andExpect(jsonPath("$[0].status").value("IN_STOCK"));
