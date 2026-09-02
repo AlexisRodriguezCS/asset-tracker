@@ -216,7 +216,7 @@ export default async function AssetsPage({
         <tbody className="divide-y divide-border/70">
           {assets.map((a) => (
             <tr key={a.id} className="transition-colors hover:bg-accent/40">
-              <td className="px-4 py-2.5">
+              <td className="px-4 py-2">
                 <Link
                   href={`/assets/${a.id}`}
                   className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-primary hover:bg-accent"
@@ -224,32 +224,32 @@ export default async function AssetsPage({
                   {a.assetTag}
                 </Link>
               </td>
-              <td className="px-4 py-2.5">{label(a.type)}</td>
-              <td className="px-4 py-2.5">
+              <td className="px-4 py-2">{label(a.type)}</td>
+              <td className="px-4 py-2 leading-tight">
                 {[a.make, a.model].filter(Boolean).join(" ") || (
                   <span className="text-muted-foreground">—</span>
                 )}
                 {a.category && (
-                  <span className="block text-xs text-muted-foreground">
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
                     {a.category}
                   </span>
                 )}
               </td>
-              <td className="px-4 py-2.5">
+              <td className="px-4 py-2">
                 <ConditionBadge condition={a.condition} />
               </td>
-              <td className="px-4 py-2.5">
+              <td className="px-4 py-2">
                 <AssetStatusBadge status={a.status} />
               </td>
-              <td className="px-4 py-2.5 text-muted-foreground">
+              <td className="px-4 py-2 text-muted-foreground">
                 {disposition(a.status)}
               </td>
-              <td className="px-4 py-2.5 text-muted-foreground">
+              <td className="px-4 py-2 text-muted-foreground">
                 {a.holderType === "STOCKROOM"
                   ? "Stockroom"
                   : `${label(a.holderType)} #${a.holderId}`}
               </td>
-              <td className="px-4 py-2.5 text-muted-foreground">
+              <td className="px-4 py-2 text-muted-foreground">
                 {a.warrantyEndsOn ? (
                   <span
                     className={
@@ -289,8 +289,8 @@ function ChipRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="w-12 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+      <span className="w-20 shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {heading}
       </span>
       {children}

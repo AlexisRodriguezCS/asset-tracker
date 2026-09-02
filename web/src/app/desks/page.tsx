@@ -213,8 +213,8 @@ function ChipRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="w-16 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+      <span className="w-20 shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {heading}
       </span>
       {children}

@@ -49,7 +49,7 @@ export default async function RootLayout({
           clients={clients}
           currentClient={currentClient}
         />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
           {children}
         </main>
         <footer className="border-t border-border/60">

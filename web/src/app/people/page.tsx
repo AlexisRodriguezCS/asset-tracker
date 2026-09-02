@@ -49,7 +49,7 @@ export default async function PeoplePage() {
         <tbody className="divide-y divide-border/70">
           {people.map((p) => (
             <tr key={p.id} className="transition-colors hover:bg-accent/40">
-              <td className="px-4 py-2.5">
+              <td className="px-4 py-2">
                 <Link
                   href={`/people/${p.id}`}
                   className="font-medium text-primary hover:underline"
@@ -57,16 +57,16 @@ export default async function PeoplePage() {
                   {p.fullName}
                 </Link>
               </td>
-              <td className="px-4 py-2.5 text-muted-foreground">{p.email}</td>
-              <td className="px-4 py-2.5">
+              <td className="px-4 py-2 text-muted-foreground">{p.email}</td>
+              <td className="px-4 py-2">
                 {p.department ?? (
                   <span className="text-muted-foreground">—</span>
                 )}
               </td>
-              <td className="px-4 py-2.5 text-muted-foreground">
+              <td className="px-4 py-2 text-muted-foreground">
                 {p.deskId ? (deskLabel.get(p.deskId) ?? `#${p.deskId}`) : "—"}
               </td>
-              <td className="px-4 py-2.5">
+              <td className="px-4 py-2">
                 <PersonStatusBadge status={p.status} />
               </td>
             </tr>

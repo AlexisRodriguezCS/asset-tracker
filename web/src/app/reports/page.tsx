@@ -194,7 +194,7 @@ function Breakdown({
         <ul className="mt-3 space-y-2 text-sm">
           {nonZero.slice(0, 10).map(([name, n]) => (
             <li key={name} className="flex items-center gap-3">
-              <span className="w-40 shrink-0 truncate text-muted-foreground">
+              <span className="w-48 shrink-0 truncate text-muted-foreground">
                 {name}
               </span>
               <span className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
