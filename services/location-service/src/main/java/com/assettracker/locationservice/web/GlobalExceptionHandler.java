@@ -22,6 +22,11 @@ public class GlobalExceptionHandler {
     return build(HttpStatus.CONFLICT, "QR_TAG_TAKEN", ex.getMessage());
   }
 
+  @ExceptionHandler(ForbiddenClientException.class)
+  public ResponseEntity<ApiError> handleForbiddenClient(ForbiddenClientException ex) {
+    return build(HttpStatus.FORBIDDEN, "CLIENT_FORBIDDEN", ex.getMessage());
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
     String detail =

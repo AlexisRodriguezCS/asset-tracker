@@ -11,8 +11,10 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import org.slf4j.MDC;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -32,6 +34,10 @@ public class IdentityHeaderFilter extends OncePerRequestFilter {
   static final String USER_ID = "X-User-Id";
   static final String USER_ROLE = "X-User-Role";
   static final String CLIENT_IDS = "X-Client-Ids";
+  static final String CORRELATION_ID = "X-Correlation-Id";
+  static final String MDC_KEY = "correlationId";
+
+  private static final int SHORT_ID_LENGTH = 12;
 
   @Override
   protected void doFilterInternal(
@@ -42,6 +48,16 @@ public class IdentityHeaderFilter extends OncePerRequestFilter {
     injected.put(USER_ID, null);
     injected.put(USER_ROLE, null);
     injected.put(CLIENT_IDS, null);
+
+    // Correlation id: accept the client's if present (unlike the identity headers, which are always
+    // overridden to defeat spoofing), generate one otherwise. Forwarded downstream and logged here.
+    String correlationId = request.getHeader(CORRELATION_ID);
+    if (correlationId == null || correlationId.isBlank()) {
+      correlationId = UUID.randomUUID().toString().substring(0, SHORT_ID_LENGTH);
+    }
+    injected.put(CORRELATION_ID, correlationId);
+    response.setHeader(CORRELATION_ID, correlationId);
+    MDC.put(MDC_KEY, correlationId);
 
     if (SecurityContextHolder.getContext().getAuthentication()
         instanceof JwtAuthenticationToken auth) {
@@ -58,7 +74,11 @@ public class IdentityHeaderFilter extends OncePerRequestFilter {
       }
     }
 
-    chain.doFilter(new IdentityRequest(request, injected), response);
+    try {
+      chain.doFilter(new IdentityRequest(request, injected), response);
+    } finally {
+      MDC.remove(MDC_KEY);
+    }
   }
 
   /** Wraps the request so the injected identity headers win over anything the client sent. */
@@ -115,6 +135,7 @@ public class IdentityHeaderFilter extends OncePerRequestFilter {
         case "x-user-id" -> USER_ID;
         case "x-user-role" -> USER_ROLE;
         case "x-client-ids" -> CLIENT_IDS;
+        case "x-correlation-id" -> CORRELATION_ID;
         default -> name;
       };
     }

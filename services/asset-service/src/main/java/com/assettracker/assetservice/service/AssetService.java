@@ -6,6 +6,7 @@ import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.AssetStatus;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.repository.AssetRepository;
+import com.assettracker.assetservice.web.TenantContext;
 import com.assettracker.assetservice.web.dto.AssignRequest;
 import com.assettracker.assetservice.web.dto.CreateAssetRequest;
 import com.assettracker.assetservice.web.dto.UpdateAssetRequest;
@@ -31,6 +32,7 @@ public class AssetService {
 
   @Transactional
   public Asset create(CreateAssetRequest request, String actor) {
+    TenantContext.requireAllowed(request.clientId());
     if (repository.existsActiveWithTag(
         request.clientId(), request.assetTag(), request.type(), AssetStatus.ACTIVE)) {
       throw new AssetTagTakenException(request.assetTag());
@@ -116,6 +118,7 @@ public class AssetService {
   @Transactional
   public Asset update(Long id, UpdateAssetRequest request, String actor) {
     Asset asset = getById(id);
+    TenantContext.requireAllowed(asset.getClientId());
     String before = "make=" + asset.getMake() + " model=" + asset.getModel();
     setIfPresent(request.make(), asset::setMake);
     setIfPresent(request.model(), asset::setModel);
@@ -138,6 +141,7 @@ public class AssetService {
   @Transactional
   public Asset assign(Long id, AssignRequest request, String actor) {
     Asset asset = getById(id);
+    TenantContext.requireAllowed(asset.getClientId());
     asset.assignTo(request.holderType(), request.holderId());
     audit.record(
         asset.getClientId(),
@@ -153,6 +157,7 @@ public class AssetService {
   @Transactional
   public Asset returnToStock(Long id, String actor) {
     Asset asset = getById(id);
+    TenantContext.requireAllowed(asset.getClientId());
     Long from = asset.getHolderId();
     asset.returnToStock();
     audit.record(
@@ -168,6 +173,7 @@ public class AssetService {
   @Transactional
   public Asset changeStatus(Long id, AssetStatus status, String actor) {
     Asset asset = getById(id);
+    TenantContext.requireAllowed(asset.getClientId());
     AssetStatus before = asset.getStatus();
     asset.setStatus(status);
     audit.record(

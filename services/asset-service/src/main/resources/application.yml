@@ -23,6 +23,15 @@ spring:
 server:
   port: ${SERVER_PORT:8083}
 
+logging:
+  pattern:
+    # every log line carries the request's correlation id (see CorrelationIdFilter)
+    correlation: "[%X{correlationId:-}] "
+  # flip to LOG_FORMAT=ecs for newline-delimited JSON logs (Spring Boot native, no dep)
+  structured:
+    format:
+      console: ${LOG_FORMAT:}
+
 management:
   endpoints:
     web:

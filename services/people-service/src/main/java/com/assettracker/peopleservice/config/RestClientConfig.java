@@ -23,6 +23,7 @@ public class RestClientConfig {
             .withConnectTimeout(CONNECT_TIMEOUT)
             .withReadTimeout(READ_TIMEOUT);
     return RestClient.builder()
-        .requestFactory(ClientHttpRequestFactoryBuilder.detect().build(settings));
+        .requestFactory(ClientHttpRequestFactoryBuilder.detect().build(settings))
+        .requestInterceptor(new CorrelationIdPropagator());
   }
 }

@@ -17,8 +17,18 @@ class NotificationListenerTest {
   void anEventIsRecorded() {
     NotificationListener listener = new NotificationListener(service);
 
-    listener.onEvent(new NotificationEvent(1L, "ASSET_CHECKED_OUT", "Asset 40 checked out"));
+    listener.onEvent(
+        new NotificationEvent(1L, "ASSET_CHECKED_OUT", "Asset 40 checked out"), "abc123def456");
 
     verify(service).record(1L, "ASSET_CHECKED_OUT", "Asset 40 checked out");
+  }
+
+  @Test
+  void aMissingCorrelationHeaderIsTolerated() {
+    NotificationListener listener = new NotificationListener(service);
+
+    listener.onEvent(new NotificationEvent(2L, "ASSET_RETURNED", "Asset 7 back"), null);
+
+    verify(service).record(2L, "ASSET_RETURNED", "Asset 7 back");
   }
 }

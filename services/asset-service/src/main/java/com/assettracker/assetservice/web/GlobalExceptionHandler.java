@@ -23,6 +23,11 @@ public class GlobalExceptionHandler {
     return build(HttpStatus.NOT_FOUND, "ASSET_NOT_FOUND", ex.getMessage());
   }
 
+  @ExceptionHandler(ForbiddenClientException.class)
+  public ResponseEntity<ApiError> handleForbiddenClient(ForbiddenClientException ex) {
+    return build(HttpStatus.FORBIDDEN, "CLIENT_FORBIDDEN", ex.getMessage());
+  }
+
   @ExceptionHandler(AssetTagTakenException.class)
   public ResponseEntity<ApiError> handleTagTaken(AssetTagTakenException ex) {
     return build(HttpStatus.CONFLICT, "ASSET_TAG_TAKEN", ex.getMessage());

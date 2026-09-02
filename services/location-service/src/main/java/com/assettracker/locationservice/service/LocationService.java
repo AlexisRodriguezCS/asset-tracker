@@ -4,6 +4,7 @@ import com.assettracker.locationservice.audit.AuditService;
 import com.assettracker.locationservice.entity.Location;
 import com.assettracker.locationservice.entity.LocationKind;
 import com.assettracker.locationservice.repository.LocationRepository;
+import com.assettracker.locationservice.web.TenantContext;
 import com.assettracker.locationservice.web.dto.CreateLocationRequest;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class LocationService {
 
   @Transactional
   public Location create(CreateLocationRequest request, String actor) {
+    TenantContext.requireAllowed(request.clientId());
     if (repository.existsByQrTag(request.qrTag())) {
       throw new QrTagTakenException(request.qrTag());
     }

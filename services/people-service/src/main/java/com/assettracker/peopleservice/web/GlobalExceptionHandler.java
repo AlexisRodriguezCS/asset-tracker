@@ -27,6 +27,11 @@ public class GlobalExceptionHandler {
     return build(HttpStatus.CONFLICT, "EMAIL_TAKEN", ex.getMessage());
   }
 
+  @ExceptionHandler(ForbiddenClientException.class)
+  public ResponseEntity<ApiError> handleForbiddenClient(ForbiddenClientException ex) {
+    return build(HttpStatus.FORBIDDEN, "CLIENT_FORBIDDEN", ex.getMessage());
+  }
+
   @ExceptionHandler(PersonStillHoldsAssetsException.class)
   public ResponseEntity<HeldAssetsError> handleStillHolds(PersonStillHoldsAssetsException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)

@@ -35,6 +35,11 @@ public class GlobalExceptionHandler {
     return build(HttpStatus.SERVICE_UNAVAILABLE, "ASSET_SERVICE_UNAVAILABLE", ex.getMessage());
   }
 
+  @ExceptionHandler(ForbiddenClientException.class)
+  public ResponseEntity<ApiError> handleForbiddenClient(ForbiddenClientException ex) {
+    return build(HttpStatus.FORBIDDEN, "CLIENT_FORBIDDEN", ex.getMessage());
+  }
+
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<ApiError> handleBadRequest(IllegalArgumentException ex) {
     return build(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage());

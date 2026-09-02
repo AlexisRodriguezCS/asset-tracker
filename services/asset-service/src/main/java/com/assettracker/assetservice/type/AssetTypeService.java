@@ -7,6 +7,7 @@ import com.assettracker.assetservice.entity.AssetType;
 import com.assettracker.assetservice.repository.AssetRepository;
 import com.assettracker.assetservice.service.AssetNotFoundException;
 import com.assettracker.assetservice.type.AssetTypeInUseException.LinkedAsset;
+import com.assettracker.assetservice.web.TenantContext;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +40,7 @@ public class AssetTypeService {
 
   @Transactional
   public AssetType create(Long clientId, String rawName, String actor) {
+    TenantContext.requireAllowed(clientId);
     String name = rawName == null ? "" : rawName.trim();
     if (name.isEmpty()) {
       throw new IllegalArgumentException("type name is required");
@@ -58,6 +60,7 @@ public class AssetTypeService {
   @Transactional
   public void delete(Long id, String reassignTo, String actor) {
     AssetType type = get(id);
+    TenantContext.requireAllowed(type.getClientId());
     List<Asset> onType = assets.findByClientIdAndType(type.getClientId(), type.getName());
 
     if (!onType.isEmpty()) {

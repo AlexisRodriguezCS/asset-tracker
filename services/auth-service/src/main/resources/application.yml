@@ -37,6 +37,15 @@ security:
     client-id: ${ENTRA_CLIENT_ID:}
     default-client-ids: ${ENTRA_DEFAULT_CLIENT_IDS:1,2,3}
 
+logging:
+  pattern:
+    # every log line carries the request's correlation id (see CorrelationIdFilter)
+    correlation: "[%X{correlationId:-}] "
+  # flip to LOG_FORMAT=ecs for newline-delimited JSON logs (Spring Boot native, no dep)
+  structured:
+    format:
+      console: ${LOG_FORMAT:}
+
 management:
   endpoints:
     web:
