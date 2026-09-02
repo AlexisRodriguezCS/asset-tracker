@@ -28,10 +28,10 @@ spec:
             failureThreshold: 30
             periodSeconds: 5
           readinessProbe:
-            httpGet: { path: /actuator/health, port: http }
+            httpGet: { path: /actuator/health/readiness, port: http }
             periodSeconds: 10
           livenessProbe:
-            httpGet: { path: /actuator/health, port: http }
+            httpGet: { path: /actuator/health/liveness, port: http }
             periodSeconds: 20
 ---
 apiVersion: v1

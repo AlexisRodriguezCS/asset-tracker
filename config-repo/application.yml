@@ -1,4 +1,12 @@
 ---
+# Let in-flight requests finish on SIGTERM (rolling updates / `compose stop`).
+server:
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
 logging:
   level:
     root: INFO
@@ -13,6 +21,14 @@ management:
   endpoint:
     health:
       show-details: always
+      # expose /actuator/health/liveness and /readiness as first-class probes
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
   metrics:
     enable:
       all: true
