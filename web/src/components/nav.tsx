@@ -3,13 +3,22 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Boxes, Users, MapPin, BarChart3, Shapes, Search } from "lucide-react";
+import {
+  Boxes,
+  Users,
+  MapPin,
+  BarChart3,
+  Shapes,
+  Search,
+  LayoutDashboard,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClientPicker } from "@/components/client-picker";
 import { cn } from "@/lib/cn";
 import type { Client } from "@/lib/types";
 
 const LINKS = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/", label: "Assets", icon: Boxes },
   { href: "/people", label: "People", icon: Users },
   { href: "/desks", label: "Desks", icon: MapPin },
