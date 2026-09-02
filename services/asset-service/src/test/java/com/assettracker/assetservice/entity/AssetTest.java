@@ -63,4 +63,39 @@ class AssetTest {
     assertThat(a.getHolderType()).isEqualTo(HolderType.STOCKROOM);
     assertThat(a.getHolderId()).isNull();
   }
+
+  @Test
+  void markingAnAssetBrokenAlsoMarksItDamaged() {
+    Asset a = newAsset();
+    a.setCondition(AssetCondition.GOOD);
+    a.setStatus(AssetStatus.BROKEN);
+    assertThat(a.getCondition()).isEqualTo(AssetCondition.DAMAGED);
+  }
+
+  @Test
+  void damagingAnInStockAssetPullsItFromThePool() {
+    Asset a = newAsset();
+    a.setCondition(AssetCondition.DAMAGED);
+    assertThat(a.getStatus()).isEqualTo(AssetStatus.BROKEN);
+    assertThat(a.getCondition()).isEqualTo(AssetCondition.DAMAGED);
+  }
+
+  @Test
+  void anAssignedAssetMayBeDamagedWithoutChangingStatus() {
+    Asset a = newAsset();
+    a.assignTo(HolderType.PERSON, 7L);
+    a.setCondition(AssetCondition.DAMAGED);
+    assertThat(a.getStatus()).isEqualTo(AssetStatus.ASSIGNED);
+    assertThat(a.getCondition()).isEqualTo(AssetCondition.DAMAGED);
+  }
+
+  @Test
+  void returningADamagedUnitToStockDropsItToPoorNotDamaged() {
+    Asset a = newAsset();
+    a.assignTo(HolderType.PERSON, 7L);
+    a.setCondition(AssetCondition.DAMAGED);
+    a.returnToStock();
+    assertThat(a.getStatus()).isEqualTo(AssetStatus.IN_STOCK);
+    assertThat(a.getCondition()).isEqualTo(AssetCondition.POOR);
+  }
 }

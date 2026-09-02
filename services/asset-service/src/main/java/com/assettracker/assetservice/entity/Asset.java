@@ -113,6 +113,7 @@ public class Asset {
     this.holderType = HolderType.STOCKROOM;
     this.holderId = null;
     this.status = AssetStatus.IN_STOCK;
+    alignConditionToStatus();
   }
 
   public void setStatus(AssetStatus newStatus) {
@@ -121,6 +122,7 @@ public class Asset {
       this.holderId = null;
     }
     this.status = newStatus;
+    alignConditionToStatus();
   }
 
   /** End-of-life states cannot be assigned or returned, and carry no holder. */
@@ -129,6 +131,21 @@ public class Asset {
         || s == AssetStatus.LOST
         || s == AssetStatus.RECYCLED
         || s == AssetStatus.PENDING_RECYCLE;
+  }
+
+  /**
+   * Keeps {@link #status} and {@link #condition} from contradicting each other when the status
+   * changes: a {@code BROKEN} unit is always {@code DAMAGED}, and a unit back in the {@code
+   * IN_STOCK} pool is never left {@code DAMAGED} (it drops to {@code POOR} - set the real grade if
+   * it was actually repaired). Every other pairing is deliberate and left alone, e.g. {@code
+   * ASSIGNED + DAMAGED} for a unit that broke in the field but is still with its user.
+   */
+  private void alignConditionToStatus() {
+    if (status == AssetStatus.BROKEN) {
+      this.condition = AssetCondition.DAMAGED;
+    } else if (status == AssetStatus.IN_STOCK && condition == AssetCondition.DAMAGED) {
+      this.condition = AssetCondition.POOR;
+    }
   }
 
   /** "Make Model (TAG)" for humans, falling back to the type name when make / model are blank. */
@@ -195,6 +212,11 @@ public class Asset {
 
   public void setCondition(AssetCondition condition) {
     this.condition = condition;
+    // The other direction of alignConditionToStatus(): don't leave a DAMAGED unit sitting in the
+    // available pool - marking it damaged pulls it from use.
+    if (condition == AssetCondition.DAMAGED && status == AssetStatus.IN_STOCK) {
+      this.status = AssetStatus.BROKEN;
+    }
   }
 
   public LocalDate getPurchaseDate() {
