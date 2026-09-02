@@ -1,5 +1,6 @@
 package com.assettracker.peopleservice.bootstrap;
 
+import com.assettracker.peopleservice.audit.AuditDetail;
 import com.assettracker.peopleservice.audit.AuditService;
 import com.assettracker.peopleservice.entity.Person;
 import com.assettracker.peopleservice.repository.PersonRepository;
@@ -57,7 +58,7 @@ public class PeopleSeeder implements CommandLineRunner {
           "PERSON_CREATED",
           saved.getId(),
           "added " + saved.getFullName(),
-          r.deskId() == null ? null : "{\"deskId\":" + r.deskId() + "}");
+          r.deskId() == null ? null : AuditDetail.of("deskId", r.deskId()));
     }
   }
 

@@ -1,5 +1,6 @@
 package com.assettracker.assignmentservice.service;
 
+import com.assettracker.assignmentservice.audit.AuditDetail;
 import com.assettracker.assignmentservice.audit.AuditService;
 import com.assettracker.assignmentservice.client.AssetClient;
 import com.assettracker.assignmentservice.entity.Assignment;
@@ -121,7 +122,7 @@ public class AssignmentService {
         "OFFBOARDING_RUN",
         personId,
         summary,
-        "{\"returned\":" + result.returned() + ",\"failed\":" + result.failed() + "}");
+        AuditDetail.of("returned", result.returned(), "failed", result.failed()));
     notifications.publish(clientId, "OFFBOARDING_COLLECTED", summary);
     return result;
   }

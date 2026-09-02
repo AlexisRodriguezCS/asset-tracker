@@ -1,5 +1,6 @@
 package com.assettracker.assetservice.type;
 
+import com.assettracker.assetservice.audit.AuditDetail;
 import com.assettracker.assetservice.audit.AuditService;
 import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.AssetType;
@@ -79,7 +80,7 @@ public class AssetTypeService {
         "TYPE_DELETED",
         id,
         "removed type " + type.getName(),
-        onType.isEmpty() ? null : "{\"reassigned\":" + onType.size() + "}");
+        onType.isEmpty() ? null : AuditDetail.of("reassigned", onType.size()));
   }
 
   private AssetType get(Long id) {

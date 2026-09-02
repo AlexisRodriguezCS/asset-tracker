@@ -1,5 +1,6 @@
 package com.assettracker.peopleservice.service;
 
+import com.assettracker.peopleservice.audit.AuditDetail;
 import com.assettracker.peopleservice.audit.AuditService;
 import com.assettracker.peopleservice.entity.Person;
 import com.assettracker.peopleservice.entity.PersonStatus;
@@ -96,7 +97,7 @@ public class PersonService {
         (deskId == null
             ? "cleared " + person.getFullName() + "'s desk"
             : "set " + person.getFullName() + "'s desk to " + deskId),
-        "{\"before\":" + before + ",\"after\":" + deskId + "}");
+        AuditDetail.of("before", before, "after", deskId));
     return person;
   }
 

@@ -1,5 +1,6 @@
 package com.assettracker.assetservice.service;
 
+import com.assettracker.assetservice.audit.AuditDetail;
 import com.assettracker.assetservice.audit.AuditService;
 import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.AssetStatus;
@@ -101,13 +102,8 @@ public class AssetService {
         "ASSET_UPDATED",
         asset.getId(),
         "edited " + asset.describe(),
-        "{\"before\":\""
-            + before
-            + "\",\"after\":\"make="
-            + asset.getMake()
-            + " model="
-            + asset.getModel()
-            + "\"}");
+        AuditDetail.of(
+            "before", before, "after", "make=" + asset.getMake() + " model=" + asset.getModel()));
     return asset;
   }
 
