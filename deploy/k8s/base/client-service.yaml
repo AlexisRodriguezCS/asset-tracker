@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client-service
+  labels: { app.kubernetes.io/name: client-service }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: client-service }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: client-service }
+    spec:
+      containers:
+        - name: client-service
+          image: assettracker/client-service:latest
+          ports:
+            - { name: http, containerPort: 8085 }
+          envFrom:
+            - configMapRef: { name: asset-tracker-env }
+            - secretRef: { name: asset-tracker-db }
+          env:
+            - { name: SERVER_PORT, value: "8085" }
+            - name: PG_HOST
+              valueFrom: { configMapKeyRef: { name: asset-tracker-env, key: PG_HOST } }
+            - name: PG_PORT
+              valueFrom: { configMapKeyRef: { name: asset-tracker-env, key: PG_PORT } }
+            - name: PG_OPTS
+              valueFrom: { configMapKeyRef: { name: asset-tracker-env, key: PG_OPTS } }
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://$(PG_HOST):$(PG_PORT)/clientdb$(PG_OPTS)"
+          resources:
+            requests: { cpu: "100m", memory: "384Mi" }
+            limits: { cpu: "1", memory: "768Mi" }
+          startupProbe:
+            httpGet: { path: /actuator/health, port: http }
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: http }
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: client-service
+  labels: { app.kubernetes.io/name: client-service }
+spec:
+  selector: { app.kubernetes.io/name: client-service }
+  ports:
+    - { name: http, port: 8085, targetPort: http }

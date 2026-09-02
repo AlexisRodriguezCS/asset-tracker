@@ -1,0 +1,21 @@
+# Single public entry point: everything goes through api-gateway. Overlays set
+# the host and, in the cloud, TLS + the ingress class for the target platform.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: asset-tracker
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: asset-tracker.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080

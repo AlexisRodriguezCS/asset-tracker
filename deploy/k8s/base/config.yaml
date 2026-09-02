@@ -1,0 +1,39 @@
+# Shared, non-secret runtime configuration for every service.
+#
+# On Kubernetes the platform (this ConfigMap + the Secret below) is the source
+# of configuration, so config-server is not deployed here - services read their
+# baked-in application-prod.yml and take overrides from the environment. Spring
+# Cloud Config still runs in the Docker Compose stack for the non-container flow.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: asset-tracker-env
+data:
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://discovery-server:8761/eureka/"
+  SPRING_CONFIG_IMPORT: ""            # no config-server on k8s
+  SPRING_PROFILES_ACTIVE: "prod"      # Flyway + Postgres + ddl-auto=validate
+  SPRING_RABBITMQ_HOST: "rabbitmq"
+  JWT_ISSUER: "asset-tracker-auth"
+  JWT_JWKS_URI: "http://auth-service:8081/.well-known/jwks.json"
+  JWT_EXPIRATION_MS: "3600000"
+  CORS_ALLOWED_ORIGINS: "http://localhost:3000"
+  ENTRA_ISSUER_URI: ""               # set to enable "Sign in with Microsoft 365"
+  # Datasource host is a single knob so the cloud overlay only has to repoint
+  # this one value at a managed Postgres endpoint. Each service composes its own
+  # JDBC URL as jdbc:postgresql://$(PG_HOST):$(PG_PORT)/<db>$(PG_OPTS).
+  PG_HOST: "postgres"
+  PG_PORT: "5432"
+  PG_OPTS: ""                        # e.g. "?sslmode=require" against a managed DB
+---
+# STUB credentials for local / demo clusters only. Do NOT commit real values.
+# In a real cluster this Secret is delivered by External Secrets Operator or the
+# Secrets Store CSI driver, backed by Azure Key Vault / AWS Secrets Manager and
+# reached through workload identity - see docs/deployment.md.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: asset-tracker-db
+type: Opaque
+stringData:
+  SPRING_DATASOURCE_USERNAME: "att"
+  SPRING_DATASOURCE_PASSWORD: "att-dev-password"

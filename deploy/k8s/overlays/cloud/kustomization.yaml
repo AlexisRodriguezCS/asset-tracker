@@ -1,0 +1,144 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Managed cluster (AKS / EKS / GKE). Differences from the local overlay:
+#   - images come from GHCR (pushed by .github/workflows/ci.yml)
+#   - Postgres and RabbitMQ are managed services, not in-cluster pods
+#   - the stub Secret is gone; External Secrets Operator provisions
+#     "asset-tracker-db" from Key Vault / Secrets Manager via workload identity
+#   - two replicas for the gateway and business services
+#   - real ingress host + TLS
+#
+# The deploy workflow pins the image tag before applying:
+#   kubectl -n asset-tracker set image deployment/asset-service \
+#     asset-service=ghcr.io/alexisrodriguezcs/asset-tracker-asset-service:<sha>
+# (repeat per service, or template this file).
+resources:
+  - ../../base
+
+images:
+  - name: assettracker/discovery-server
+    newName: ghcr.io/alexisrodriguezcs/asset-tracker-discovery-server
+    newTag: main
+  - name: assettracker/api-gateway
+    newName: ghcr.io/alexisrodriguezcs/asset-tracker-api-gateway
+    newTag: main
+  - name: assettracker/auth-service
+    newName: ghcr.io/alexisrodriguezcs/asset-tracker-auth-service
+    newTag: main
+  - name: assettracker/client-service
+    newName: ghcr.io/alexisrodriguezcs/asset-tracker-client-service
+    newTag: main
+  - name: assettracker/people-service
+    newName: ghcr.io/alexisrodriguezcs/asset-tracker-people-service
+    newTag: main
+  - name: assettracker/location-service
+    newName: ghcr.io/alexisrodriguezcs/asset-tracker-location-service
+    newTag: main
+  - name: assettracker/asset-service
+    newName: ghcr.io/alexisrodriguezcs/asset-tracker-asset-service
+    newTag: main
+  - name: assettracker/assignment-service
+    newName: ghcr.io/alexisrodriguezcs/asset-tracker-assignment-service
+    newTag: main
+  - name: assettracker/notification-service
+    newName: ghcr.io/alexisrodriguezcs/asset-tracker-notification-service
+    newTag: main
+
+patches:
+  # Point the datasource at a managed Postgres endpoint and require TLS.
+  - patch: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: asset-tracker-env
+      data:
+        PG_HOST: REPLACE_WITH_MANAGED_PG_FQDN
+        PG_OPTS: "?sslmode=require"
+        CORS_ALLOWED_ORIGINS: https://console.asset-tracker.example
+        SPRING_RABBITMQ_HOST: REPLACE_WITH_MANAGED_BROKER_FQDN
+
+  # Drop the stub Secret - External Secrets Operator creates the real one.
+  - patch: |
+      $patch: delete
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: asset-tracker-db
+
+  # Remove the in-cluster Postgres (managed service takes over).
+  - patch: |
+      $patch: delete
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: postgres
+  - patch: |
+      $patch: delete
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: postgres
+  - patch: |
+      $patch: delete
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: postgres-data
+  - patch: |
+      $patch: delete
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: postgres-initdb
+
+  # Remove the in-cluster broker (managed service takes over).
+  - patch: |
+      $patch: delete
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: rabbitmq
+  - patch: |
+      $patch: delete
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: rabbitmq
+  - patch: |
+      $patch: delete
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: rabbitmq-data
+
+  # Two replicas for the edge and the business services.
+  - target:
+      kind: Deployment
+      name: "(api-gateway|auth-service|client-service|people-service|location-service|asset-service|assignment-service|notification-service)"
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+  # Real ingress host + TLS.
+  - patch: |
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: asset-tracker
+      spec:
+        rules:
+          - host: console.asset-tracker.example
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: api-gateway
+                      port:
+                        number: 8080
+        tls:
+          - hosts: [console.asset-tracker.example]
+            secretName: asset-tracker-tls

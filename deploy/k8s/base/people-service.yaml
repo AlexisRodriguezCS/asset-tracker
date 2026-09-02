@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: people-service
+  labels: { app.kubernetes.io/name: people-service }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: people-service }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: people-service }
+    spec:
+      containers:
+        - name: people-service
+          image: assettracker/people-service:latest
+          ports:
+            - { name: http, containerPort: 8087 }
+          envFrom:
+            - configMapRef: { name: asset-tracker-env }
+            - secretRef: { name: asset-tracker-db }
+          env:
+            - { name: SERVER_PORT, value: "8087" }
+            - name: PG_HOST
+              valueFrom: { configMapKeyRef: { name: asset-tracker-env, key: PG_HOST } }
+            - name: PG_PORT
+              valueFrom: { configMapKeyRef: { name: asset-tracker-env, key: PG_PORT } }
+            - name: PG_OPTS
+              valueFrom: { configMapKeyRef: { name: asset-tracker-env, key: PG_OPTS } }
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://$(PG_HOST):$(PG_PORT)/peopledb$(PG_OPTS)"
+          resources:
+            requests: { cpu: "100m", memory: "384Mi" }
+            limits: { cpu: "1", memory: "768Mi" }
+          startupProbe:
+            httpGet: { path: /actuator/health, port: http }
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: http }
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: people-service
+  labels: { app.kubernetes.io/name: people-service }
+spec:
+  selector: { app.kubernetes.io/name: people-service }
+  ports:
+    - { name: http, port: 8087, targetPort: http }

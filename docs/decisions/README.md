@@ -15,3 +15,4 @@ Status / Context / Decision / Consequences.
 | [0008](0008-rs256-jwt-with-jwks.md) | RS256 JWT validated against a JWKS endpoint |
 | [0009](0009-resilience4j-on-the-orchestrator.md) | Resilience4j retry + circuit breaker on the asset-service call |
 | [0010](0010-event-driven-notifications.md) | Event-driven notifications over RabbitMQ |
+| [0011](0011-kubernetes-deployment-with-kustomize.md) | Kubernetes deployment with Kustomize; config from the platform |

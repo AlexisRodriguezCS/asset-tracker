@@ -172,4 +172,7 @@ what is still out for a human to chase.
 3. Saga-style compensation when an offboarding sweep half-fails.
 4. Structured logging + correlation id + metrics/tracing.
 5. **Visual floor map** of desks; **mobile app** that scans a desk/asset QR → what's assigned.
-6. Cloud hosting: managed PostgreSQL, a broker, container registry, secrets store, public HTTPS.
+6. Cloud hosting: Kubernetes manifests exist (`deploy/k8s/`, Kustomize base +
+   local/cloud overlays) and validate offline — see [deployment.md](deployment.md).
+   Still to wire: infra-as-code for the cluster + managed PostgreSQL/broker/Key Vault,
+   External Secrets Operator, HPA/PDB, a live cluster.

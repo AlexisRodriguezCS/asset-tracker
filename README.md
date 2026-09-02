@@ -73,6 +73,7 @@ Full diagrams and the decision records are in [`docs/`](docs/).
 services/            10 Spring Boot services (Gradle sub-projects)
 web/                  Next.js 15 console (Assets / People / Desks / Types / Reports)
 infra/compose/        docker-compose + the Postgres/Flyway overlay
+deploy/k8s/           Kustomize base + local/cloud overlays (see docs/deployment.md)
 config-repo/          Spring Cloud Config native backend
 e2e/                  REST-Assured suite through the gateway
 docs/                 architecture + ADRs
@@ -140,5 +141,6 @@ all ten service images to `ghcr.io/<owner>/asset-tracker-<service>`.
 
 Per-service tenant enforcement from the forwarded `X-Client-Ids`; a persisted /
 KMS-backed token-signing key; saga compensation for a half-finished offboarding
-sweep; a visual floor-plan map of desks; a mobile app that scans a desk/asset QR;
-cloud hosting.
+sweep; a visual floor-plan map of desks; a mobile app that scans a desk/asset QR.
+Cloud hosting has Kubernetes manifests (`deploy/k8s/`) that validate offline but
+no live cluster or infra-as-code yet — see [docs/deployment.md](docs/deployment.md).

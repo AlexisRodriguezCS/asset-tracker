@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: asset-tracker
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: asset-tracker
+    includeSelectors: true
+
+resources:
+  - namespace.yaml
+  - config.yaml
+  - postgres.yaml
+  - rabbitmq.yaml
+  - discovery-server.yaml
+  - api-gateway.yaml
+  - auth-service.yaml
+  - client-service.yaml
+  - people-service.yaml
+  - location-service.yaml
+  - asset-service.yaml
+  - assignment-service.yaml
+  - notification-service.yaml
+  - ingress.yaml

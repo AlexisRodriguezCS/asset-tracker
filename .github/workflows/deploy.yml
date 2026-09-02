@@ -1,0 +1,74 @@
+# Manual deploy to a Kubernetes cluster.
+#
+# SKELETON - not wired to a live cluster. It documents the target flow:
+# OIDC federation to the cloud (no stored credentials), pull the freshly built
+# images by commit SHA, and `kubectl apply -k` the cloud overlay.
+#
+# Before first use:
+#   1. Create an Entra workload-identity / IAM role that trusts this repo's
+#      GitHub OIDC subject and can get AKS credentials (see docs/deployment.md).
+#   2. Add repo variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID,
+#      AKS_RESOURCE_GROUP, AKS_CLUSTER_NAME.
+#   3. Fill the REPLACE_WITH_* values in deploy/k8s/overlays/cloud (or template them here).
+name: deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Image tag to deploy (a commit SHA already pushed to GHCR by ci.yml)
+        required: true
+      environment:
+        description: Target environment
+        type: choice
+        options: [staging, production]
+        default: staging
+
+permissions:
+  contents: read
+  id-token: write   # OIDC federation - no cloud credentials are stored
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Azure login (OIDC federation)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get AKS credentials
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ vars.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ vars.AKS_CLUSTER_NAME }}
+
+      - name: Pin image tags
+        run: |
+          cd deploy/k8s/overlays/cloud
+          for s in discovery-server api-gateway auth-service client-service people-service \
+                   location-service asset-service assignment-service notification-service; do
+            kubectl kustomize . >/dev/null   # sanity render
+          done
+          # kubectl >=1.27 ships kustomize; set the SHA on every image
+          sed -i "s/newTag: main/newTag: ${{ github.event.inputs.image_tag }}/" kustomization.yaml
+
+      - name: Deploy
+        run: |
+          kubectl apply -k deploy/k8s/overlays/cloud
+          kubectl -n asset-tracker rollout status deployment/api-gateway --timeout=300s
+
+      - name: Smoke check
+        run: |
+          kubectl -n asset-tracker get pods
+          kubectl -n asset-tracker exec deploy/api-gateway -- \
+            curl -fsS http://localhost:8080/actuator/health

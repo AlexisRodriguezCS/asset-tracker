@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Local cluster (kind / minikube / Docker Desktop). Images are built from this
+# repo and side-loaded into the cluster, so never try to pull them:
+#
+#   docker compose -f infra/compose/docker-compose.yml build
+#   kind load docker-image assettracker/api-gateway:latest ...   (one per service)
+#   kubectl apply -k deploy/k8s/overlays/local
+#
+# Postgres and RabbitMQ run in-cluster (from the base). Add a hosts entry
+# "127.0.0.1 asset-tracker.local" once an ingress controller is installed.
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: Deployment
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent

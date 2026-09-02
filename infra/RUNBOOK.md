@@ -136,5 +136,7 @@ in `infra/compose/.env`.
 - Contract tests (Spring Cloud Contract / Pact), mutation testing (PITest), load tests (k6).
 - Observability: ELK / Prometheus + Grafana, distributed tracing.
 - The **desk map** and the **mobile QR app**.
-- Cloud: Terraform (VPC / managed Postgres / container platform), secrets store,
-  OIDC federation from GitHub Actions.
+- Cloud: Kubernetes manifests exist (`deploy/k8s/`, Kustomize base + local/cloud
+  overlays; see `docs/deployment.md`). Left to do: Terraform/Bicep for the cluster +
+  managed Postgres/broker/Key Vault, External Secrets Operator, HPA/PDB, a live
+  cluster. OIDC federation from GitHub Actions is stubbed in `.github/workflows/deploy.yml`.
