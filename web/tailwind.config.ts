@@ -34,7 +34,7 @@ export default {
       },
       boxShadow: {
         card: "0 1px 0 hsl(0 0% 100% / 0.04) inset, 0 1px 2px hsl(224 60% 3% / 0.3)",
-        lift: "0 1px 0 hsl(0 0% 100% / 0.06) inset, 0 16px 40px -16px hsl(243 75% 45% / 0.35)",
+        lift: "0 1px 0 hsl(0 0% 100% / 0.06) inset, 0 16px 40px -16px hsl(266 55% 38% / 0.35)",
         glow: "0 6px 20px -8px hsl(var(--primary) / 0.45)",
       },
       keyframes: {
