@@ -167,7 +167,7 @@ export default async function AssetsPage({
         </ChipRow>
         <ChipRow heading="Status">
           <Chip href={link({ ...keepType, ...keepCat })} active={!sp.status}>
-            Any
+            All
           </Chip>
           {STATUSES.map((s) => (
             <Chip
