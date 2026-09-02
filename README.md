@@ -17,11 +17,19 @@ publishes images.
 
 | Area | |
 |---|---|
-| **Assets** | one filterable list — by type, by status, by holder. Guarded status transitions. |
+| **Assets** | one filterable list — by type, status, holder, or free-text (tag / serial / model / holder). Each asset carries a condition, deploy + warranty dates, and a lifecycle status (`IN_STOCK · ASSIGNED · IN_REPAIR · BROKEN · PENDING_RECYCLE · RECYCLED · RETIRED · LOST`) with guarded transitions. Add / edit inline; **retire-and-replace** marks a unit gone and opens a pre-filled form for its replacement. |
+| **Asset types** | a per-client list the techs curate — add a type (rejected if the name is already taken), remove one (blocked while assets use it, or move them to another type first). |
 | **People** | employees of a client; `ACTIVE → OFFBOARDING → DEPARTED`. A desk is optional. |
-| **Desks / rooms / sites** | each carries a QR tag; "what's on this desk" is a query, not stored state. |
+| **Desks / rooms / sites** | each carries a QR tag and a building + floor; the console lays desks out as a building → floor map. "What's on this desk" is a query, not stored state. |
 | **Assignments** | check-out / check-in / transfer, and **offboard-all** for a departing employee. Append-only history — a return stamps `returnedAt`, it never deletes. |
+| **Reports** | live rollups per client: by type / status / condition / department, lifecycle events from the audit trail, break-and-loss by department, most-replaced tag slots, fleet value. |
+| **Audit trail** | every mutating call writes a `who / what / when` row in the same transaction as the change. |
 | **Tenancy** | every record belongs to a `clientId`; the JWT carries the set a user may act on. |
+
+**A tag identifies a slot, not a unit** ([ADR 0007](docs/decisions/0007-tags-identify-slots-not-units.md)):
+uniqueness is per `(client, tag, type)` and only among in-service statuses, so a
+laptop and its bundled charger + cable can share one tag, and a lost accessory is
+replaced on the same tag while the dead row stays for history.
 
 The failure paths that make the orchestration interesting: checking out an asset
 that is already assigned → **409**; one that is retired or lost → **422**;
@@ -57,7 +65,7 @@ Full diagrams and the decision records are in [`docs/`](docs/).
 
 ```
 services/            10 Spring Boot services (Gradle sub-projects)
-web/                  Next.js 15 console (Assets / People / Desks)
+web/                  Next.js 15 console (Assets / People / Desks / Types / Reports)
 infra/compose/        docker-compose + the Postgres/Flyway overlay
 config-repo/          Spring Cloud Config native backend
 e2e/                  REST-Assured suite through the gateway
@@ -83,7 +91,9 @@ cd web && cp .env.example .env.local && npm install && npm run dev   # localhost
 ```
 
 Seeded login: `tech@acme.example` / `Passw0rd!` (also `hr@…`, `admin@…`).
-Seed data: 3 clients, ~59 assets for Acme (10 laptops), 4 people, 12 desks.
+Seed data: 3 clients (Acme / Globex / Initech), each with its own type list,
+people, desks across two buildings and several floors, person + desk kits, and a
+spread of statuses — ~145 assets in total.
 
 Persist data with the Postgres overlay:
 
@@ -119,6 +129,7 @@ all ten service images to `ghcr.io/<owner>/asset-tracker-<service>`.
 
 ## Not done yet
 
-Visual floor map of desks; a mobile app that scans a desk/asset QR; RS256 + JWKS;
+Per-service tenant enforcement from the forwarded `X-Client-Ids`; a visual
+floor-plan map of desks; a mobile app that scans a desk/asset QR; RS256 + JWKS;
 Resilience4j around the orchestrator's calls; event-driven notifications;
 cloud hosting.

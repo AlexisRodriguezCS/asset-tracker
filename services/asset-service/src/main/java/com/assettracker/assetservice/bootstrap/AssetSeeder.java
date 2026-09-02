@@ -123,7 +123,7 @@ public class AssetSeeder implements CommandLineRunner {
           SEED_ACTOR,
           "ASSET_ASSIGNED",
           a.getId(),
-          "assigned " + describe(a) + " to " + r.holderType() + " " + r.holderId(),
+          "assigned " + a.describe() + " to " + r.holderType() + " " + r.holderId(),
           null);
       return;
     }
@@ -135,7 +135,7 @@ public class AssetSeeder implements CommandLineRunner {
           SEED_ACTOR,
           "ASSET_STATUS_" + r.status().name(),
           a.getId(),
-          "changed " + describe(a) + " status IN_STOCK -> " + r.status(),
+          "changed " + a.describe() + " status IN_STOCK -> " + r.status(),
           null);
     }
   }
@@ -279,15 +279,6 @@ public class AssetSeeder implements CommandLineRunner {
 
   private static String n3(int n) {
     return String.format("%03d", n);
-  }
-
-  private static String describe(Asset a) {
-    String makeModel =
-        ((a.getMake() == null ? "" : a.getMake())
-                + " "
-                + (a.getModel() == null ? "" : a.getModel()))
-            .trim();
-    return (makeModel.isBlank() ? a.getType() : makeModel) + " (" + a.getAssetTag() + ")";
   }
 
   private record Gear(String make, String model, long costCents) {}

@@ -57,12 +57,22 @@ export default async function AssetDetailPage({
     : [];
   const onTag = sameTag.filter((x) => x.id !== asset.id);
 
-  const personName = new Map(people.map((p) => [p.id, p.fullName]));
-  const deskName = new Map(desks.map((d) => [d.id, d.label]));
+  const personById = new Map(people.map((p) => [p.id, p]));
+  const deskById = new Map(desks.map((d) => [d.id, d]));
+  // detail views have room, so qualify the holder: person -> email, desk -> building/floor
   const holderOf = (t: string, id: number | null) => {
     if (t === "STOCKROOM" || id == null) return "Stockroom";
-    if (t === "PERSON") return personName.get(id) ?? `Person #${id}`;
-    return deskName.get(id) ?? `Desk #${id}`;
+    if (t === "PERSON") {
+      const p = personById.get(id);
+      if (!p) return `Person #${id}`;
+      return p.email ? `${p.fullName} · ${p.email}` : p.fullName;
+    }
+    const d = deskById.get(id);
+    if (!d) return `Desk #${id}`;
+    const place = [d.building, d.floor && `floor ${d.floor}`]
+      .filter(Boolean)
+      .join(", ");
+    return place ? `${d.label} · ${place}` : d.label;
   };
 
   return (

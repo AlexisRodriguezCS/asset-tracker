@@ -50,7 +50,7 @@ public class AssetService {
         actor,
         "ASSET_CREATED",
         saved.getId(),
-        "added " + describe(saved),
+        "added " + saved.describe(),
         null);
     return saved;
   }
@@ -100,7 +100,7 @@ public class AssetService {
         actor,
         "ASSET_UPDATED",
         asset.getId(),
-        "edited " + describe(asset),
+        "edited " + asset.describe(),
         "{\"before\":\""
             + before
             + "\",\"after\":\"make="
@@ -121,7 +121,7 @@ public class AssetService {
         actor,
         "ASSET_ASSIGNED",
         asset.getId(),
-        "assigned " + describe(asset) + " to " + request.holderType() + " " + request.holderId(),
+        "assigned " + asset.describe() + " to " + request.holderType() + " " + request.holderId(),
         null);
     return asset;
   }
@@ -137,7 +137,7 @@ public class AssetService {
         actor,
         "ASSET_RETURNED",
         asset.getId(),
-        "returned " + describe(asset) + " to stock" + (from == null ? "" : " from holder " + from),
+        "returned " + asset.describe() + " to stock" + (from == null ? "" : " from holder " + from),
         null);
     return asset;
   }
@@ -152,7 +152,7 @@ public class AssetService {
         actor,
         "ASSET_STATUS_" + status.name(),
         asset.getId(),
-        "changed " + describe(asset) + " status " + before + " -> " + status,
+        "changed " + asset.describe() + " status " + before + " -> " + status,
         null);
     return asset;
   }
@@ -161,16 +161,6 @@ public class AssetService {
     if (value != null) {
       setter.accept(value);
     }
-  }
-
-  private static String describe(Asset a) {
-    String makeModel =
-        String.join(
-            " ",
-            java.util.stream.Stream.of(a.getMake(), a.getModel())
-                .filter(s -> s != null && !s.isBlank())
-                .toList());
-    return (makeModel.isBlank() ? a.getType() : makeModel) + " (" + a.getAssetTag() + ")";
   }
 
   private static AssetNotFoundException notFound(String field, String value) {

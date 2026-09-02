@@ -131,6 +131,12 @@ public class Asset {
         || s == AssetStatus.PENDING_RECYCLE;
   }
 
+  /** "Make Model (TAG)" for humans, falling back to the type name when make / model are blank. */
+  public String describe() {
+    String makeModel = ((make == null ? "" : make) + " " + (model == null ? "" : model)).trim();
+    return (makeModel.isBlank() ? type : makeModel) + " (" + assetTag + ")";
+  }
+
   public Long getId() {
     return id;
   }
