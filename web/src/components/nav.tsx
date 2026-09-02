@@ -71,7 +71,7 @@ export function Nav({
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search tag, serial, model…"
+            placeholder="Search tag, serial, model, holder…"
             className="h-9 w-full rounded-md border border-border bg-background/60 pl-8 pr-3 text-sm outline-none focus-visible:border-primary"
           />
         </form>

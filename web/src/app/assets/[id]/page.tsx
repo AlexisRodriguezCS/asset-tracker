@@ -7,11 +7,11 @@ import {
   assetAudit,
   listAssets,
   listCategories,
+  listLocations,
   listPeople,
   GatewayError,
 } from "@/lib/api";
 import { getSession } from "@/lib/session";
-import { currentClientId } from "@/lib/client";
 import { AssetStatusBadge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { AssetActions } from "@/components/asset-actions";
@@ -41,22 +41,29 @@ export default async function AssetDetailPage({
     throw e;
   }
 
-  const [session, clientId, history, activity, sameTag] = await Promise.all([
-    getSession(),
-    currentClientId(),
-    assignmentsForAsset(asset.id).catch(() => []),
-    assetAudit(asset.clientId, asset.id).catch(() => []),
-    listAssets({ clientId: asset.clientId, tag: asset.assetTag }).catch(
-      () => [],
-    ),
-  ]);
-  const [people, categories] = session
-    ? await Promise.all([
-        listPeople(clientId).catch(() => []),
-        listCategories(asset.clientId).catch(() => []),
-      ])
-    : [[], []];
+  const [session, history, activity, sameTag, people, desks] =
+    await Promise.all([
+      getSession(),
+      assignmentsForAsset(asset.id).catch(() => []),
+      assetAudit(asset.clientId, asset.id).catch(() => []),
+      listAssets({ clientId: asset.clientId, tag: asset.assetTag }).catch(
+        () => [],
+      ),
+      listPeople(asset.clientId).catch(() => []),
+      listLocations(asset.clientId, "DESK").catch(() => []),
+    ]);
+  const categories = session
+    ? await listCategories(asset.clientId).catch(() => [])
+    : [];
   const onTag = sameTag.filter((x) => x.id !== asset.id);
+
+  const personName = new Map(people.map((p) => [p.id, p.fullName]));
+  const deskName = new Map(desks.map((d) => [d.id, d.label]));
+  const holderOf = (t: string, id: number | null) => {
+    if (t === "STOCKROOM" || id == null) return "Stockroom";
+    if (t === "PERSON") return personName.get(id) ?? `Person #${id}`;
+    return deskName.get(id) ?? `Desk #${id}`;
+  };
 
   return (
     <div className="animate-fade-in-up">
@@ -90,14 +97,7 @@ export default async function AssetDetailPage({
               v={asset.condition ? label(asset.condition) : "—"}
             />
             <Field k="Location" v={disposition(asset.status)} />
-            <Field
-              k="Holder"
-              v={
-                asset.holderType === "STOCKROOM"
-                  ? "Stockroom"
-                  : `${label(asset.holderType)} #${asset.holderId}`
-              }
-            />
+            <Field k="Holder" v={holderOf(asset.holderType, asset.holderId)} />
             <Field k="Purchased" v={dateOnly(asset.purchaseDate)} />
             <Field k="Deployed" v={dateOnly(asset.deployedOn)} />
             <Field
@@ -142,7 +142,7 @@ export default async function AssetDetailPage({
               {history.map((h) => (
                 <li key={h.id} className="border-l-2 border-border pl-3">
                   <p className="font-medium">
-                    {label(h.holderType)} #{h.holderId}
+                    {holderOf(h.holderType, h.holderId)}
                     {h.open && (
                       <span className="ml-2 text-xs text-[hsl(var(--success))]">
                         current

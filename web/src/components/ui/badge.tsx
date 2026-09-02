@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { label } from "@/lib/format";
 
 type Tone = "neutral" | "success" | "danger" | "info" | "warn";
 
@@ -56,18 +57,16 @@ const CONDITION_TONE: Record<string, Tone> = {
 };
 
 export function AssetStatusBadge({ status }: { status: string }) {
-  return (
-    <Badge tone={ASSET_TONE[status] ?? "neutral"}>
-      {status.replace(/_/g, " ")}
-    </Badge>
-  );
+  return <Badge tone={ASSET_TONE[status] ?? "neutral"}>{label(status)}</Badge>;
 }
 export function PersonStatusBadge({ status }: { status: string }) {
-  return <Badge tone={PERSON_TONE[status] ?? "neutral"}>{status}</Badge>;
+  return <Badge tone={PERSON_TONE[status] ?? "neutral"}>{label(status)}</Badge>;
 }
 export function ConditionBadge({ condition }: { condition: string | null }) {
   if (!condition) return <span className="text-muted-foreground">—</span>;
   return (
-    <Badge tone={CONDITION_TONE[condition] ?? "neutral"}>{condition}</Badge>
+    <Badge tone={CONDITION_TONE[condition] ?? "neutral"}>
+      {label(condition)}
+    </Badge>
   );
 }

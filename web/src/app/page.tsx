@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { currentClientId } from "@/lib/client";
-import { listAssets, listCategories } from "@/lib/api";
+import {
+  listAssets,
+  listCategories,
+  listLocations,
+  listPeople,
+} from "@/lib/api";
 import { getSession } from "@/lib/session";
 import { AssetStatusBadge, ConditionBadge } from "@/components/ui/badge";
 import { StatStrip } from "@/components/ui/stat";
@@ -50,7 +55,7 @@ export default async function AssetsPage({
   ]);
 
   // the unfiltered set drives the stat strip; the table uses the active filter
-  const [all, filtered, categories] = await Promise.all([
+  const [all, filtered, categories, people, desks] = await Promise.all([
     listAssets({ clientId }),
     listAssets({
       clientId,
@@ -59,12 +64,30 @@ export default async function AssetsPage({
       category: sp.category,
     }),
     listCategories(clientId).catch(() => []),
+    listPeople(clientId).catch(() => []),
+    listLocations(clientId, "DESK").catch(() => []),
   ]);
+
+  const personName = new Map(people.map((p) => [p.id, p.fullName]));
+  const deskName = new Map(desks.map((d) => [d.id, d.label]));
+  const holderLabel = (a: (typeof all)[number]) => {
+    if (a.holderType === "STOCKROOM" || a.holderId == null) return "Stockroom";
+    if (a.holderType === "PERSON")
+      return personName.get(a.holderId) ?? `Person #${a.holderId}`;
+    return deskName.get(a.holderId) ?? `Location #${a.holderId}`;
+  };
 
   const term = (sp.q ?? "").trim().toLowerCase();
   const assets = term
     ? filtered.filter((a) =>
-        [a.assetTag, a.serialNumber, a.make, a.model, a.category]
+        [
+          a.assetTag,
+          a.serialNumber,
+          a.make,
+          a.model,
+          a.category,
+          holderLabel(a),
+        ]
           .filter(Boolean)
           .some((v) => (v as string).toLowerCase().includes(term)),
       )
@@ -245,9 +268,7 @@ export default async function AssetsPage({
                 {disposition(a.status)}
               </td>
               <td className="px-4 py-2 text-muted-foreground">
-                {a.holderType === "STOCKROOM"
-                  ? "Stockroom"
-                  : `${label(a.holderType)} #${a.holderId}`}
+                {holderLabel(a)}
               </td>
               <td className="px-4 py-2 text-muted-foreground">
                 {a.warrantyEndsOn ? (
