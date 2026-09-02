@@ -222,8 +222,24 @@ export default async function AssetsPage({
               <td className="px-4 py-2 text-muted-foreground">
                 {disposition(a.status)}
               </td>
-              <td className="px-4 py-2 text-muted-foreground">
-                {holderLabel(a)}
+              <td className="px-4 py-2">
+                {a.holderType === "PERSON" && a.holderId != null ? (
+                  <Link
+                    href={`/people/${a.holderId}`}
+                    className="text-primary hover:underline"
+                  >
+                    {holderLabel(a)}
+                  </Link>
+                ) : a.holderType === "LOCATION" && a.holderId != null ? (
+                  <Link
+                    href={`/desks#desk-${a.holderId}`}
+                    className="text-primary hover:underline"
+                  >
+                    {holderLabel(a)}
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground">{holderLabel(a)}</span>
+                )}
               </td>
               <td className="px-4 py-2 text-muted-foreground">
                 {a.warrantyEndsOn ? (

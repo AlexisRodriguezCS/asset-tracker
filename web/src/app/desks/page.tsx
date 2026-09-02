@@ -154,7 +154,10 @@ export default async function DesksPage({
 
 function DeskCard({ desk, items }: { desk: Location; items: Asset[] }) {
   return (
-    <div className="rounded-lg border border-border bg-card/70 p-4 shadow-card backdrop-blur transition-colors hover:border-primary/30">
+    <div
+      id={`desk-${desk.id}`}
+      className="scroll-mt-24 rounded-lg border border-border bg-card/70 p-4 shadow-card backdrop-blur transition-colors hover:border-primary/30"
+    >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
           <span
