@@ -1,5 +1,6 @@
 package com.assettracker.authservice.exception;
 
+import com.assettracker.authservice.service.MicrosoftAuthNotConfiguredException;
 import io.jsonwebtoken.JwtException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,11 @@ public class GlobalExceptionHandler {
   @ExceptionHandler({BadCredentialsException.class, JwtException.class})
   public ResponseEntity<ApiError> handleUnauthorized(RuntimeException ex) {
     return build(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage());
+  }
+
+  @ExceptionHandler(MicrosoftAuthNotConfiguredException.class)
+  public ResponseEntity<ApiError> handleNotConfigured(MicrosoftAuthNotConfiguredException ex) {
+    return build(HttpStatus.NOT_IMPLEMENTED, "MICROSOFT_SIGNIN_NOT_CONFIGURED", ex.getMessage());
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)

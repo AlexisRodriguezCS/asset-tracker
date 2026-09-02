@@ -105,6 +105,9 @@ services:
       <<: *common-env
       JWT_ISSUER: ${JWT_ISSUER:-asset-tracker-auth}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-3600000}
+      ENTRA_ISSUER_URI: ${ENTRA_ISSUER_URI:-}
+      ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
+      ENTRA_DEFAULT_CLIENT_IDS: ${ENTRA_DEFAULT_CLIENT_IDS:-1,2,3}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
       <<: *healthcheck

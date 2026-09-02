@@ -106,13 +106,33 @@ http://localhost:8083/swagger-ui.html.
   `X-Client-Ids` downstream, overriding anything the client sent.
 - `gitleaks` runs in CI.
 
-## "Sign in with Microsoft" (optional)
+## "Sign in with Microsoft 365" (optional)
 
-The gateway accepts a token from **either** issuer: the local `auth-service`
-(always) and Microsoft Entra ID (only when `ENTRA_ISSUER_URI` is set). Leave it
-blank and the stack runs with zero Azure dependency. To enable it, register an
-app in Entra ID, expose a scope, and set `ENTRA_ISSUER_URI` + `ENTRA_CLIENT_ID`
-in `infra/compose/.env`.
+The console has a landing page at `/welcome` with **Sign in with Microsoft 365**
+and **Sign in with email**. The Microsoft button is hidden (and the OIDC routes
+bounce back) until an Entra app is configured — the stack runs with zero Azure
+dependency by default.
+
+**Flow.** The browser never touches tokens: `/api/auth/microsoft/start` (Next.js
+route) begins an OIDC Authorization Code + PKCE flow; `/api/auth/microsoft/callback`
+swaps the code for an id-token (confidential client), posts it to auth-service
+`POST /auth/microsoft`, which validates it against Entra's JWKS, provisions a
+first-seen user (role `TECH`, `ENTRA_DEFAULT_CLIENT_IDS`), and returns a normal
+local RS256 session token. The httpOnly `att_session` cookie holds that local
+token, so nothing downstream changes. The gateway's multi-issuer resolver still
+accepts raw Entra tokens for API clients.
+
+**To enable** (needs your tenant, ~10 min):
+
+1. Azure Portal → App registrations → New registration "asset-tracker console".
+2. Authentication → add a **Web** redirect URI `http://localhost:3000/api/auth/microsoft/callback`.
+3. Certificates & secrets → new client secret.
+4. `web/.env.local`: `AZURE_AD_TENANT_ID`, `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `APP_URL`.
+5. `infra/compose/.env`: `ENTRA_ISSUER_URI=https://login.microsoftonline.com/<tenant-id>/v2.0`, `ENTRA_CLIENT_ID=<client-id>` (same as `AZURE_AD_CLIENT_ID`).
+6. Restart auth-service and the web dev server.
+
+The `ENTRA_DEFAULT_CLIENT_IDS` grant is a stand-in for a real group → client
+mapping — swap it for one when the tenant's groups are known.
 
 ## Troubleshooting
 

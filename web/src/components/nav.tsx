@@ -127,7 +127,7 @@ export function Nav({
                 </Button>
               </>
             ) : (
-              <Link href="/login">
+              <Link href="/welcome">
                 <Button size="sm">Sign in</Button>
               </Link>
             )}

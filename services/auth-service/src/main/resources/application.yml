@@ -30,6 +30,12 @@ security:
     # served at /.well-known/jwks.json for the gateway to fetch. No shared secret.
     expiration-ms: ${JWT_EXPIRATION_MS:3600000}
     issuer: ${JWT_ISSUER:asset-tracker-auth}
+  # "Sign in with Microsoft 365". Blank issuer-uri / client-id = feature off
+  # (POST /auth/microsoft answers 501). Set both after registering an Entra app.
+  entra:
+    issuer-uri: ${ENTRA_ISSUER_URI:}
+    client-id: ${ENTRA_CLIENT_ID:}
+    default-client-ids: ${ENTRA_DEFAULT_CLIENT_IDS:1,2,3}
 
 management:
   endpoints:
