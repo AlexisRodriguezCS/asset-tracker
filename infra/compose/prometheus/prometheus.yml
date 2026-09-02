@@ -7,8 +7,6 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - discovery-server:8761
-          - config-server:8888
           - api-gateway:8080
           - auth-service:8081
           - assignment-service:8082
@@ -17,6 +15,7 @@ scrape_configs:
           - client-service:8085
           - notification-service:8086
           - people-service:8087
+          - config-server:8888
     relabel_configs:
       - source_labels: [__address__]
         regex: '([^:]+):.*'
