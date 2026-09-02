@@ -39,25 +39,31 @@ returning one that was never checked out → **409**.
 
 ```
                          ┌──────────────┐
-  browser ──HTTPS──▶      │  api-gateway │  routing · CORS · JWT · forwards
+  browser ──HTTPS──▶      │  api-gateway │  routing · CORS · RS256 JWT (JWKS) · forwards
                           │    :8080     │  X-User-Id / X-User-Role / X-Client-Ids
                           └──────┬───────┘
         ┌───────────┬───────────┼───────────┬────────────┬─────────────┐
         ▼           ▼           ▼           ▼            ▼             ▼
    auth-service  client-    people-    location-    asset-       assignment-
      :8081      service     service     service     service        service
-                 :8085      :8087       :8084       :8083          :8082
-                                                       ▲   ┌──────────┘
-                                                       └───┤ calls asset-service
-                                                           │ (assign / return / search)
-                                                     notification-service :8086
+   signs RS256   :8085      :8087       :8084       :8083          :8082
+   /jwks.json                                          ▲   ┌──────────┘
+                                                       └───┤ assign / return / search
+                                                           │ (Resilience4j: retry + breaker)
+                              RabbitMQ ◀── publishes custody events ──┘
+                                 │
+                                 ▼
+                       notification-service :8086  (consumes the events)
+
    discovery-server :8761 (Eureka)   ·   config-server :8888 (Spring Cloud Config, native)
 ```
 
 `assignment-service` is the orchestrator. `POST /assignments` is **not**
 `@Transactional` — it spans HTTP calls — so persistence is split into the short
 independent transactions of `AssignmentTransactions`, and a failed downstream
-call still leaves a correct history row.
+call still leaves a correct history row. Its call to `asset-service` is wrapped in
+a Resilience4j retry + circuit breaker; custody events go to `notification-service`
+over RabbitMQ, not a synchronous call.
 
 Full diagrams and the decision records are in [`docs/`](docs/).
 
@@ -79,10 +85,13 @@ One `gradlew`, one `.github/workflows/ci.yml`.
 
 ```bash
 cd infra/compose
-printf 'JWT_SECRET=%s\nJWT_ISSUER=asset-tracker-auth\n' "$(openssl rand -hex 32)" > .env
-docker compose -f docker-compose.yml up -d --build      # 10 containers, H2 in-memory
+cp .env.example .env                                    # defaults are fine for local
+docker compose -f docker-compose.yml up -d --build      # 11 containers (+ RabbitMQ), H2 in-memory
 docker compose ps                                        # wait for healthy
 ```
+
+No `JWT_SECRET` — `auth-service` generates an RS256 key pair at startup and the
+gateway validates tokens against its `/.well-known/jwks.json`.
 
 Then the console:
 
@@ -129,7 +138,7 @@ all ten service images to `ghcr.io/<owner>/asset-tracker-<service>`.
 
 ## Not done yet
 
-Per-service tenant enforcement from the forwarded `X-Client-Ids`; a visual
-floor-plan map of desks; a mobile app that scans a desk/asset QR; RS256 + JWKS;
-Resilience4j around the orchestrator's calls; event-driven notifications;
+Per-service tenant enforcement from the forwarded `X-Client-Ids`; a persisted /
+KMS-backed token-signing key; saga compensation for a half-finished offboarding
+sweep; a visual floor-plan map of desks; a mobile app that scans a desk/asset QR;
 cloud hosting.

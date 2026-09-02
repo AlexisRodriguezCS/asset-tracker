@@ -1,6 +1,7 @@
 package com.assettracker.assignmentservice.web;
 
 import com.assettracker.assignmentservice.service.AssetNotMovableException;
+import com.assettracker.assignmentservice.service.AssetServiceUnavailableException;
 import com.assettracker.assignmentservice.service.AssetUnavailableException;
 import com.assettracker.assignmentservice.service.AssignmentNotFoundException;
 import com.assettracker.assignmentservice.service.NoOpenAssignmentException;
@@ -27,6 +28,11 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(AssetNotMovableException.class)
   public ResponseEntity<ApiError> handleUnprocessable(AssetNotMovableException ex) {
     return build(HttpStatus.UNPROCESSABLE_ENTITY, "ASSET_NOT_MOVABLE", ex.getMessage());
+  }
+
+  @ExceptionHandler(AssetServiceUnavailableException.class)
+  public ResponseEntity<ApiError> handleUnavailable(AssetServiceUnavailableException ex) {
+    return build(HttpStatus.SERVICE_UNAVAILABLE, "ASSET_SERVICE_UNAVAILABLE", ex.getMessage());
   }
 
   @ExceptionHandler(IllegalArgumentException.class)

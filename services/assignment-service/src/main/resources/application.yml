@@ -19,19 +19,53 @@ spring:
       path: /h2-console
       settings:
         web-allow-others: true   # dev only - lets the browser reach the in-container console
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
 
 server:
   port: ${SERVER_PORT:8082}
 
 downstream:
   asset-service: ${ASSET_SERVICE_URL:lb://asset-service}
-  notification-service: ${NOTIFICATION_SERVICE_URL:lb://notification-service}
+
+# Custody changes are published here; notification-service consumes them.
+messaging:
+  exchange: ${MESSAGING_EXCHANGE:asset-tracker.events}
+
+# Retry transient failures a few times; if asset-service keeps failing, open the
+# circuit and fail fast. 409 / 422 are business outcomes, not failures - ignored.
+resilience4j:
+  retry:
+    instances:
+      asset-service:
+        max-attempts: 3
+        wait-duration: 300ms
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignore-exceptions:
+          - com.assettracker.assignmentservice.service.AssetUnavailableException
+          - com.assettracker.assignmentservice.service.AssetNotMovableException
+  circuitbreaker:
+    instances:
+      asset-service:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        ignore-exceptions:
+          - com.assettracker.assignmentservice.service.AssetUnavailableException
+          - com.assettracker.assignmentservice.service.AssetNotMovableException
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,circuitbreakers
+  health:
+    circuitbreakers:
+      enabled: true
 
 eureka:
   client:

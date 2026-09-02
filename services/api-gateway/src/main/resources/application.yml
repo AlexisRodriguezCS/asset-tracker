@@ -39,11 +39,11 @@ spring:
               filters: [ StripPrefix=1 ]
 
 security:
-  # Local tokens issued by auth-service (HS256, shared secret).
+  # Local tokens issued by auth-service (RS256), validated against its JWK set.
   jwt:
     local:
       issuer: ${JWT_ISSUER:asset-tracker-auth}
-      secret: ${JWT_SECRET:dev-only-not-a-real-secret-change-me-0000000000000000}
+      jwk-set-uri: ${JWT_JWKS_URI:http://auth-service:8081/.well-known/jwks.json}
   # When ENTRA_ISSUER_URI is set, "Sign in with Microsoft 365" tokens are also
   # accepted. Leave blank to run with no Azure dependency.
   entra:

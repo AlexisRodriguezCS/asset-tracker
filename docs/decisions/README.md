@@ -12,3 +12,6 @@ Status / Context / Decision / Consequences.
 | [0005](0005-public-reads-authenticated-writes.md) | Public reads, authenticated writes |
 | [0006](0006-flyway-owns-the-schema.md) | Flyway owns the schema under the `prod` profile |
 | [0007](0007-tags-identify-slots-not-units.md) | An asset tag identifies a slot, not a physical unit |
+| [0008](0008-rs256-jwt-with-jwks.md) | RS256 JWT validated against a JWKS endpoint |
+| [0009](0009-resilience4j-on-the-orchestrator.md) | Resilience4j retry + circuit breaker on the asset-service call |
+| [0010](0010-event-driven-notifications.md) | Event-driven notifications over RabbitMQ |

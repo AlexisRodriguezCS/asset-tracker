@@ -1,6 +1,8 @@
 # 0002 — HS256 JWT with `role` + `clientIds` claims for v1
 
-**Status:** accepted · RS256 + JWKS is the planned upgrade
+**Status:** superseded by [0008](0008-rs256-jwt-with-jwks.md) — the `role` +
+`clientIds` claim design stands; the HS256 shared secret was replaced with RS256
++ JWKS
 
 ## Context
 

@@ -7,12 +7,13 @@ import com.assettracker.authservice.entity.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class JwtServiceTest {
 
-  private static final String SECRET = "test-only-secret-at-least-32-bytes-long-000000";
-  private final JwtService jwt = new JwtService(SECRET, 3_600_000L, "asset-tracker-auth");
+  private static final long HOUR = 3_600_000L;
+  private final JwtService jwt = new JwtService(HOUR, "asset-tracker-auth");
 
   @Test
   void tokenCarriesSubjectRoleAndClientIdsAndRoundTrips() {
@@ -26,17 +27,15 @@ class JwtServiceTest {
   }
 
   @Test
-  void aTokenFromADifferentSecretIsRejected() {
-    JwtService other =
-        new JwtService(
-            "another-secret-also-at-least-32-bytes-long-0", 3_600_000L, "asset-tracker-auth");
+  void aTokenSignedByADifferentKeyPairIsRejected() {
+    JwtService other = new JwtService(HOUR, "asset-tracker-auth");
     String foreign = other.generateToken("x@y.z", Role.TECH, List.of(1L));
     assertThatThrownBy(() -> jwt.parse(foreign)).isInstanceOf(JwtException.class);
   }
 
   @Test
   void anExpiredTokenIsRejected() {
-    JwtService instant = new JwtService(SECRET, 1L, "asset-tracker-auth");
+    JwtService instant = new JwtService(1L, "asset-tracker-auth");
     String token = instant.generateToken("x@y.z", Role.HR, List.of(1L));
     try {
       Thread.sleep(5);
@@ -44,5 +43,18 @@ class JwtServiceTest {
       Thread.currentThread().interrupt();
     }
     assertThatThrownBy(() -> jwt.parse(token)).isInstanceOf(JwtException.class);
+  }
+
+  @Test
+  void jwkSetPublishesAnRsaSigningKey() {
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> keys = (List<Map<String, Object>>) jwt.jwkSet().get("keys");
+
+    assertThat(keys).hasSize(1);
+    Map<String, Object> jwk = keys.get(0);
+    assertThat(jwk).containsEntry("kty", "RSA").containsEntry("alg", "RS256");
+    assertThat((String) jwk.get("kid")).isNotBlank();
+    assertThat((String) jwk.get("n")).isNotBlank();
+    assertThat(jwk).containsEntry("e", "AQAB");
   }
 }

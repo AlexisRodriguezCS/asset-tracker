@@ -24,12 +24,23 @@ every restart**. The PostgreSQL overlay makes it persist.
 
 ```bash
 cd infra/compose
-printf 'JWT_SECRET=%s\nJWT_ISSUER=asset-tracker-auth\n' "$(openssl rand -hex 32)" > .env
+cp .env.example .env                  # defaults work for local; no JWT secret needed
 docker compose -f docker-compose.yml up -d --build
-docker compose ps                     # wait for all healthy
+docker compose ps                     # wait for all healthy (includes rabbitmq)
 pwsh ../scripts/demo-flow.ps1          # or: bash ../scripts/demo-flow.sh
 docker compose down
 ```
+
+**Auth is RS256.** `auth-service` generates an RSA key pair at startup and serves
+the public half at `http://localhost:8081/.well-known/jwks.json`; the gateway
+reads it from `JWT_JWKS_URI`. Restarting `auth-service` rotates the key, so tokens
+issued before the restart stop validating.
+
+**Messaging.** `assignment-service` publishes custody events to the RabbitMQ
+`asset-tracker.events` exchange; `notification-service` consumes them off a
+durable queue. Management UI at `http://localhost:15672` (guest / guest). A
+non-Docker run needs a local RabbitMQ or it just logs connection retries (the
+publish is fire-and-forget, so the flow still works).
 
 First build pulls base images + all Gradle dependencies; expect several minutes.
 Build context is the **repo root** (monorepo) — each service builds its own
@@ -117,11 +128,10 @@ in `infra/compose/.env`.
 
 ## Deferred — the next lessons
 
-- Per-service tenant enforcement from the forwarded `X-Client-Ids`.
-- RS256 + JWKS; verify the principal inside the mesh instead of trusting headers.
-- Resilience4j (retry, timeout, circuit breaker) around the orchestrator's calls;
-  compensation when an offboarding sweep half-fails.
-- Event-driven notifications (RabbitMQ / Kafka) replacing the synchronous call.
+- Per-service tenant enforcement from the forwarded `X-Client-Ids`; verify a
+  signed principal inside the mesh instead of trusting the gateway's headers.
+- Persist / KMS-back the token-signing key so tokens survive an `auth-service` restart.
+- Saga-style compensation when an offboarding sweep half-fails.
 - Connection-pool tuning; one Postgres role per service; a managed instance in cloud.
 - Contract tests (Spring Cloud Contract / Pact), mutation testing (PITest), load tests (k6).
 - Observability: ELK / Prometheus + Grafana, distributed tracing.

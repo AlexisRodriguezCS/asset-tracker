@@ -13,9 +13,9 @@ import static org.mockito.Mockito.when;
 
 import com.assettracker.assignmentservice.audit.AuditService;
 import com.assettracker.assignmentservice.client.AssetClient;
-import com.assettracker.assignmentservice.client.NotificationClient;
 import com.assettracker.assignmentservice.entity.Assignment;
 import com.assettracker.assignmentservice.entity.HolderType;
+import com.assettracker.assignmentservice.messaging.NotificationPublisher;
 import com.assettracker.assignmentservice.web.dto.CheckOutRequest;
 import com.assettracker.assignmentservice.web.dto.OffboardingResult;
 import java.util.List;
@@ -29,7 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AssignmentServiceTest {
 
   @Mock AssetClient assetClient;
-  @Mock NotificationClient notificationClient;
+  @Mock NotificationPublisher publisher;
   @Mock AssignmentTransactions store;
   @Mock AuditService audit;
   @InjectMocks AssignmentService service;
@@ -48,7 +48,7 @@ class AssignmentServiceTest {
 
     assertThat(result).isSameAs(saved);
     verify(assetClient).assign(eq(40L), eq("PERSON"), eq(7L), anyString());
-    verify(notificationClient).send(eq(1L), eq("ASSET_CHECKED_OUT"), anyString());
+    verify(publisher).publish(eq(1L), eq("ASSET_CHECKED_OUT"), anyString());
   }
 
   @Test
@@ -61,7 +61,7 @@ class AssignmentServiceTest {
         .isInstanceOf(AssetUnavailableException.class);
 
     verifyNoInteractions(store);
-    verifyNoInteractions(notificationClient);
+    verifyNoInteractions(publisher);
   }
 
   @Test
@@ -73,7 +73,7 @@ class AssignmentServiceTest {
 
     verify(assetClient).returnToStock(eq(40L), anyString());
     verify(store).close(40L, "tech@acme.example");
-    verify(notificationClient).send(eq(1L), eq("ASSET_RETURNED"), anyString());
+    verify(publisher).publish(eq(1L), eq("ASSET_RETURNED"), anyString());
   }
 
   @Test
@@ -92,7 +92,7 @@ class AssignmentServiceTest {
     verify(store, never()).close(eq(41L), anyString());
     verify(store).close(40L, "hr@acme.example");
     verify(store).close(42L, "hr@acme.example");
-    verify(notificationClient).send(eq(1L), eq("OFFBOARDING_COLLECTED"), anyString());
+    verify(publisher).publish(eq(1L), eq("OFFBOARDING_COLLECTED"), anyString());
   }
 
   @Test

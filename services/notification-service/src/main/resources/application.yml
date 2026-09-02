@@ -2,9 +2,19 @@
 spring:
   application:
     name: notification-service
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    listener:
+      simple:
+        missing-queues-fatal: false   # keep starting even if the broker is down
 
 server:
   port: ${SERVER_PORT:8086}
+
+# Consumes custody-change events published by assignment-service.
+messaging:
+  exchange: ${MESSAGING_EXCHANGE:asset-tracker.events}
+  queue: ${MESSAGING_QUEUE:notification.events}
 
 management:
   endpoints:

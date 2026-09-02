@@ -26,9 +26,8 @@ server:
 
 security:
   jwt:
-    # Dev-only fallback. Real value is injected from the environment (see infra/compose/.env).
-    # HS256 needs >= 32 bytes.
-    secret: ${JWT_SECRET:dev-only-not-a-real-secret-change-me-0000000000000000}
+    # RS256. The signing key pair is generated at startup; the public half is
+    # served at /.well-known/jwks.json for the gateway to fetch. No shared secret.
     expiration-ms: ${JWT_EXPIRATION_MS:3600000}
     issuer: ${JWT_ISSUER:asset-tracker-auth}
 

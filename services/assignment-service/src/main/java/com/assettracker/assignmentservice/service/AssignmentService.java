@@ -2,8 +2,8 @@ package com.assettracker.assignmentservice.service;
 
 import com.assettracker.assignmentservice.audit.AuditService;
 import com.assettracker.assignmentservice.client.AssetClient;
-import com.assettracker.assignmentservice.client.NotificationClient;
 import com.assettracker.assignmentservice.entity.Assignment;
+import com.assettracker.assignmentservice.messaging.NotificationPublisher;
 import com.assettracker.assignmentservice.web.dto.CheckOutRequest;
 import com.assettracker.assignmentservice.web.dto.OffboardingResult;
 import com.assettracker.assignmentservice.web.dto.TransferRequest;
@@ -23,17 +23,17 @@ public class AssignmentService {
   private static final Logger log = LoggerFactory.getLogger(AssignmentService.class);
 
   private final AssetClient assetClient;
-  private final NotificationClient notificationClient;
+  private final NotificationPublisher notifications;
   private final AssignmentTransactions store;
   private final AuditService audit;
 
   public AssignmentService(
       AssetClient assetClient,
-      NotificationClient notificationClient,
+      NotificationPublisher notifications,
       AssignmentTransactions store,
       AuditService audit) {
     this.assetClient = assetClient;
-    this.notificationClient = notificationClient;
+    this.notifications = notifications;
     this.store = store;
     this.audit = audit;
   }
@@ -56,7 +56,7 @@ public class AssignmentService {
             actor,
             request.note());
 
-    notificationClient.send(
+    notifications.publish(
         request.clientId(),
         "ASSET_CHECKED_OUT",
         "Asset "
@@ -72,7 +72,7 @@ public class AssignmentService {
   public Assignment checkIn(Long assetId, String actor) {
     assetClient.returnToStock(assetId, actor);
     Assignment closed = store.close(assetId, actor);
-    notificationClient.send(
+    notifications.publish(
         closed.getClientId(), "ASSET_RETURNED", "Asset " + assetId + " returned to stock");
     return closed;
   }
@@ -122,7 +122,7 @@ public class AssignmentService {
         personId,
         summary,
         "{\"returned\":" + result.returned() + ",\"failed\":" + result.failed() + "}");
-    notificationClient.send(clientId, "OFFBOARDING_COLLECTED", summary);
+    notifications.publish(clientId, "OFFBOARDING_COLLECTED", summary);
     return result;
   }
 

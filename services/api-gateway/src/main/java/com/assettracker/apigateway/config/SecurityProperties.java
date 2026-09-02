@@ -47,10 +47,10 @@ public class SecurityProperties {
       this.local = local;
     }
 
-    /** HS256 issuer + shared secret. */
+    /** RS256 issuer + the JWK Set URI to fetch the public key from. */
     public static class Local {
       private String issuer;
-      private String secret;
+      private String jwkSetUri;
 
       public String getIssuer() {
         return issuer;
@@ -60,12 +60,12 @@ public class SecurityProperties {
         this.issuer = issuer;
       }
 
-      public String getSecret() {
-        return secret;
+      public String getJwkSetUri() {
+        return jwkSetUri;
       }
 
-      public void setSecret(String secret) {
-        this.secret = secret;
+      public void setJwkSetUri(String jwkSetUri) {
+        this.jwkSetUri = jwkSetUri;
       }
     }
   }

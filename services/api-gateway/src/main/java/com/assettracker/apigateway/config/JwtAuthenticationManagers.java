@@ -1,16 +1,14 @@
 package com.assettracker.apigateway.config;
 
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import javax.crypto.spec.SecretKeySpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
@@ -23,13 +21,13 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.util.StringUtils;
 
 /**
- * Builds a per-issuer map of {@link AuthenticationManager}s: always the local auth-service issuer,
- * plus Microsoft Entra ID when {@code security.entra.issuer-uri} is configured.
+ * Builds a per-issuer map of {@link AuthenticationManager}s: always the local auth-service issuer
+ * (RS256, validated against its JWK Set), plus Microsoft Entra ID when {@code
+ * security.entra.issuer-uri} is configured.
  */
 final class JwtAuthenticationManagers {
 
   private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationManagers.class);
-  private static final String HMAC_ALGORITHM = "HmacSHA256";
 
   private JwtAuthenticationManagers() {}
 
@@ -38,7 +36,8 @@ final class JwtAuthenticationManagers {
 
     SecurityProperties.Jwt.Local local = props.getJwt().getLocal();
     managers.put(local.getIssuer(), managerFor(localDecoder(local)));
-    log.info("accepting local JWT issuer '{}'", local.getIssuer());
+    log.info(
+        "accepting local JWT issuer '{}' via JWK set {}", local.getIssuer(), local.getJwkSetUri());
 
     String entraIssuer = props.getEntra().getIssuerUri();
     if (StringUtils.hasText(entraIssuer)) {
@@ -49,10 +48,9 @@ final class JwtAuthenticationManagers {
   }
 
   private static JwtDecoder localDecoder(SecurityProperties.Jwt.Local local) {
-    byte[] keyBytes = local.getSecret().getBytes(StandardCharsets.UTF_8);
     NimbusJwtDecoder decoder =
-        NimbusJwtDecoder.withSecretKey(new SecretKeySpec(keyBytes, HMAC_ALGORITHM))
-            .macAlgorithm(MacAlgorithm.HS256)
+        NimbusJwtDecoder.withJwkSetUri(local.getJwkSetUri())
+            .jwsAlgorithm(SignatureAlgorithm.RS256)
             .build();
     OAuth2TokenValidator<Jwt> validator =
         new DelegatingOAuth2TokenValidator<>(

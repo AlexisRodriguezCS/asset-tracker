@@ -52,7 +52,8 @@ flowchart TB
     gw --> ntf[notification-service :8086]
 
     asg -->|assign / return / search| ast
-    asg -->|record| ntf
+    asg -->|publish event| mq[[RabbitMQ<br/>asset-tracker.events]]
+    mq -->|consume| ntf
 
     auth --- authdb[(auth db)]
     cl --- cldb[(client db)]
@@ -92,22 +93,26 @@ sequenceDiagram
     participant G as api-gateway
     participant A as assignment-service
     participant S as asset-service
+    participant MQ as RabbitMQ
     participant N as notification-service
 
     C->>G: POST /api/assignments (Bearer JWT)
-    G->>G: validate token; add X-User-Id / X-Client-Ids
+    G->>G: validate token via JWKS; add X-User-Id / X-Client-Ids
     G->>A: POST /assignments
-    A->>S: POST /assets/{id}/assign {holderType, holderId}
+    A->>S: POST /assets/{id}/assign {holderType, holderId}<br/>(Resilience4j: retry 3x, circuit breaker)
     alt asset already ASSIGNED
         S-->>A: 409
         A-->>G: 409 ASSET_UNAVAILABLE
     else asset retired / lost / recycled
         S-->>A: 422
         A-->>G: 422 ASSET_NOT_MOVABLE
+    else asset-service unreachable after retries
+        A-->>G: 503 ASSET_SERVICE_UNAVAILABLE
     else free to move
         S-->>A: 200 (status ASSIGNED, holder set)
         A->>A: open Assignment row (short tx)
-        A->>N: POST /notifications (fire-and-forget)
+        A-)MQ: publish assignment.asset-checked-out (fire-and-forget)
+        MQ-)N: deliver event → record notification
         A-->>G: 201 assignment {open: true}
     end
     G-->>C: response
@@ -147,12 +152,13 @@ what is still out for a human to chase.
 
 | Concern | How | Status |
 |---|---|---|
-| **AuthN** | JWT bearer. `auth-service` issues HS256 tokens with `sub`, `role`, `clientIds`. Gateway is an OAuth2 resource server, multi-issuer (local always, Entra when configured). | working; RS256 + JWKS is a planned upgrade |
+| **AuthN** | JWT bearer. `auth-service` signs **RS256** tokens (`sub`, `role`, `clientIds`) and publishes its public key at `/.well-known/jwks.json`. Gateway is an OAuth2 resource server, multi-issuer (local via that JWK set, Entra when configured) - no shared secret. | working |
 | **AuthZ / tenancy** | Gateway enforces "authenticated" on writes, public on `GET`. It forwards `X-User-Id` / `X-User-Role` / `X-Client-Ids` (spoof-proof). Per-tenant enforcement in each service from those headers is a follow-up; today lists take an explicit `clientId`. | partial |
 | **Config** | `config-server` (native) + per-service `application.yml` + env vars. | working |
 | **Persistence** | JPA. Dev: H2 + `ddl-auto: update`. `prod`: PostgreSQL, Flyway migrations, Hibernate `validate`. One DB per service. | working (local overlay) |
-| **Resilience** | 2s connect / 3s read timeouts on `assignment-service` clients; notification call is fire-and-forget; offboarding is best-effort per asset. | timeouts only; retries + circuit breakers deferred |
-| **Observability** | SLF4J + console logging; Actuator health/info. | structured logs + tracing deferred |
+| **Messaging** | `assignment-service` publishes custody events to a RabbitMQ topic exchange; `notification-service` consumes them off a durable queue. HTTP `POST /notifications` kept for direct use. | working |
+| **Resilience** | 2s / 3s timeouts on `assignment-service` clients; **Resilience4j** retry (3×) + circuit breaker on the `asset-service` call, 409/422 ignored, fallback → 503. Notification publish is fire-and-forget; offboarding is best-effort per asset. | working; saga compensation deferred |
+| **Observability** | SLF4J + console logging; Actuator health/info, `/actuator/circuitbreakers`. | structured logs + tracing deferred |
 | **API docs** | springdoc OpenAPI per service (`/swagger-ui.html`). | working |
 | **Quality** | Spotless (google-java-format) + Checkstyle (cyclomatic complexity ≤ 10) + JaCoCo, applied once from the root build. | build gates working |
 | **CI/CD** | One GitHub Actions workflow: Gradle build + web build + gitleaks; on `main`, a matrix publishes 10 GHCR images. | working |
@@ -160,10 +166,10 @@ what is still out for a human to chase.
 
 ## 6. Deferred — the roadmap
 
-1. Per-service tenant enforcement from the forwarded `X-Client-Ids`.
-2. RS256 + JWKS; forward a verified principal instead of trusting headers within the mesh.
-3. Resilience4j (retry, circuit breaker) + compensation when an offboarding sweep half-fails.
+1. Per-service tenant enforcement from the forwarded `X-Client-Ids`; verify a
+   signed principal inside the mesh instead of trusting the gateway's headers.
+2. Persist / KMS-back the token-signing key so tokens survive an `auth-service` restart.
+3. Saga-style compensation when an offboarding sweep half-fails.
 4. Structured logging + correlation id + metrics/tracing.
-5. Event-driven notifications (a broker) replacing the synchronous call.
-6. **Visual floor map** of desks; **mobile app** that scans a desk/asset QR → what's assigned.
-7. Cloud hosting: managed PostgreSQL, container registry, secrets store, public HTTPS.
+5. **Visual floor map** of desks; **mobile app** that scans a desk/asset QR → what's assigned.
+6. Cloud hosting: managed PostgreSQL, a broker, container registry, secrets store, public HTTPS.

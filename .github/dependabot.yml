@@ -1,10 +1,10 @@
-# Grouped, weekly dependency updates: at most one PR per ecosystem per week.
+# Grouped, monthly dependency updates: at most one PR per ecosystem per month.
 # Major version bumps are ignored - those are deliberate, reviewed upgrades.
 version: 2
 updates:
   - package-ecosystem: "gradle"
     directory: "/"
-    schedule: { interval: "weekly", day: "monday" }
+    schedule: { interval: "monthly" }
     open-pull-requests-limit: 5
     commit-message: { prefix: "build(deps)" }
     groups:
@@ -15,7 +15,7 @@ updates:
 
   - package-ecosystem: "npm"
     directory: "/web"
-    schedule: { interval: "weekly", day: "monday" }
+    schedule: { interval: "monthly" }
     open-pull-requests-limit: 5
     commit-message: { prefix: "build(deps)" }
     groups:
@@ -26,14 +26,14 @@ updates:
 
   - package-ecosystem: "github-actions"
     directory: "/"
-    schedule: { interval: "weekly", day: "monday" }
+    schedule: { interval: "monthly" }
     commit-message: { prefix: "ci(deps)" }
     groups:
       actions: { patterns: ["*"] }
 
   - package-ecosystem: "docker"
     directory: "/"
-    schedule: { interval: "weekly", day: "monday" }
+    schedule: { interval: "monthly" }
     commit-message: { prefix: "build(deps)" }
     groups:
       docker: { patterns: ["*"] }
