@@ -2,6 +2,7 @@ package com.assettracker.apigateway.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -9,7 +10,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 class AuthRateLimitFilterTest {
 
-  private final AuthRateLimitFilter filter = new AuthRateLimitFilter();
+  private final AuthRateLimitFilter filter = new AuthRateLimitFilter(new SimpleMeterRegistry());
 
   @Test
   void allowsUpToTheLimitThenReturns429() throws Exception {

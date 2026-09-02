@@ -18,11 +18,13 @@ import com.assettracker.assignmentservice.entity.HolderType;
 import com.assettracker.assignmentservice.messaging.NotificationPublisher;
 import com.assettracker.assignmentservice.web.dto.CheckOutRequest;
 import com.assettracker.assignmentservice.web.dto.OffboardingResult;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,6 +34,7 @@ class AssignmentServiceTest {
   @Mock NotificationPublisher publisher;
   @Mock AssignmentTransactions store;
   @Mock AuditService audit;
+  @Spy SimpleMeterRegistry meters = new SimpleMeterRegistry();
   @InjectMocks AssignmentService service;
 
   private final CheckOutRequest checkOut =

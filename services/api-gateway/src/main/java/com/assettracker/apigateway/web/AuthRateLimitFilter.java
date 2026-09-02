@@ -1,5 +1,7 @@
 package com.assettracker.apigateway.web;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +31,11 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
   private static final String RETRY_AFTER_SECONDS = "60";
 
   private final Map<String, Window> windows = new ConcurrentHashMap<>();
+  private final Counter rejected;
+
+  public AuthRateLimitFilter(MeterRegistry meters) {
+    this.rejected = meters.counter("assettracker.auth.rate_limited");
+  }
 
   @Override
   protected void doFilterInternal(
@@ -46,6 +53,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
       return;
     }
 
+    rejected.increment();
     response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
     response.setHeader("Retry-After", RETRY_AFTER_SECONDS);
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);

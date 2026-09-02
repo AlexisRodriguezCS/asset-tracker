@@ -1,0 +1,71 @@
+{
+  "uid": "asset-tracker",
+  "title": "asset-tracker",
+  "tags": ["asset-tracker"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-30m", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Checkouts (total)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "sum(assettracker_checkouts_total)", "refId": "A" }]
+    },
+    {
+      "type": "stat",
+      "title": "Offboarding runs",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "expr": "sum(assettracker_offboarding_runs_total)", "refId": "A" }]
+    },
+    {
+      "type": "stat",
+      "title": "Assets collected in sweeps",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "expr": "sum(assettracker_offboarding_assets_collected_total)", "refId": "A" }]
+    },
+    {
+      "type": "stat",
+      "title": "Auth requests rate-limited",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } } },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [{ "expr": "sum(assettracker_auth_rate_limited_total)", "refId": "A" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP requests / s by service",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [{ "expr": "sum by (service) (rate(http_server_requests_seconds_count[1m]))", "legendFormat": "{{service}}", "refId": "A" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP 5xx / s by service",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [{ "expr": "sum by (service) (rate(http_server_requests_seconds_count{status=~\"5..\"}[1m]))", "legendFormat": "{{service}}", "refId": "A" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "JVM heap used by service",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [{ "expr": "sum by (service) (jvm_memory_used_bytes{area=\"heap\"})", "legendFormat": "{{service}}", "refId": "A" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "asset-service circuit breaker state",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [{ "expr": "resilience4j_circuitbreaker_state", "legendFormat": "{{name}} {{state}}", "refId": "A" }]
+    }
+  ]
+}

@@ -9,6 +9,8 @@ import com.assettracker.assignmentservice.web.TenantContext;
 import com.assettracker.assignmentservice.web.dto.CheckOutRequest;
 import com.assettracker.assignmentservice.web.dto.OffboardingResult;
 import com.assettracker.assignmentservice.web.dto.TransferRequest;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,16 +30,23 @@ public class AssignmentService {
   private final NotificationPublisher notifications;
   private final AssignmentTransactions store;
   private final AuditService audit;
+  private final Counter checkouts;
+  private final Counter offboardingRuns;
+  private final Counter assetsCollected;
 
   public AssignmentService(
       AssetClient assetClient,
       NotificationPublisher notifications,
       AssignmentTransactions store,
-      AuditService audit) {
+      AuditService audit,
+      MeterRegistry meters) {
     this.assetClient = assetClient;
     this.notifications = notifications;
     this.store = store;
     this.audit = audit;
+    this.checkouts = meters.counter("assettracker.checkouts");
+    this.offboardingRuns = meters.counter("assettracker.offboarding.runs");
+    this.assetsCollected = meters.counter("assettracker.offboarding.assets.collected");
   }
 
   /**
@@ -68,6 +77,7 @@ public class AssignmentService {
             + request.holderType()
             + " "
             + request.holderId());
+    checkouts.increment();
     return assignment;
   }
 
@@ -112,6 +122,8 @@ public class AssignmentService {
         result.failed().add(assetId);
       }
     }
+    offboardingRuns.increment();
+    assetsCollected.increment(result.returned().size());
     String summary =
         "ran offboarding for person "
             + personId

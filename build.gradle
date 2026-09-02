@@ -43,6 +43,8 @@ subprojects {
         }
 
         dependencies {
+            // Every service exposes /actuator/prometheus for the metrics stack.
+            runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
             testImplementation 'org.springframework.boot:spring-boot-starter-test'
             testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
         }
