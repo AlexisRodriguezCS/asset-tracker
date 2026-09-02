@@ -2,6 +2,7 @@ package com.assettracker.peopleservice.service;
 
 import com.assettracker.peopleservice.audit.AuditDetail;
 import com.assettracker.peopleservice.audit.AuditService;
+import com.assettracker.peopleservice.client.AssetClient;
 import com.assettracker.peopleservice.entity.Person;
 import com.assettracker.peopleservice.entity.PersonStatus;
 import com.assettracker.peopleservice.repository.PersonRepository;
@@ -16,10 +17,12 @@ public class PersonService {
 
   private final PersonRepository repository;
   private final AuditService audit;
+  private final AssetClient assetClient;
 
-  public PersonService(PersonRepository repository, AuditService audit) {
+  public PersonService(PersonRepository repository, AuditService audit, AssetClient assetClient) {
     this.repository = repository;
     this.audit = audit;
+    this.assetClient = assetClient;
   }
 
   @Transactional
@@ -70,9 +73,17 @@ public class PersonService {
     return person;
   }
 
+  /**
+   * Closes a person out. Refused while any asset is still assigned to them - the offboarding sweep
+   * has to collect their gear first, otherwise those rows would point at a departed holder.
+   */
   @Transactional
   public Person markDeparted(Long id, String actor) {
     Person person = getById(id);
+    List<Long> stillHeld = assetClient.assetIdsHeldBy(person.getClientId(), person.getId());
+    if (!stillHeld.isEmpty()) {
+      throw new PersonStillHoldsAssetsException(person.getId(), stillHeld);
+    }
     person.setStatus(PersonStatus.DEPARTED);
     audit.record(
         person.getClientId(),

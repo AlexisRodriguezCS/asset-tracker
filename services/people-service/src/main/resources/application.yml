@@ -23,6 +23,10 @@ spring:
 server:
   port: ${SERVER_PORT:8087}
 
+# Read-only: used to block "mark departed" while a person still holds assets.
+downstream:
+  asset-service: ${ASSET_SERVICE_URL:lb://asset-service}
+
 management:
   endpoints:
     web:

@@ -9,10 +9,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.assettracker.peopleservice.audit.AuditService;
+import com.assettracker.peopleservice.client.AssetClient;
 import com.assettracker.peopleservice.entity.Person;
 import com.assettracker.peopleservice.entity.PersonStatus;
 import com.assettracker.peopleservice.repository.PersonRepository;
 import com.assettracker.peopleservice.web.dto.CreatePersonRequest;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +27,7 @@ class PersonServiceTest {
 
   @Mock PersonRepository repository;
   @Mock AuditService audit;
+  @Mock AssetClient assetClient;
   @InjectMocks PersonService service;
 
   @Test
@@ -56,6 +59,29 @@ class PersonServiceTest {
         .isEqualTo(PersonStatus.OFFBOARDING);
     verify(audit)
         .record(eq(1L), eq("hr@acme.example"), eq("PERSON_OFFBOARDING"), any(), anyString(), any());
+  }
+
+  @Test
+  void markDepartedIsBlockedWhileThePersonStillHoldsAssets() {
+    Person p = new Person(1L, "Nia", "nia@acme.example", "Ops");
+    when(repository.findById(5L)).thenReturn(Optional.of(p));
+    when(assetClient.assetIdsHeldBy(1L, p.getId())).thenReturn(List.of(40L, 41L));
+
+    assertThatThrownBy(() -> service.markDeparted(5L, "hr@acme.example"))
+        .isInstanceOf(PersonStillHoldsAssetsException.class);
+    assertThat(p.getStatus()).isEqualTo(PersonStatus.ACTIVE);
+  }
+
+  @Test
+  void markDepartedSucceedsOnceNothingIsHeld() {
+    Person p = new Person(1L, "Omar", "omar@acme.example", "Ops");
+    when(repository.findById(6L)).thenReturn(Optional.of(p));
+    when(assetClient.assetIdsHeldBy(1L, p.getId())).thenReturn(List.of());
+
+    assertThat(service.markDeparted(6L, "hr@acme.example").getStatus())
+        .isEqualTo(PersonStatus.DEPARTED);
+    verify(audit)
+        .record(eq(1L), eq("hr@acme.example"), eq("PERSON_DEPARTED"), any(), anyString(), any());
   }
 
   @Test

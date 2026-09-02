@@ -2,6 +2,9 @@ package com.assettracker.peopleservice.web;
 
 import com.assettracker.peopleservice.service.EmailTakenException;
 import com.assettracker.peopleservice.service.PersonNotFoundException;
+import com.assettracker.peopleservice.service.PersonStillHoldsAssetsException;
+import java.time.Instant;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -21,6 +24,22 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiError> handleConflict(EmailTakenException ex) {
     return build(HttpStatus.CONFLICT, "EMAIL_TAKEN", ex.getMessage());
   }
+
+  @ExceptionHandler(PersonStillHoldsAssetsException.class)
+  public ResponseEntity<HeldAssetsError> handleStillHolds(PersonStillHoldsAssetsException ex) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(
+            new HeldAssetsError(
+                HttpStatus.CONFLICT.value(),
+                "PERSON_HOLDS_ASSETS",
+                ex.getMessage(),
+                ex.getAssetIds(),
+                Instant.now()));
+  }
+
+  /** 409 body when a departing person still holds gear - lists the asset ids to collect. */
+  public record HeldAssetsError(
+      int status, String code, String message, List<Long> assetIds, Instant timestamp) {}
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
