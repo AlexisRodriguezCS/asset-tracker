@@ -153,24 +153,28 @@ what is still out for a human to chase.
 | Concern | How | Status |
 |---|---|---|
 | **AuthN** | JWT bearer. `auth-service` signs **RS256** tokens (`sub`, `role`, `clientIds`) and publishes its public key at `/.well-known/jwks.json`. Gateway is an OAuth2 resource server, multi-issuer (local via that JWK set, Entra when configured) - no shared secret. | working |
-| **AuthZ / tenancy** | Gateway enforces "authenticated" on writes, public on `GET`. It forwards `X-User-Id` / `X-User-Role` / `X-Client-Ids` (spoof-proof). Per-tenant enforcement in each service from those headers is a follow-up; today lists take an explicit `clientId`. | partial |
+| **AuthZ / tenancy** | Gateway enforces "authenticated" on writes, public on `GET`, and forwards `X-User-Id` / `X-User-Role` / `X-Client-Ids` (spoof-proof). Each mutating service also re-checks: a `TenantFilter` loads `X-Client-Ids` into a `TenantContext` and write operations call `requireAllowed(clientId)` → **403** on a cross-tenant write. Absent header (public read / service-to-service) is unscoped. | working (asset / people / location / assignment) |
+| **Rate limiting** | Gateway `AuthRateLimitFilter`: in-memory fixed window, 10/min per client IP on `POST /api/auth/**` → 429 + `Retry-After`. Single-instance; Redis-backed for a real deployment. | working |
 | **Config** | `config-server` (native) + per-service `application.yml` + env vars. | working |
 | **Persistence** | JPA. Dev: H2 + `ddl-auto: update`. `prod`: PostgreSQL, Flyway migrations, Hibernate `validate`. One DB per service. | working (local overlay) |
 | **Messaging** | `assignment-service` publishes custody events to a RabbitMQ topic exchange; `notification-service` consumes them off a durable queue. HTTP `POST /notifications` kept for direct use. | working |
 | **Resilience** | 2s / 3s timeouts on `assignment-service` clients; **Resilience4j** retry (3×) + circuit breaker on the `asset-service` call, 409/422 ignored, fallback → 503. Notification publish is fire-and-forget; offboarding is best-effort per asset. | working; saga compensation deferred |
-| **Observability** | SLF4J + console logging; Actuator health/info, `/actuator/circuitbreakers`. | structured logs + tracing deferred |
+| **Observability** | A `CorrelationIdFilter` on every service puts an `X-Correlation-Id` in the log MDC for the life of a request; the gateway mints one (or keeps the client's) and forwards it, and it rides outbound RestClient calls **and** the RabbitMQ hop — so one user action is greppable across every service (`logging.pattern.correlation`). `LOG_FORMAT=ecs` switches to Boot-native JSON logs. Actuator health/liveness/readiness, metrics, prometheus, `/actuator/circuitbreakers`. | working; distributed tracing (Zipkin) deferred |
+| **Lifecycle** | `server.shutdown: graceful` + 20s drain so in-flight requests finish on SIGTERM. | working |
 | **API docs** | springdoc OpenAPI per service (`/swagger-ui.html`). | working |
 | **Quality** | Spotless (google-java-format) + Checkstyle (cyclomatic complexity ≤ 10) + JaCoCo, applied once from the root build. | build gates working |
 | **CI/CD** | One GitHub Actions workflow: Gradle build + web build + gitleaks; on `main`, a matrix publishes 10 GHCR images. | working |
-| **Testing** | Unit, `@WebMvcTest`, `@DataJpaTest`, REST-Assured e2e through the gateway. | working |
+| **Testing** | Unit, `@WebMvcTest`, `@DataJpaTest`, REST-Assured e2e through the gateway, and a Testcontainers IT (`PostgresProfileIT`) that runs the real `prod` Flyway + `validate` path on Postgres. | working |
 
 ## 6. Deferred — the roadmap
 
-1. Per-service tenant enforcement from the forwarded `X-Client-Ids`; verify a
-   signed principal inside the mesh instead of trusting the gateway's headers.
+1. Verify a signed principal inside the mesh (mTLS / propagated JWT) instead of
+   trusting the gateway's `X-*` headers at all; today services re-check the
+   `X-Client-Ids` grant but still trust the header's provenance.
 2. Persist / KMS-back the token-signing key so tokens survive an `auth-service` restart.
 3. Saga-style compensation when an offboarding sweep half-fails.
-4. Structured logging + correlation id + metrics/tracing.
+4. Distributed tracing: a Zipkin/Tempo backend + Micrometer spans (correlation
+   ids and MDC logging are in place).
 5. **Visual floor map** of desks; **mobile app** that scans a desk/asset QR → what's assigned.
 6. Cloud hosting: Kubernetes manifests exist (`deploy/k8s/`, Kustomize base +
    local/cloud overlays) and validate offline — see [deployment.md](deployment.md).

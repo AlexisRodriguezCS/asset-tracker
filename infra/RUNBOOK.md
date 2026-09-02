@@ -96,6 +96,30 @@ Each REST service serves its own Swagger UI at
 `http://localhost:<port>/swagger-ui.html` — e.g. asset-service at
 http://localhost:8083/swagger-ui.html.
 
+## Tracing a request
+
+Every service tags each request with a correlation id in the log MDC. The gateway
+mints one (or keeps a client-supplied `X-Correlation-Id`) and forwards it, and it
+rides both outbound HTTP calls and the RabbitMQ hop. To follow one action:
+
+```bash
+CID=trace-$(date +%s)
+curl -s -X POST localhost:8080/api/assignments -H "Authorization: Bearer $TOKEN" \
+  -H "X-Correlation-Id: $CID" \
+  -d '{"clientId":1,"assetId":54,"holderType":"PERSON","holderId":1}'
+docker compose -f infra/compose/docker-compose.yml logs | grep "$CID"
+```
+
+Set `LOG_FORMAT=ecs` in `infra/compose/.env` for newline-delimited JSON logs
+(Spring Boot native — no dependency). Distributed tracing to Zipkin is a
+follow-up; the correlation id and MDC wiring are the groundwork.
+
+## Rate limiting
+
+The gateway allows **10 `POST /api/auth/**` per minute per client IP**; the 11th
+gets `429` + `Retry-After: 60`. In-memory / single-instance — a real deployment
+moves this to Redis behind Spring Cloud Gateway's `RequestRateLimiter`.
+
 ## Security & secrets
 
 - **No secret is committed.** `infra/compose/.env` is gitignored;
