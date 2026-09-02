@@ -36,7 +36,7 @@ $assetId = $stock[0].id
 Write-Host "picked asset $assetId ($($stock[0].assetTag))"
 
 Step "All laptops (public)"
-$laptops = Invoke-RestMethod "$BaseUrl/api/assets?clientId=$ClientId&type=LAPTOP"
+$laptops = Invoke-RestMethod "$BaseUrl/api/assets?clientId=$ClientId&type=Laptop"
 Write-Host "$($laptops.Count) laptops"
 
 Step "People (public)"

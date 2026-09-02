@@ -18,7 +18,7 @@ GET {{host}}/api/assets?clientId={{client}}&status=IN_STOCK
 %}
 
 ### All laptops (public)
-GET {{host}}/api/assets?clientId={{client}}&type=LAPTOP
+GET {{host}}/api/assets?clientId={{client}}&type=Laptop
 
 ### People for client 1 (public)  ->  capture a person id
 GET {{host}}/api/people?clientId={{client}}

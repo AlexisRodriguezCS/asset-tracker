@@ -29,8 +29,8 @@ ASSET=$(echo "$STOCK" | j "[0]['id']")
 echo "picked asset $ASSET"
 
 step "All laptops (public)"
-curl -fsS "$BASE/api/assets?clientId=$CLIENT&type=LAPTOP" | j "[len(d)]" >/dev/null \
-  && echo "$(curl -fsS "$BASE/api/assets?clientId=$CLIENT&type=LAPTOP" | j "[len(d)]") laptops"
+curl -fsS "$BASE/api/assets?clientId=$CLIENT&type=Laptop" | j "[len(d)]" >/dev/null \
+  && echo "$(curl -fsS "$BASE/api/assets?clientId=$CLIENT&type=Laptop" | j "[len(d)]") laptops"
 
 step "People (public)"
 PEOPLE=$(curl -fsS "$BASE/api/people?clientId=$CLIENT")
