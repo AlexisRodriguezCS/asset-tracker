@@ -50,8 +50,8 @@ html {
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: var(--font-sans), ui-sans-serif, system-ui, "Segoe UI",
-    sans-serif;
+  font-family:
+    var(--font-sans), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -59,8 +59,8 @@ body {
 h1,
 h2,
 .font-display {
-  font-family: var(--font-display), var(--font-sans), ui-sans-serif, system-ui,
-    sans-serif;
+  font-family:
+    var(--font-display), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   letter-spacing: -0.02em;
 }
 
@@ -70,7 +70,8 @@ body::before {
   position: fixed;
   inset: -40%;
   z-index: -1;
-  background: radial-gradient(
+  background:
+    radial-gradient(
       60rem 60rem at 20% 0%,
       hsl(var(--primary) / 0.1),
       transparent 70%
