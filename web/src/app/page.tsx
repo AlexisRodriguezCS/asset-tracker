@@ -11,8 +11,11 @@ import { AssetStatusBadge, ConditionBadge } from "@/components/ui/badge";
 import { StatStrip } from "@/components/ui/stat";
 import { PageHeader, TableCard } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
-import { dateOnly, disposition, isPast, label } from "@/lib/format";
+import { dateOnly, disposition, isPast, label, withinDays } from "@/lib/format";
 import type { AssetStatus } from "@/lib/types";
+
+/** Warranty counts as "expiring soon" this many days before it ends. */
+const WARRANTY_SOON_DAYS = 60;
 
 const STATUSES: AssetStatus[] = [
   "IN_STOCK",
@@ -32,6 +35,7 @@ export default async function AssetsPage({
     type?: string;
     status?: string;
     q?: string;
+    warranty?: string;
   }>;
 }) {
   const [clientId, sp, session] = await Promise.all([
@@ -59,18 +63,31 @@ export default async function AssetsPage({
   };
 
   const term = (sp.q ?? "").trim().toLowerCase();
-  const assets = term
-    ? filtered.filter((a) =>
+  const warrantyMatch = (a: (typeof all)[number]) => {
+    if (sp.warranty === "expired") return isPast(a.warrantyEndsOn);
+    if (sp.warranty === "soon")
+      return withinDays(a.warrantyEndsOn, WARRANTY_SOON_DAYS);
+    return true;
+  };
+  const assets = filtered
+    .filter(warrantyMatch)
+    .filter(
+      (a) =>
+        !term ||
         [a.assetTag, a.serialNumber, a.make, a.model, a.type, holderLabel(a)]
           .filter(Boolean)
           .some((v) => (v as string).toLowerCase().includes(term)),
-      )
-    : filtered;
+    );
 
   const count = (...ss: AssetStatus[]) =>
     all.filter((a) => ss.includes(a.status)).length;
   const link = (p: Record<string, string>) => {
-    const merged = { ...(term ? { q: sp.q as string } : {}), ...p };
+    const merged: Record<string, string> = {
+      ...(term ? { q: sp.q as string } : {}),
+      ...(sp.warranty ? { warranty: sp.warranty } : {}),
+      ...p,
+    };
+    for (const k of Object.keys(merged)) if (!merged[k]) delete merged[k];
     const s = new URLSearchParams(merged).toString();
     return s ? `/?${s}` : "/";
   };
@@ -79,6 +96,7 @@ export default async function AssetsPage({
   const keepStatus: Record<string, string> = sp.status
     ? { status: sp.status }
     : {};
+  const outOfWarranty = all.filter((a) => isPast(a.warrantyEndsOn)).length;
 
   return (
     <div className="animate-fade-in-up space-y-6">
@@ -87,7 +105,9 @@ export default async function AssetsPage({
         subtitle={
           term
             ? `${assets.length} of ${all.length} match "${sp.q}"`
-            : `${all.length} tracked for this client`
+            : outOfWarranty > 0
+              ? `${all.length} tracked for this client · ${outOfWarranty} out of warranty`
+              : `${all.length} tracked for this client`
         }
         action={
           session ? (
@@ -181,6 +201,26 @@ export default async function AssetsPage({
             </Chip>
           ))}
         </ChipRow>
+        <ChipRow heading="Warranty">
+          <Chip
+            href={link({ warranty: "", ...keepType, ...keepStatus })}
+            active={!sp.warranty}
+          >
+            All
+          </Chip>
+          <Chip
+            href={link({ warranty: "expired", ...keepType, ...keepStatus })}
+            active={sp.warranty === "expired"}
+          >
+            Expired
+          </Chip>
+          <Chip
+            href={link({ warranty: "soon", ...keepType, ...keepStatus })}
+            active={sp.warranty === "soon"}
+          >
+            Expiring soon
+          </Chip>
+        </ChipRow>
       </div>
 
       <TableCard>
@@ -238,7 +278,9 @@ export default async function AssetsPage({
                     {holderLabel(a)}
                   </Link>
                 ) : (
-                  <span className="text-muted-foreground">{holderLabel(a)}</span>
+                  <span className="text-muted-foreground">
+                    {holderLabel(a)}
+                  </span>
                 )}
               </td>
               <td className="px-4 py-2 text-muted-foreground">

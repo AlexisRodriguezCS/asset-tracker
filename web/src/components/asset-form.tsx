@@ -15,6 +15,8 @@ type Prefill = {
   model?: string;
   /** "PERSON:1" / "LOCATION:4" - check the new unit straight out to that holder. */
   reassignTo?: string;
+  /** id of the unit being retired - links the new row to it as its replacement. */
+  supersedes?: string;
 };
 
 type Props =
@@ -117,6 +119,7 @@ export function AssetForm(props: Props) {
           costUsd.trim() !== "" && Number.isFinite(cost)
             ? Math.round(cost * 100)
             : undefined,
+        supersedesAssetId: pf?.supersedes ? Number(pf.supersedes) : undefined,
         ...shared,
       }),
     });

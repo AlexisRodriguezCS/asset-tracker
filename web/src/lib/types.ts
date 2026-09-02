@@ -45,6 +45,8 @@ export interface Asset {
   warrantyEndsOn: string | null;
   purchaseCostCents: number | null;
   notes: string | null;
+  /** id of the unit this one replaced (retire-and-replace); null for an original. */
+  supersedesAssetId: number | null;
   createdAt: string;
 }
 

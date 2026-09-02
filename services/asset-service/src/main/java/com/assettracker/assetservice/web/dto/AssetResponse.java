@@ -22,6 +22,7 @@ public record AssetResponse(
     LocalDate warrantyEndsOn,
     Long purchaseCostCents,
     String notes,
+    Long supersedesAssetId,
     Instant createdAt) {
 
   public static AssetResponse from(Asset a) {
@@ -42,6 +43,7 @@ public record AssetResponse(
         a.getWarrantyEndsOn(),
         a.getPurchaseCostCents(),
         a.getNotes(),
+        a.getSupersedesAssetId(),
         a.getCreatedAt());
   }
 }

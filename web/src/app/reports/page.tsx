@@ -5,8 +5,10 @@ import { listAssets, listPeople, clientActivity } from "@/lib/api";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { StatStrip } from "@/components/ui/stat";
-import { label } from "@/lib/format";
+import { isPast, label, withinDays } from "@/lib/format";
 import type { Asset } from "@/lib/types";
+
+const WARRANTY_SOON_DAYS = 60;
 
 export const dynamic = "force-dynamic";
 
@@ -44,25 +46,39 @@ export default async function ReportsPage() {
 
   const byType = tally(assets, (a) => a.type);
   const byStatus = tally(assets, (a) => label(a.status));
+  const warrantyRows: [string, number][] = [
+    ["Out of warranty", assets.filter((a) => isPast(a.warrantyEndsOn)).length],
+    [
+      `Expiring within ${WARRANTY_SOON_DAYS} days`,
+      assets.filter((a) => withinDays(a.warrantyEndsOn, WARRANTY_SOON_DAYS))
+        .length,
+    ],
+    [
+      "In warranty",
+      assets.filter(
+        (a) =>
+          a.warrantyEndsOn &&
+          !isPast(a.warrantyEndsOn) &&
+          !withinDays(a.warrantyEndsOn, WARRANTY_SOON_DAYS),
+      ).length,
+    ],
+  ];
   const byCondition = tally(assets, (a) =>
     a.condition ? label(a.condition) : "Unrated",
   );
   const byDept = tally(assets, deptOf);
 
-  // a "slot" is one tag + type; more than one row on it means it has been refilled
-  const slot = new Map<string, Asset[]>();
-  for (const a of assets) {
-    const k = `${a.assetTag}||${a.type}`;
-    slot.set(k, [...(slot.get(k) ?? []), a]);
-  }
-  const replacements = [...slot.entries()]
-    .map(([k, rows]) => {
-      const [tag, type] = k.split("||");
-      return { tag, type, n: rows.length - 1 };
-    })
-    .filter((r) => r.n > 0)
-    .sort((a, b) => b.n - a.n);
-  const totalReplacements = replacements.reduce((s, r) => s + r.n, 0);
+  // an asset with supersedesAssetId set was created by retire-and-replace to
+  // take over from another unit - no more guessing from matching tags + dates
+  const superseding = assets.filter((a) => a.supersedesAssetId != null);
+  const totalReplacements = superseding.length;
+  const replacements = tally(
+    superseding,
+    (a) => `${a.assetTag}||${a.type}`,
+  ).map(([k, n]) => {
+    const [tag, type] = k.split("||");
+    return { tag, type, n };
+  });
 
   const events = (action: string) =>
     audit.filter((e) => e.action === action).length;
@@ -123,6 +139,7 @@ export default async function ReportsPage() {
         <Breakdown title="By type" rows={byType} />
         <Breakdown title="By status" rows={byStatus} />
         <Breakdown title="By condition" rows={byCondition} />
+        <Breakdown title="Warranty" rows={warrantyRows} />
         <Breakdown title="By department (who holds it)" rows={byDept} />
         <Breakdown title="Lifecycle events (audit trail)" rows={lifecycle} />
         <Breakdown

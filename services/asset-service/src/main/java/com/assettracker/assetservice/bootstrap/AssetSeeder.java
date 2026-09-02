@@ -98,6 +98,37 @@ public class AssetSeeder implements CommandLineRunner {
     for (int i = 0; i < rows.size(); i++) {
       applyState(clientId, saved.get(i), rows.get(i), i);
     }
+    linkReplacements(saved);
+  }
+
+  /**
+   * Point each live unit at the dead unit it replaced on the same tag + type, so the console and
+   * the reports show a real replacement chain instead of guessing.
+   */
+  private void linkReplacements(List<Asset> saved) {
+    for (Asset dead : saved) {
+      if (AssetStatus.ACTIVE.contains(dead.getStatus())) {
+        continue;
+      }
+      saved.stream()
+          .filter(a -> AssetStatus.ACTIVE.contains(a.getStatus()))
+          .filter(a -> a.getSupersedesAssetId() == null)
+          .filter(a -> a.getAssetTag().equals(dead.getAssetTag()))
+          .filter(a -> a.getType().equals(dead.getType()))
+          .findFirst()
+          .ifPresent(
+              live -> {
+                live.setSupersedesAssetId(dead.getId());
+                // re-load: applyState() may have bumped this row's version already
+                repository
+                    .findById(live.getId())
+                    .ifPresent(
+                        fresh -> {
+                          fresh.setSupersedesAssetId(dead.getId());
+                          repository.save(fresh);
+                        });
+              });
+    }
   }
 
   private Asset baseAsset(long clientId, Row r, int seq) {
@@ -107,7 +138,13 @@ public class AssetSeeder implements CommandLineRunner {
     a.setModel(r.gear().model());
     a.setPurchaseCostCents(r.gear().costCents());
     a.setCondition(r.condition());
-    LocalDate bought = LocalDate.now().minusMonths(8);
+    // Spread the fleet's age so warranty dates look real: ~70% of gear is well
+    // inside its 3-year cover, ~10% is about to fall out, ~20% is already overdue
+    // for a refresh - enough to make the Warranty filter and the reports mean
+    // something on a fresh stack.
+    int bucket = seq % 10;
+    int ageMonths = bucket <= 6 ? 2 + seq % 28 : bucket == 7 ? 35 : 40 + seq % 30;
+    LocalDate bought = LocalDate.now().minusMonths(ageMonths);
     a.setPurchaseDate(bought);
     a.setWarrantyEndsOn(bought.plusYears(3));
     return a;

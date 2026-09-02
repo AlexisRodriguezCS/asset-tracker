@@ -17,6 +17,7 @@ export default async function NewAssetPage({
     make?: string;
     model?: string;
     reassignTo?: string;
+    supersedes?: string;
   }>;
 }) {
   const [session, clientId, sp] = await Promise.all([
@@ -60,6 +61,7 @@ export default async function NewAssetPage({
             make: sp.make,
             model: sp.model,
             reassignTo: sp.reassignTo,
+            supersedes: sp.supersedes,
           }}
         />
       </Card>

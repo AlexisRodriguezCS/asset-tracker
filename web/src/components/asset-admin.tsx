@@ -42,6 +42,7 @@ export function AssetAdmin({
       tag: asset.assetTag,
       make: asset.make ?? "",
       model: asset.model ?? "",
+      supersedes: String(asset.id),
     });
     if (asset.holderType !== "STOCKROOM" && asset.holderId != null) {
       params.set("reassignTo", `${asset.holderType}:${asset.holderId}`);

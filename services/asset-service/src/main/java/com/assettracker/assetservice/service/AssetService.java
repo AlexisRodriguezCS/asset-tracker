@@ -45,6 +45,7 @@ public class AssetService {
     asset.setWarrantyEndsOn(request.warrantyEndsOn());
     asset.setPurchaseCostCents(request.purchaseCostCents());
     asset.setNotes(request.notes());
+    asset.setSupersedesAssetId(resolveSuperseded(request));
     Asset saved = repository.save(asset);
     audit.record(
         saved.getClientId(),
@@ -52,8 +53,27 @@ public class AssetService {
         "ASSET_CREATED",
         saved.getId(),
         "added " + saved.describe(),
-        null);
+        saved.getSupersedesAssetId() == null
+            ? null
+            : AuditDetail.of("supersedes", saved.getSupersedesAssetId()));
     return saved;
+  }
+
+  /** Validates {@code supersedesAssetId} (if given) points at an asset of the same client. */
+  private Long resolveSuperseded(CreateAssetRequest request) {
+    if (request.supersedesAssetId() == null) {
+      return null;
+    }
+    boolean ok =
+        repository
+            .findById(request.supersedesAssetId())
+            .map(s -> s.getClientId().equals(request.clientId()))
+            .orElse(false);
+    if (!ok) {
+      throw new IllegalArgumentException(
+          "no asset " + request.supersedesAssetId() + " for this client to replace");
+    }
+    return request.supersedesAssetId();
   }
 
   @Transactional(readOnly = true)

@@ -46,3 +46,11 @@ export function isPast(iso: string | null): boolean {
   if (!iso) return false;
   return new Date(iso).getTime() < Date.now();
 }
+
+/** true when an ISO date is within the next `days` (and not already past). */
+export function withinDays(iso: string | null, days: number): boolean {
+  if (!iso) return false;
+  const t = new Date(iso).getTime();
+  const now = Date.now();
+  return t >= now && t <= now + days * 86_400_000;
+}

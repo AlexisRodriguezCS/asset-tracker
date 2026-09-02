@@ -56,6 +56,12 @@ export default async function AssetDetailPage({
     ? (await listAssetTypes(asset.clientId).catch(() => [])).map((t) => t.name)
     : [];
   const onTag = sameTag.filter((x) => x.id !== asset.id);
+  const replaces =
+    sameTag.find((x) => x.id === asset.supersedesAssetId) ?? null;
+  const replacedBy =
+    sameTag.find((x) => x.supersedesAssetId === asset.id) ?? null;
+  const unitName = (x: (typeof sameTag)[number]) =>
+    `${[x.make, x.model].filter(Boolean).join(" ") || x.type} · ${label(x.status)}`;
 
   const personById = new Map(people.map((p) => [p.id, p]));
   const deskById = new Map(desks.map((d) => [d.id, d]));
@@ -119,6 +125,32 @@ export default async function AssetDetailPage({
               }
             />
             <Field k="Cost" v={money(asset.purchaseCostCents)} />
+            {replaces && (
+              <Field
+                k="Replaces"
+                v={
+                  <Link
+                    href={`/assets/${replaces.id}`}
+                    className="text-primary hover:underline"
+                  >
+                    {unitName(replaces)}
+                  </Link>
+                }
+              />
+            )}
+            {replacedBy && (
+              <Field
+                k="Replaced by"
+                v={
+                  <Link
+                    href={`/assets/${replacedBy.id}`}
+                    className="text-primary hover:underline"
+                  >
+                    {unitName(replacedBy)}
+                  </Link>
+                }
+              />
+            )}
             {asset.notes && (
               <div className="col-span-2">
                 <Field k="Notes" v={asset.notes} />
@@ -218,7 +250,7 @@ export default async function AssetDetailPage({
   );
 }
 
-function Field({ k, v }: { k: string; v: string }) {
+function Field({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div>
       <dt className="text-xs uppercase tracking-wide text-muted-foreground">

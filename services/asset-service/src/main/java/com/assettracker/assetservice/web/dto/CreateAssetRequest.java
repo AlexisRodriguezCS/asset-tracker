@@ -18,4 +18,5 @@ public record CreateAssetRequest(
     LocalDate deployedOn,
     LocalDate warrantyEndsOn,
     Long purchaseCostCents,
-    String notes) {}
+    String notes,
+    Long supersedesAssetId) {}

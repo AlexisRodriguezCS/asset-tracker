@@ -70,6 +70,13 @@ public class Asset {
 
   private String notes;
 
+  /**
+   * The id of the unit this one was created to replace (same tag, same type), set by the
+   * retire-and-replace flow. Null for an original purchase. Not a DB foreign key - the superseded
+   * row is never deleted, but keeping it a plain id matches how holderId works.
+   */
+  private Long supersedesAssetId;
+
   @Version private long version;
 
   @Column(nullable = false, updatable = false)
@@ -257,6 +264,14 @@ public class Asset {
 
   public void setNotes(String notes) {
     this.notes = notes;
+  }
+
+  public Long getSupersedesAssetId() {
+    return supersedesAssetId;
+  }
+
+  public void setSupersedesAssetId(Long supersedesAssetId) {
+    this.supersedesAssetId = supersedesAssetId;
   }
 
   public Instant getCreatedAt() {
