@@ -9,13 +9,16 @@ Local, offline operation of the **asset-tracker** stack.
 | discovery-server | 8761 | Eureka registry; UI at http://localhost:8761 |
 | config-server | 8888 | Spring Cloud Config, **native** backend over the mounted `config-repo` |
 | api-gateway | **8080** | the only entry point; routes `/api/**`, public `GET`, JWT on writes, CORS, forwards `X-User-*` headers |
-| auth-service | 8081 | register / login; issues HS256 JWT with `role` + `clientIds` |
+| auth-service | 8081 | register / login; issues RS256 JWT with `role` + `clientIds`; validates Entra id-tokens |
 | assignment-service | 8082 | orchestrator: check-out / check-in / transfer / offboard; owns the assignment history |
 | asset-service | 8083 | the asset records; guarded custody transitions |
 | location-service | 8084 | sites / rooms / desks + QR tags |
 | client-service | 8085 | tenants |
-| notification-service | 8086 | in-memory event log |
+| notification-service | 8086 | in-memory event log (RabbitMQ consumer) |
 | people-service | 8087 | employees, offboarding status |
+| rabbitmq | 5672 / 15672 | broker + management UI at http://localhost:15672 (guest/guest) |
+| prometheus | 9090 | scrapes every `/actuator/prometheus` |
+| grafana | 3001 | http://localhost:3001 — anonymous viewer; the **asset-tracker** dashboard is pre-loaded |
 
 Default: the JPA services run on in-memory **H2** — fast, **data resets on
 every restart**. The PostgreSQL overlay makes it persist.

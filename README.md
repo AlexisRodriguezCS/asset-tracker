@@ -87,9 +87,12 @@ One `gradlew`, one `.github/workflows/ci.yml`.
 ```bash
 cd infra/compose
 cp .env.example .env                                    # defaults are fine for local
-docker compose -f docker-compose.yml up -d --build      # 11 containers (+ RabbitMQ), H2 in-memory
+docker compose -f docker-compose.yml up -d --build      # 14 containers, H2 in-memory
 docker compose ps                                        # wait for healthy
 ```
+
+10 services + RabbitMQ + Prometheus + Grafana. Grafana is at
+http://localhost:3001 (anonymous) with a pre-loaded **asset-tracker** dashboard.
 
 No `JWT_SECRET` — `auth-service` generates an RS256 key pair at startup and the
 gateway validates tokens against its `/.well-known/jwks.json`.
