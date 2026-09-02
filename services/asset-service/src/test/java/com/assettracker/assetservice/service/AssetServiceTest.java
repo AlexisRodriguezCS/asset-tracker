@@ -93,6 +93,21 @@ class AssetServiceTest {
   }
 
   @Test
+  void createRejectsASupersededAssetOnADifferentTag() {
+    Asset differentTag = new Asset(1L, "Charger", "SN-OLD", "TAG-OTHER");
+    when(repository.existsActiveWithTag(eq(1L), eq("TAG-9"), eq("Charger"), any()))
+        .thenReturn(false);
+    when(repository.findById(77L)).thenReturn(Optional.of(differentTag));
+    CreateAssetRequest req =
+        new CreateAssetRequest(
+            1L, "Charger", null, null, "SN-NEW", "TAG-9", null, null, null, null, null, null, 77L);
+
+    assertThatThrownBy(() -> service.create(req, "tech@acme.example"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("same tag and type");
+  }
+
+  @Test
   void assignDelegatesToTheEntityGuard() {
     stored.assignTo(HolderType.PERSON, 5L);
     when(repository.findById(1L)).thenReturn(Optional.of(stored));

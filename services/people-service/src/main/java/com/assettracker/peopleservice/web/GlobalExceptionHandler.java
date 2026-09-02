@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 
 /** Translates domain and validation errors into {@link ApiError} responses. */
 @RestControllerAdvice
@@ -40,6 +42,14 @@ public class GlobalExceptionHandler {
   /** 409 body when a departing person still holds gear - lists the asset ids to collect. */
   public record HeldAssetsError(
       int status, String code, String message, List<Long> assetIds, Instant timestamp) {}
+
+  @ExceptionHandler({ResourceAccessException.class, HttpServerErrorException.class})
+  public ResponseEntity<ApiError> handleDownstreamUnavailable(RuntimeException ex) {
+    return build(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "DEPENDENCY_UNAVAILABLE",
+        "A required service is unreachable; try again shortly");
+  }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {

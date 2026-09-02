@@ -236,14 +236,12 @@ function AttentionCard({
               </li>
             ))}
           </ul>
-          {count > rows.length && (
-            <Link
-              href={href}
-              className="mt-3 text-xs text-muted-foreground hover:text-foreground"
-            >
-              View all {count} →
-            </Link>
-          )}
+          <Link
+            href={href}
+            className="mt-3 text-xs text-muted-foreground hover:text-foreground"
+          >
+            {count > rows.length ? `View all ${count}` : "Open in list"} →
+          </Link>
         </>
       )}
     </Card>

@@ -59,19 +59,26 @@ public class AssetService {
     return saved;
   }
 
-  /** Validates {@code supersedesAssetId} (if given) points at an asset of the same client. */
+  /**
+   * Validates {@code supersedesAssetId} (if given): it must be an asset of the same client carrying
+   * the same tag and type - a replacement is the next unit in the same slot, not an arbitrary link.
+   */
   private Long resolveSuperseded(CreateAssetRequest request) {
     if (request.supersedesAssetId() == null) {
       return null;
     }
-    boolean ok =
+    Asset superseded =
         repository
             .findById(request.supersedesAssetId())
-            .map(s -> s.getClientId().equals(request.clientId()))
-            .orElse(false);
-    if (!ok) {
+            .filter(s -> s.getClientId().equals(request.clientId()))
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "no asset " + request.supersedesAssetId() + " for this client to replace"));
+    if (!superseded.getAssetTag().equals(request.assetTag())
+        || !superseded.getType().equals(request.type())) {
       throw new IllegalArgumentException(
-          "no asset " + request.supersedesAssetId() + " for this client to replace");
+          "a replacement must carry the same tag and type as the unit it supersedes");
     }
     return request.supersedesAssetId();
   }
