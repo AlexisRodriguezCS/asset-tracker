@@ -27,6 +27,8 @@ interface CallOptions {
   method?: string;
   body?: unknown;
   auth?: boolean;
+  /** seconds to cache a GET (default: no cache - the console shows live data). */
+  revalidate?: number;
 }
 
 /**
@@ -37,7 +39,7 @@ interface CallOptions {
  */
 export async function gateway<T>(
   path: string,
-  { method = "GET", body, auth = false }: CallOptions = {},
+  { method = "GET", body, auth = false, revalidate }: CallOptions = {},
 ): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
@@ -52,7 +54,9 @@ export async function gateway<T>(
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
-    cache: "no-store",
+    ...(revalidate != null
+      ? { next: { revalidate } }
+      : { cache: "no-store" as const }),
   });
 
   if (!res.ok) {
@@ -78,7 +82,9 @@ const qs = (params: Record<string, string | number | undefined>) => {
 
 // --- reads (public) --------------------------------------------------------
 
-export const listClients = () => gateway<Client[]>("/api/clients");
+// the tenant list changes rarely and is fetched on every navigation (layout) - cache it briefly
+export const listClients = () =>
+  gateway<Client[]>("/api/clients", { revalidate: 300 });
 
 export const listAssets = (params: {
   clientId: number;

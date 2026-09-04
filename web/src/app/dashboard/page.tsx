@@ -40,11 +40,17 @@ export default async function DashboardPage() {
     clientActivity(clientId).catch(() => []),
   ]);
 
+  // one pass over assets builds every index the page needs (O(assets), not O(assets·people))
   const is = (...ss: AssetStatus[]) =>
     assets.filter((a) => ss.includes(a.status));
-  const heldByDesk = new Set(
-    assets.filter((a) => a.holderType === "LOCATION").map((a) => a.holderId),
-  );
+  const heldByDesk = new Set<number | null>();
+  const heldByPerson = new Map<number, number>();
+  for (const a of assets) {
+    if (a.holderType === "LOCATION") heldByDesk.add(a.holderId);
+    if (a.holderType === "PERSON" && a.holderId != null) {
+      heldByPerson.set(a.holderId, (heldByPerson.get(a.holderId) ?? 0) + 1);
+    }
+  }
 
   const repair = is("IN_REPAIR", "BROKEN");
   const pendingRecycle = is("PENDING_RECYCLE");
@@ -59,12 +65,7 @@ export default async function DashboardPage() {
 
   const offboardingWithGear = people
     .filter((p) => p.status === "OFFBOARDING")
-    .map((p) => ({
-      person: p,
-      held: assets.filter(
-        (a) => a.holderType === "PERSON" && a.holderId === p.id,
-      ).length,
-    }))
+    .map((p) => ({ person: p, held: heldByPerson.get(p.id) ?? 0 }))
     .filter((r) => r.held > 0);
 
   const label = (a: Asset) =>

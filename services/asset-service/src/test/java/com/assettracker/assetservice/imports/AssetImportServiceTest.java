@@ -2,13 +2,12 @@ package com.assettracker.assetservice.imports;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import com.assettracker.assetservice.audit.AuditService;
 import com.assettracker.assetservice.entity.Asset;
+import com.assettracker.assetservice.entity.AssetType;
 import com.assettracker.assetservice.imports.ImportViews.ImportPreview;
 import com.assettracker.assetservice.imports.ImportViews.ImportResult;
 import com.assettracker.assetservice.imports.ImportViews.RowOutcome;
@@ -44,11 +43,10 @@ class AssetImportServiceTest {
   @BeforeEach
   void setUp() {
     service = new AssetImportService(assets, types, profiles, audit);
-    lenient().when(types.existsByClientIdAndNameIgnoreCase(eq(1L), any())).thenReturn(false);
-    lenient().when(types.existsByClientIdAndNameIgnoreCase(eq(1L), eq("Laptop"))).thenReturn(true);
+    lenient().when(assets.findByClientId(1L)).thenReturn(List.of());
     lenient()
-        .when(assets.findByClientIdAndAssetTagAndType(anyLong(), any(), any()))
-        .thenReturn(List.of());
+        .when(types.findByClientIdOrderByName(1L))
+        .thenReturn(List.of(new AssetType(1L, "Laptop")));
   }
 
   private ColumnMapping mapping() {
@@ -113,8 +111,7 @@ class AssetImportServiceTest {
   @Test
   void reUploadUpdatesTheMatchingRowInsteadOfDuplicating() {
     Asset existing = new Asset(1L, "Laptop", "OLD-SN", "IMP-1");
-    when(assets.findByClientIdAndAssetTagAndType(1L, "IMP-1", "Laptop"))
-        .thenReturn(List.of(existing));
+    when(assets.findByClientId(1L)).thenReturn(List.of(existing));
     when(assets.save(any(Asset.class))).thenAnswer(inv -> inv.getArgument(0));
 
     ImportResult result = service.commit(1L, csv(), mapping(), false, null, "tech@acme.example");
