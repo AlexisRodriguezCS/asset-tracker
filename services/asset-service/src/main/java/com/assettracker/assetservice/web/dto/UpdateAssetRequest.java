@@ -9,5 +9,7 @@ public record UpdateAssetRequest(
     String model,
     String notes,
     AssetCondition condition,
+    String serialNumber,
+    LocalDate purchaseDate,
     LocalDate deployedOn,
     LocalDate warrantyEndsOn) {}

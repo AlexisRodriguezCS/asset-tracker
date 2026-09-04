@@ -197,6 +197,11 @@ public class Asset {
     return serialNumber;
   }
 
+  /** Correcting a mistyped serial; the value is not otherwise mutable. */
+  public void setSerialNumber(String serialNumber) {
+    this.serialNumber = serialNumber;
+  }
+
   public String getAssetTag() {
     return assetTag;
   }

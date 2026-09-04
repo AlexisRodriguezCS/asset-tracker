@@ -131,4 +131,31 @@ class AssetServiceTest {
     when(repository.findById(42L)).thenReturn(Optional.empty());
     assertThatThrownBy(() -> service.getById(42L)).isInstanceOf(AssetNotFoundException.class);
   }
+
+  @Test
+  void updateCanCorrectTheSerialAndPurchaseDate() {
+    when(repository.findById(1L)).thenReturn(Optional.of(stored));
+    var req =
+        new com.assettracker.assetservice.web.dto.UpdateAssetRequest(
+            null, null, null, null, "SN-CORRECTED", java.time.LocalDate.of(2023, 3, 4), null, null);
+
+    Asset updated = service.update(1L, req, "tech@acme.example");
+
+    assertThat(updated.getSerialNumber()).isEqualTo("SN-CORRECTED");
+    assertThat(updated.getPurchaseDate()).isEqualTo(java.time.LocalDate.of(2023, 3, 4));
+  }
+
+  @Test
+  void updateLeavesUntouchedFieldsAlone() {
+    stored.setSerialNumber("SN-ORIGINAL");
+    when(repository.findById(1L)).thenReturn(Optional.of(stored));
+    var req =
+        new com.assettracker.assetservice.web.dto.UpdateAssetRequest(
+            "Dell", null, null, null, null, null, null, null);
+
+    Asset updated = service.update(1L, req, "tech@acme.example");
+
+    assertThat(updated.getMake()).isEqualTo("Dell");
+    assertThat(updated.getSerialNumber()).isEqualTo("SN-ORIGINAL");
+  }
 }

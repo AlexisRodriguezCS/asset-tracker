@@ -124,6 +124,8 @@ public class AssetService {
     setIfPresent(request.model(), asset::setModel);
     setIfPresent(request.notes(), asset::setNotes);
     setIfPresent(request.condition(), asset::setCondition);
+    setIfPresent(request.serialNumber(), asset::setSerialNumber);
+    setIfPresent(request.purchaseDate(), asset::setPurchaseDate);
     setIfPresent(request.deployedOn(), asset::setDeployedOn);
     setIfPresent(request.warrantyEndsOn(), asset::setWarrantyEndsOn);
     audit.record(

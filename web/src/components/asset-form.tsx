@@ -46,7 +46,7 @@ export function AssetForm(props: Props) {
     pf?.type ?? a?.type ?? typeOptions[0] ?? "",
   );
   const [assetTag, setAssetTag] = useState(pf?.assetTag ?? a?.assetTag ?? "");
-  const [serialNumber, setSerialNumber] = useState("");
+  const [serialNumber, setSerialNumber] = useState(a?.serialNumber ?? "");
   const [make, setMake] = useState(pf?.make ?? a?.make ?? "");
   const [model, setModel] = useState(pf?.model ?? a?.model ?? "");
   const [condition, setCondition] = useState<string>(a?.condition ?? "GOOD");
@@ -84,6 +84,8 @@ export function AssetForm(props: Props) {
       make: trimmed(make),
       model: trimmed(model),
       condition,
+      serialNumber: trimmed(serialNumber),
+      purchaseDate: trimmed(purchaseDate),
       deployedOn: trimmed(deployedOn),
       warrantyEndsOn: trimmed(warrantyEndsOn),
       notes: trimmed(notes),
@@ -112,9 +114,7 @@ export function AssetForm(props: Props) {
       body: JSON.stringify({
         clientId: props.clientId,
         type,
-        serialNumber: trimmed(serialNumber),
         assetTag: trimmed(assetTag),
-        purchaseDate: trimmed(purchaseDate),
         purchaseCostCents:
           costUsd.trim() !== "" && Number.isFinite(cost)
             ? Math.round(cost * 100)
@@ -173,15 +173,15 @@ export function AssetForm(props: Props) {
                 placeholder="ACME-L-014"
               />
             </Field>
-            <Field label="Serial number">
-              <Input
-                required
-                value={serialNumber}
-                onChange={(e) => setSerialNumber(e.target.value)}
-              />
-            </Field>
           </>
         )}
+        <Field label="Serial number">
+          <Input
+            required={!edit}
+            value={serialNumber}
+            onChange={(e) => setSerialNumber(e.target.value)}
+          />
+        </Field>
         <Field label="Make">
           <Input value={make} onChange={(e) => setMake(e.target.value)} />
         </Field>
@@ -194,25 +194,23 @@ export function AssetForm(props: Props) {
           onChange={setCondition}
           options={CONDITIONS}
         />
+        <Field label="Purchased">
+          <Input
+            type="date"
+            value={purchaseDate}
+            onChange={(e) => setPurchaseDate(e.target.value)}
+          />
+        </Field>
         {!edit && (
-          <>
-            <Field label="Purchase cost (USD)">
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={costUsd}
-                onChange={(e) => setCostUsd(e.target.value)}
-              />
-            </Field>
-            <Field label="Purchased">
-              <Input
-                type="date"
-                value={purchaseDate}
-                onChange={(e) => setPurchaseDate(e.target.value)}
-              />
-            </Field>
-          </>
+          <Field label="Purchase cost (USD)">
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={costUsd}
+              onChange={(e) => setCostUsd(e.target.value)}
+            />
+          </Field>
         )}
         <Field label="Deployed on">
           <Input
