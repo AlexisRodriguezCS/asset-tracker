@@ -167,7 +167,7 @@ public class AssetImportService {
         clientId,
         actor,
         "ASSETS_IMPORTED",
-        null,
+        0L, // a batch, not one asset
         created + " created, " + updated + " updated, " + skipped.size() + " skipped",
         AuditDetail.of("created", created, "updated", updated, "skipped", skipped.size()));
 
