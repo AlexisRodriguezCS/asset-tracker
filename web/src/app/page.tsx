@@ -111,9 +111,16 @@ export default async function AssetsPage({
         }
         action={
           session ? (
-            <Link href="/assets/new">
-              <Button size="sm">Add asset</Button>
-            </Link>
+            <div className="flex gap-2">
+              <Link href="/import">
+                <Button size="sm" variant="outline">
+                  Import
+                </Button>
+              </Link>
+              <Link href="/assets/new">
+                <Button size="sm">Add asset</Button>
+              </Link>
+            </div>
           ) : (
             <Link
               href="/login"

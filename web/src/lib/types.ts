@@ -47,8 +47,58 @@ export interface Asset {
   notes: string | null;
   /** id of the unit this one replaced (retire-and-replace); null for an original. */
   supersedesAssetId: number | null;
+  /** client's own spreadsheet columns we don't model, kept verbatim on import. */
+  attributes: Record<string, string>;
   createdAt: string;
 }
+
+/** --- spreadsheet import --- */
+export interface ColumnMapping {
+  fields: Record<string, string>; // our field -> their column header
+  attributeColumns: string[]; // their headers kept under attributes
+}
+export interface ImportProfile {
+  id: number;
+  name: string;
+  mapping: ColumnMapping;
+}
+export interface ImportAnalyze {
+  headers: string[];
+  suggested: ColumnMapping;
+  sampleRows: Record<string, string>[];
+  profiles: ImportProfile[];
+}
+export interface ImportRowOutcome {
+  line: number;
+  values: Record<string, string>;
+  action: "create" | "update" | "skip";
+  errors: string[];
+}
+export interface ImportPreview {
+  total: number;
+  willCreate: number;
+  willUpdate: number;
+  invalid: number;
+  rows: ImportRowOutcome[];
+}
+export interface ImportResult {
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: ImportRowOutcome[];
+}
+export const IMPORT_FIELDS = [
+  "assetTag",
+  "type",
+  "serialNumber",
+  "make",
+  "model",
+  "condition",
+  "purchaseDate",
+  "warrantyEndsOn",
+  "deployedOn",
+  "notes",
+] as const;
 
 export type PersonStatus = "ACTIVE" | "OFFBOARDING" | "DEPARTED";
 

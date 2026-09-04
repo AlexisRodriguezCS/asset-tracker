@@ -156,6 +156,20 @@ export default async function AssetDetailPage({
                 <Field k="Notes" v={asset.notes} />
               </div>
             )}
+            {asset.attributes && Object.keys(asset.attributes).length > 0 && (
+              <div className="col-span-2">
+                <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                  From the import
+                </dt>
+                <dd className="mt-1 grid gap-x-6 gap-y-1 sm:grid-cols-2">
+                  {Object.entries(asset.attributes).map(([k, v]) => (
+                    <span key={k} className="text-sm">
+                      <span className="text-muted-foreground">{k}:</span> {v}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            )}
           </dl>
 
           <div className="mt-6 border-t border-border pt-6">
