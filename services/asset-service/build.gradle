@@ -13,6 +13,7 @@ dependencies {
     implementation 'org.flywaydb:flyway-core'
     runtimeOnly 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
+    implementation 'org.apache.commons:commons-csv:1.12.0'
     annotationProcessor 'org.projectlombok:lombok'
 
     // Proves the prod path: Flyway migrations apply and Hibernate `validate` passes on real Postgres.

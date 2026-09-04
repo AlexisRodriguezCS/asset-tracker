@@ -1,6 +1,7 @@
 package com.assettracker.assetservice.entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -11,6 +12,8 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * A single physical thing we track for a client. Its {@code status} and {@code holder} are the live
@@ -76,6 +79,14 @@ public class Asset {
    * row is never deleted, but keeping it a plain id matches how holderId works.
    */
   private Long supersedesAssetId;
+
+  /**
+   * Free-form key/value pairs carried over from a client's own spreadsheet (columns we don't model
+   * natively, e.g. "PO number", "MAC address"). Stored as JSON in a TEXT column.
+   */
+  @Convert(converter = StringMapConverter.class)
+  @Column(columnDefinition = "text")
+  private Map<String, String> attributes = new LinkedHashMap<>();
 
   @Version private long version;
 
@@ -277,6 +288,14 @@ public class Asset {
 
   public void setSupersedesAssetId(Long supersedesAssetId) {
     this.supersedesAssetId = supersedesAssetId;
+  }
+
+  public Map<String, String> getAttributes() {
+    return attributes;
+  }
+
+  public void setAttributes(Map<String, String> attributes) {
+    this.attributes = attributes == null ? new LinkedHashMap<>() : new LinkedHashMap<>(attributes);
   }
 
   public Instant getCreatedAt() {

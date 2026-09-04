@@ -49,7 +49,7 @@ class PostgresProfileIT {
         java.util.Arrays.stream(flyway.info().applied())
             .filter(m -> m.getVersion() != null)
             .count();
-    assertThat(applied).isEqualTo(6);
+    assertThat(applied).isEqualTo(7);
   }
 
   @Test

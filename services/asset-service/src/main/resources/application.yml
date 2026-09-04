@@ -2,6 +2,10 @@
 spring:
   application:
     name: asset-service
+  servlet:
+    multipart:
+      max-file-size: 10MB      # spreadsheet import
+      max-request-size: 12MB
   flyway:
     enabled: false   # dev runs on H2 + ddl-auto; the 'prod' profile enables Flyway
   datasource:

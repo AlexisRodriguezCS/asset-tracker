@@ -23,6 +23,9 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
   /** Every asset of a client currently on a type name - the "what breaks if I delete it" list. */
   List<Asset> findByClientIdAndType(Long clientId, String type);
 
+  /** The import upsert key: a client's units on one tag + type (usually 0 or 1). */
+  List<Asset> findByClientIdAndAssetTagAndType(Long clientId, String assetTag, String type);
+
   /**
    * True when a client already has an in-service asset of this type on the tag. A tag may carry one
    * active asset per type (a laptop plus its bundled charger and cable), and a retired / lost /

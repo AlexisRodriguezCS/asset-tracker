@@ -3,6 +3,7 @@ package com.assettracker.assetservice.web.dto;
 import com.assettracker.assetservice.entity.Asset;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Map;
 
 /** Response view of an asset. */
 public record AssetResponse(
@@ -23,6 +24,7 @@ public record AssetResponse(
     Long purchaseCostCents,
     String notes,
     Long supersedesAssetId,
+    Map<String, String> attributes,
     Instant createdAt) {
 
   public static AssetResponse from(Asset a) {
@@ -44,6 +46,7 @@ public record AssetResponse(
         a.getPurchaseCostCents(),
         a.getNotes(),
         a.getSupersedesAssetId(),
+        a.getAttributes(),
         a.getCreatedAt());
   }
 }
