@@ -31,8 +31,13 @@ updates:
     groups:
       actions: { patterns: ["*"] }
 
+  # There is no Dockerfile at the repo root - one per service, plus the console.
+  # Pointing this at "/" made every Dependabot docker run fail with "no manifests
+  # found"; the glob below is what actually matches this monorepo's layout.
   - package-ecosystem: "docker"
-    directory: "/"
+    directories:
+      - "/services/*"
+      - "/web"
     schedule: { interval: "monthly" }
     commit-message: { prefix: "build(deps)" }
     groups:

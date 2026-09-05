@@ -29,13 +29,13 @@ permissions:
   id-token: write   # OIDC federation - no cloud credentials are stored
 
 concurrency:
-  group: deploy-${{ github.event.inputs.environment }}
+  group: deploy-${{ inputs.environment }}
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
+    environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v7
 
@@ -53,14 +53,16 @@ jobs:
           cluster-name: ${{ vars.AKS_CLUSTER_NAME }}
 
       - name: Pin image tags
+        working-directory: deploy/k8s/overlays/cloud
+        env:
+          # via env, not inline ${{ }}, so the input can't be shell-injected
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
-          cd deploy/k8s/overlays/cloud
-          for s in discovery-server api-gateway auth-service client-service people-service \
-                   location-service asset-service assignment-service notification-service; do
-            kubectl kustomize . >/dev/null   # sanity render
-          done
+          set -euo pipefail
           # kubectl >=1.27 ships kustomize; set the SHA on every image
-          sed -i "s/newTag: main/newTag: ${{ github.event.inputs.image_tag }}/" kustomization.yaml
+          sed -i "s|newTag: main|newTag: ${IMAGE_TAG}|" kustomization.yaml
+          grep -q "newTag: ${IMAGE_TAG}" kustomization.yaml
+          kubectl kustomize . > /dev/null   # sanity render after the rewrite
 
       - name: Deploy
         run: |
