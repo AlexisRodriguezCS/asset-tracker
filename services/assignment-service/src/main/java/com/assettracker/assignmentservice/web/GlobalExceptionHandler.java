@@ -1,5 +1,7 @@
 package com.assettracker.assignmentservice.web;
 
+import com.assettracker.assignmentservice.events.EventRequestNotFoundException;
+import com.assettracker.assignmentservice.events.EventRequestStateException;
 import com.assettracker.assignmentservice.service.AssetNotMovableException;
 import com.assettracker.assignmentservice.service.AssetServiceUnavailableException;
 import com.assettracker.assignmentservice.service.AssetUnavailableException;
@@ -38,6 +40,21 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(ForbiddenClientException.class)
   public ResponseEntity<ApiError> handleForbiddenClient(ForbiddenClientException ex) {
     return build(HttpStatus.FORBIDDEN, "CLIENT_FORBIDDEN", ex.getMessage());
+  }
+
+  @ExceptionHandler(ForbiddenRoleException.class)
+  public ResponseEntity<ApiError> handleForbiddenRole(ForbiddenRoleException ex) {
+    return build(HttpStatus.FORBIDDEN, "ROLE_FORBIDDEN", ex.getMessage());
+  }
+
+  @ExceptionHandler(EventRequestNotFoundException.class)
+  public ResponseEntity<ApiError> handleEventRequestNotFound(EventRequestNotFoundException ex) {
+    return build(HttpStatus.NOT_FOUND, "EVENT_REQUEST_NOT_FOUND", ex.getMessage());
+  }
+
+  @ExceptionHandler(EventRequestStateException.class)
+  public ResponseEntity<ApiError> handleEventRequestState(EventRequestStateException ex) {
+    return build(HttpStatus.CONFLICT, "EVENT_REQUEST_STATE", ex.getMessage());
   }
 
   @ExceptionHandler(IllegalArgumentException.class)

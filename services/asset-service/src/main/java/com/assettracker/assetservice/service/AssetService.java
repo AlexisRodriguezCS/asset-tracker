@@ -6,6 +6,7 @@ import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.AssetStatus;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.repository.AssetRepository;
+import com.assettracker.assetservice.web.CallerContext;
 import com.assettracker.assetservice.web.TenantContext;
 import com.assettracker.assetservice.web.dto.AssignRequest;
 import com.assettracker.assetservice.web.dto.CreateAssetRequest;
@@ -85,6 +86,13 @@ public class AssetService {
     return request.supersedesAssetId();
   }
 
+  /**
+   * The catalog query behind every list view, narrowed to what the caller may see.
+   *
+   * <p>An ordinary employee ({@code USER}) is confined to the assets held by their own person
+   * record, whatever filter they asked for - the request cannot widen it, and a caller with no
+   * person record simply sees nothing rather than everything.
+   */
   @Transactional(readOnly = true)
   public List<Asset> search(
       Long clientId,
@@ -93,7 +101,29 @@ public class AssetService {
       HolderType holderType,
       Long holderId,
       String assetTag) {
+    TenantContext.requireAllowed(clientId);
+    if (CallerContext.isSelfServiceUser()) {
+      Long self = CallerContext.personId();
+      if (self == null) {
+        return List.of();
+      }
+      return repository.search(clientId, type, status, HolderType.PERSON, self, assetTag);
+    }
     return repository.search(clientId, type, status, holderType, holderId, assetTag);
+  }
+
+  /** True when the caller is allowed to see this particular asset. */
+  private boolean maySee(Asset asset) {
+    if (!TenantContext.allows(asset.getClientId())) {
+      return false;
+    }
+    if (!CallerContext.isSelfServiceUser()) {
+      return true;
+    }
+    Long self = CallerContext.personId();
+    return self != null
+        && asset.getHolderType() == HolderType.PERSON
+        && self.equals(asset.getHolderId());
   }
 
   @Transactional(readOnly = true)
@@ -103,7 +133,12 @@ public class AssetService {
 
   @Transactional(readOnly = true)
   public Asset getById(Long id) {
-    return repository.findById(id).orElseThrow(() -> notFound("id", String.valueOf(id)));
+    Asset asset = repository.findById(id).orElseThrow(() -> notFound("id", String.valueOf(id)));
+    if (!maySee(asset)) {
+      // 404 rather than 403: whether an id exists is itself information the caller lacks.
+      throw notFound("id", String.valueOf(id));
+    }
+    return asset;
   }
 
   /** The current unit on a tag: the active one if any, otherwise the most recent retired unit. */

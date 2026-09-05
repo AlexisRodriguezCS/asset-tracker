@@ -5,7 +5,6 @@ import java.util.List;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -17,25 +16,19 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * The single public entry point. Open to anyone: {@code /api/auth/**}, actuator, and read-only
- * ({@code GET}) browsing of assets / people / locations / assignments / clients so a viewer can
- * look around without an account. Any write - check-out, return, offboard, create, edit - needs a
- * valid bearer token from a trusted issuer. Per-tenant authorization (a token may only touch its
- * own {@code clientIds}) is enforced downstream from the headers this gateway forwards.
+ * The single public entry point. Open to anyone: {@code /api/auth/**} and actuator. Everything else
+ * needs a valid bearer token from a trusted issuer.
+ *
+ * <p>Reads used to be public so a visitor could browse without an account. That ended when ordinary
+ * employees became users of the console: a signed-in employee must see only their own gear, which
+ * is impossible if the same data is readable with no token at all. Authorization within a tenant -
+ * which client ids a token may touch, and whether a {@code USER} is confined to their own person -
+ * is enforced downstream from the headers this gateway forwards. See docs/adr/0005.
  */
 @Configuration
 @EnableWebSecurity
 @EnableConfigurationProperties(SecurityProperties.class)
 public class SecurityConfig {
-
-  private static final String[] READ_ONLY_PUBLIC = {
-    "/api/assets/**",
-    "/api/people/**",
-    "/api/locations/**",
-    "/api/assignments/**",
-    "/api/clients/**",
-    "/api/notifications/**"
-  };
 
   private final SecurityProperties properties;
 
@@ -51,8 +44,6 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers("/api/auth/**", "/actuator/**")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.GET, READ_ONLY_PUBLIC)
                     .permitAll()
                     .anyRequest()
                     .authenticated())

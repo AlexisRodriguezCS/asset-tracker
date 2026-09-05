@@ -6,6 +6,7 @@ import com.assettracker.peopleservice.client.AssetClient;
 import com.assettracker.peopleservice.entity.Person;
 import com.assettracker.peopleservice.entity.PersonStatus;
 import com.assettracker.peopleservice.repository.PersonRepository;
+import com.assettracker.peopleservice.web.CallerContext;
 import com.assettracker.peopleservice.web.TenantContext;
 import com.assettracker.peopleservice.web.dto.CreatePersonRequest;
 import java.util.List;
@@ -50,6 +51,15 @@ public class PersonService {
 
   @Transactional(readOnly = true)
   public List<Person> list(Long clientId, PersonStatus status) {
+    TenantContext.requireAllowed(clientId);
+    if (CallerContext.isSelfServiceUser()) {
+      // an ordinary employee is not a directory browser - they see themselves, nobody else
+      Long self = CallerContext.personId();
+      return self == null
+          ? List.of()
+          : repository.findById(self).filter(p -> p.getClientId().equals(clientId)).stream()
+              .toList();
+    }
     return status == null
         ? repository.findByClientIdOrderByFullNameAsc(clientId)
         : repository.findByClientIdAndStatus(clientId, status);
@@ -57,7 +67,14 @@ public class PersonService {
 
   @Transactional(readOnly = true)
   public Person getById(Long id) {
-    return repository.findById(id).orElseThrow(() -> notFound(id));
+    Person person = repository.findById(id).orElseThrow(() -> notFound(id));
+    if (!TenantContext.allows(person.getClientId())
+        || (CallerContext.isSelfServiceUser()
+            && !person.getId().equals(CallerContext.personId()))) {
+      // 404 rather than 403 - whether an id exists is itself information the caller lacks
+      throw notFound(id);
+    }
+    return person;
   }
 
   /** Marks a person as offboarding - the signal for HR to collect their assets. */

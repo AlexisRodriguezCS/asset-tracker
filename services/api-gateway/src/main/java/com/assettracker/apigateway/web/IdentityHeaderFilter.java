@@ -34,6 +34,7 @@ public class IdentityHeaderFilter extends OncePerRequestFilter {
   static final String USER_ID = "X-User-Id";
   static final String USER_ROLE = "X-User-Role";
   static final String CLIENT_IDS = "X-Client-Ids";
+  static final String PERSON_ID = "X-Person-Id";
   static final String CORRELATION_ID = "X-Correlation-Id";
   static final String MDC_KEY = "correlationId";
 
@@ -48,6 +49,7 @@ public class IdentityHeaderFilter extends OncePerRequestFilter {
     injected.put(USER_ID, null);
     injected.put(USER_ROLE, null);
     injected.put(CLIENT_IDS, null);
+    injected.put(PERSON_ID, null);
 
     // Correlation id: accept the client's if present (unlike the identity headers, which are always
     // overridden to defeat spoofing), generate one otherwise. Forwarded downstream and logged here.
@@ -64,6 +66,10 @@ public class IdentityHeaderFilter extends OncePerRequestFilter {
       Jwt jwt = auth.getToken();
       injected.put(USER_ID, jwt.getSubject());
       injected.put(USER_ROLE, jwt.getClaimAsString("role"));
+      Object personId = jwt.getClaim("personId");
+      if (personId != null) {
+        injected.put(PERSON_ID, String.valueOf(personId));
+      }
       Object claim = jwt.getClaim("clientIds");
       if (claim instanceof Iterable<?> ids) {
         injected.put(
@@ -135,6 +141,7 @@ public class IdentityHeaderFilter extends OncePerRequestFilter {
         case "x-user-id" -> USER_ID;
         case "x-user-role" -> USER_ROLE;
         case "x-client-ids" -> CLIENT_IDS;
+        case "x-person-id" -> PERSON_ID;
         case "x-correlation-id" -> CORRELATION_ID;
         default -> name;
       };

@@ -49,6 +49,14 @@ public class User {
   @Column(name = "client_id", nullable = false)
   private Set<Long> clientIds = new HashSet<>();
 
+  /**
+   * The people-service person this login belongs to, when the user is an employee rather than
+   * platform staff. Carried in the JWT so downstream services can scope "what is assigned to me"
+   * without a lookup; null for staff logins that map to no employee record.
+   */
+  @Column(name = "person_id")
+  private Long personId;
+
   @Column(nullable = false, updatable = false)
   private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -57,5 +65,10 @@ public class User {
     this.password = password;
     this.role = role;
     this.clientIds = new HashSet<>(clientIds);
+  }
+
+  public User(String email, String password, Role role, Set<Long> clientIds, Long personId) {
+    this(email, password, role, clientIds);
+    this.personId = personId;
   }
 }

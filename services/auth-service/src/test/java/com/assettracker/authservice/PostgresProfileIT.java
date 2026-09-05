@@ -43,6 +43,6 @@ class PostgresProfileIT {
   void everyVersionedMigrationApplied() {
     long applied =
         Arrays.stream(flyway.info().applied()).filter(m -> m.getVersion() != null).count();
-    assertThat(applied).isEqualTo(1);
+    assertThat(applied).isEqualTo(2);
   }
 }

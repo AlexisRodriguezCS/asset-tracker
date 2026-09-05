@@ -17,7 +17,7 @@ class JwtServiceTest {
 
   @Test
   void tokenCarriesSubjectRoleAndClientIdsAndRoundTrips() {
-    String token = jwt.generateToken("tech@acme.example", Role.TECH, List.of(1L, 2L, 3L));
+    String token = jwt.generateToken("tech@acme.example", Role.TECH, List.of(1L, 2L, 3L), 7L);
 
     Claims claims = jwt.parse(token);
     assertThat(claims.getSubject()).isEqualTo("tech@acme.example");
@@ -29,14 +29,14 @@ class JwtServiceTest {
   @Test
   void aTokenSignedByADifferentKeyPairIsRejected() {
     JwtService other = new JwtService(HOUR, "asset-tracker-auth");
-    String foreign = other.generateToken("x@y.z", Role.TECH, List.of(1L));
+    String foreign = other.generateToken("x@y.z", Role.TECH, List.of(1L), null);
     assertThatThrownBy(() -> jwt.parse(foreign)).isInstanceOf(JwtException.class);
   }
 
   @Test
   void anExpiredTokenIsRejected() {
     JwtService instant = new JwtService(1L, "asset-tracker-auth");
-    String token = instant.generateToken("x@y.z", Role.HR, List.of(1L));
+    String token = instant.generateToken("x@y.z", Role.HR, List.of(1L), null);
     try {
       Thread.sleep(5);
     } catch (InterruptedException e) {

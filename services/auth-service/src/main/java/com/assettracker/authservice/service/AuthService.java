@@ -59,7 +59,8 @@ public class AuthService {
       throw new BadCredentialsException("Invalid credentials");
     }
     String token =
-        jwtService.generateToken(user.getEmail(), user.getRole(), List.copyOf(user.getClientIds()));
+        jwtService.generateToken(
+            user.getEmail(), user.getRole(), List.copyOf(user.getClientIds()), user.getPersonId());
     return TokenResponse.bearer(token, jwtService.getExpirationMs());
   }
 }

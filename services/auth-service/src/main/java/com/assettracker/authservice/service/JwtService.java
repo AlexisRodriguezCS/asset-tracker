@@ -52,10 +52,11 @@ public class JwtService {
 
   /**
    * Creates a signed token carrying {@code role} (a single {@link Role}) and {@code clientIds} (the
-   * tenant ids this user may act on) - the gateway forwards both downstream so services can scope
-   * and authorize without re-reading the database.
+   * tenant ids this user may act on) and {@code personId} (the employee record this login is, if
+   * any) - the gateway forwards all three downstream so services can scope and authorize without
+   * re-reading the database.
    */
-  public String generateToken(String subject, Role role, List<Long> clientIds) {
+  public String generateToken(String subject, Role role, List<Long> clientIds, Long personId) {
     Date now = new Date();
     return Jwts.builder()
         .header()
@@ -65,6 +66,7 @@ public class JwtService {
         .subject(subject)
         .claim("role", role.name())
         .claim("clientIds", clientIds)
+        .claim("personId", personId)
         .issuedAt(now)
         .expiration(new Date(now.getTime() + expirationMs))
         .signWith(keyPair.getPrivate(), Jwts.SIG.RS256)

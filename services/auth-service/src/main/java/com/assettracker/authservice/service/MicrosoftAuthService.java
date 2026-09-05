@@ -95,7 +95,8 @@ public class MicrosoftAuthService {
                 });
 
     String local =
-        jwtService.generateToken(user.getEmail(), user.getRole(), List.copyOf(user.getClientIds()));
+        jwtService.generateToken(
+            user.getEmail(), user.getRole(), List.copyOf(user.getClientIds()), user.getPersonId());
     return TokenResponse.bearer(local, jwtService.getExpirationMs());
   }
 
