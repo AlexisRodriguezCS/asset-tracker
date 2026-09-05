@@ -9,7 +9,9 @@
 #      GitHub OIDC subject and can get AKS credentials (see docs/deployment.md).
 #   2. Add repo variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID,
 #      AKS_RESOURCE_GROUP, AKS_CLUSTER_NAME.
-#   3. Fill the REPLACE_WITH_* values in deploy/k8s/overlays/cloud (or template them here).
+#   3. Add the environment's endpoints as repo/environment variables: PG_HOST,
+#      BROKER_HOST, CONSOLE_HOST. The "Render the overlay" step substitutes them
+#      into the cloud overlay's placeholders and refuses to deploy if any is unset.
 name: deploy
 
 on:
@@ -52,16 +54,35 @@ jobs:
           resource-group: ${{ vars.AKS_RESOURCE_GROUP }}
           cluster-name: ${{ vars.AKS_CLUSTER_NAME }}
 
-      - name: Pin image tags
+      - name: Render the overlay
         working-directory: deploy/k8s/overlays/cloud
         env:
-          # via env, not inline ${{ }}, so the input can't be shell-injected
+          # via env, not inline ${{ }}, so nothing here can be shell-injected
           IMAGE_TAG: ${{ inputs.image_tag }}
+          PG_HOST: ${{ vars.PG_HOST }}
+          BROKER_HOST: ${{ vars.BROKER_HOST }}
+          CONSOLE_HOST: ${{ vars.CONSOLE_HOST }}
         run: |
           set -euo pipefail
+
+          for v in IMAGE_TAG PG_HOST BROKER_HOST CONSOLE_HOST; do
+            if [ -z "${!v}" ]; then
+              echo "::error::$v is empty - set it as a repo/environment variable before deploying"
+              exit 1
+            fi
+          done
+
           # kubectl >=1.27 ships kustomize; set the SHA on every image
-          sed -i "s|newTag: main|newTag: ${IMAGE_TAG}|" kustomization.yaml
-          grep -q "newTag: ${IMAGE_TAG}" kustomization.yaml
+          sed -i "s|newTag: main|newTag: ${IMAGE_TAG}|g" kustomization.yaml
+          sed -i "s|__PG_HOST__|${PG_HOST}|g;
+                  s|__BROKER_HOST__|${BROKER_HOST}|g;
+                  s|__CONSOLE_HOST__|${CONSOLE_HOST}|g" kustomization.yaml
+
+          if grep -n "__[A-Z_]\+__\|newTag: main" kustomization.yaml; then
+            echo "::error::the overlay still has unsubstituted placeholders (above)"
+            exit 1
+          fi
+
           kubectl kustomize . > /dev/null   # sanity render after the rewrite
 
       - name: Deploy

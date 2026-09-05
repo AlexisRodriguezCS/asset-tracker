@@ -47,16 +47,23 @@ images:
 
 patches:
   # Point the datasource at a managed Postgres endpoint and require TLS.
+  #
+  # The __PG_HOST__ / __BROKER_HOST__ / __CONSOLE_HOST__ tokens are substituted
+  # by .github/workflows/deploy.yml from repo variables before `kubectl apply`;
+  # the workflow fails if any is left unreplaced, so a half-configured overlay
+  # can never reach a cluster.
   - patch: |
       apiVersion: v1
       kind: ConfigMap
       metadata:
         name: asset-tracker-env
       data:
-        PG_HOST: REPLACE_WITH_MANAGED_PG_FQDN
+        PG_HOST: __PG_HOST__
         PG_OPTS: "?sslmode=require"
-        CORS_ALLOWED_ORIGINS: https://console.asset-tracker.example
-        SPRING_RABBITMQ_HOST: REPLACE_WITH_MANAGED_BROKER_FQDN
+        CORS_ALLOWED_ORIGINS: https://__CONSOLE_HOST__
+        SPRING_RABBITMQ_HOST: __BROKER_HOST__
+        # Per-instance budget; two gateway replicas => ~10 attempts/min overall.
+        AUTH_RATE_LIMIT_MAX: "5"
 
   # Drop the stub Secret - External Secrets Operator creates the real one.
   - patch: |
@@ -113,9 +120,16 @@ patches:
         name: rabbitmq-data
 
   # Two replicas for the edge and the business services.
+  #
+  # auth-service is deliberately NOT in this list. JwtService generates its RSA
+  # key pair in the constructor, so each pod would sign with a different key and
+  # publish a different JWK set; the gateway resolves the JWK set through the
+  # auth-service Service, so it would cache one pod's key and reject the other
+  # pod's tokens. Scaling it out requires one shared key (a mounted Secret, or
+  # signing via KMS) - tracked in infra/RUNBOOK.md under "Deferred".
   - target:
       kind: Deployment
-      name: "(api-gateway|auth-service|client-service|people-service|location-service|asset-service|assignment-service|notification-service)"
+      name: "(api-gateway|client-service|people-service|location-service|asset-service|assignment-service|notification-service)"
     patch: |
       - op: replace
         path: /spec/replicas
@@ -129,7 +143,7 @@ patches:
         name: asset-tracker
       spec:
         rules:
-          - host: console.asset-tracker.example
+          - host: __CONSOLE_HOST__
             http:
               paths:
                 - path: /
@@ -140,5 +154,5 @@ patches:
                       port:
                         number: 8080
         tls:
-          - hosts: [console.asset-tracker.example]
+          - hosts: [__CONSOLE_HOST__]
             secretName: asset-tracker-tls

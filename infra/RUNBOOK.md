@@ -120,8 +120,27 @@ follow-up; the correlation id and MDC wiring are the groundwork.
 ## Rate limiting
 
 The gateway allows **10 `POST /api/auth/**` per minute per client IP**; the 11th
-gets `429` + `Retry-After: 60`. In-memory / single-instance — a real deployment
-moves this to Redis behind Spring Cloud Gateway's `RequestRateLimiter`.
+gets `429` + `Retry-After: 60`. Behind a proxy the key is the first
+`X-Forwarded-For` hop, so every caller isn't collapsed onto the ingress IP.
+
+The budget is a property — `AUTH_RATE_LIMIT_MAX` / `AUTH_RATE_LIMIT_WINDOW_MS` —
+because **counters live in each gateway's heap, not in a shared store**. N replicas
+therefore allow roughly N × the budget, and a rolling restart resets every counter.
+The cloud overlay runs two gateways and sets `AUTH_RATE_LIMIT_MAX: "5"` to keep the
+cluster-wide rate near 10/min. That makes credential stuffing expensive; it is not a
+hard limit. The real fix is Redis behind Spring Cloud Gateway's `RequestRateLimiter`.
+
+## Scaling: what can and cannot run multi-replica
+
+The cloud overlay (`deploy/k8s/overlays/cloud`) runs two of everything **except
+`auth-service`**, which is pinned to one pod on purpose:
+
+`JwtService` generates its RSA key pair in the constructor, so every pod signs with
+a different key and publishes a different JWK set. The gateway resolves
+`/.well-known/jwks.json` through the `auth-service` Service, so with two pods it
+caches one pod's key and intermittently rejects the other pod's tokens. Scaling
+auth-service out requires one shared signing key — a key pair mounted from a Secret,
+or signing through Key Vault / KMS so the private key never leaves the HSM.
 
 ## Security & secrets
 
@@ -177,7 +196,10 @@ mapping — swap it for one when the tenant's groups are known.
 
 - Per-service tenant enforcement from the forwarded `X-Client-Ids`; verify a
   signed principal inside the mesh instead of trusting the gateway's headers.
-- Persist / KMS-back the token-signing key so tokens survive an `auth-service` restart.
+- Persist / KMS-back the token-signing key so tokens survive an `auth-service`
+  restart **and so auth-service can run more than one replica** (see "Scaling" above).
+- A shared-store rate limiter (Redis) so the auth brake is cluster-wide rather than
+  per gateway instance.
 - Saga-style compensation when an offboarding sweep half-fails.
 - Connection-pool tuning; one Postgres role per service; a managed instance in cloud.
 - Contract tests (Spring Cloud Contract / Pact), mutation testing (PITest), load tests (k6).

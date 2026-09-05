@@ -91,6 +91,9 @@ services:
       JWT_JWKS_URI: ${JWT_JWKS_URI:-http://auth-service:8081/.well-known/jwks.json}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       ENTRA_ISSUER_URI: ${ENTRA_ISSUER_URI:-}
+      # per-instance auth brake; see infra/RUNBOOK.md "Rate limiting"
+      AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-10}
+      AUTH_RATE_LIMIT_WINDOW_MS: ${AUTH_RATE_LIMIT_WINDOW_MS:-60000}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       <<: *healthcheck
