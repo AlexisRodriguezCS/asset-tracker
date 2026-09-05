@@ -2,6 +2,13 @@
 # Let in-flight requests finish on SIGTERM (rolling updates / `compose stop`).
 server:
   shutdown: graceful
+  tomcat:
+    threads:
+      # Tomcat defaults to 200 worker threads per service. Ten services on one
+      # host is 2000 potential threads for a workload that measures ~35 live
+      # threads each; the ceiling is what a burst can cost, not what is in use.
+      max: 40
+      min-spare: 5
 
 spring:
   lifecycle:

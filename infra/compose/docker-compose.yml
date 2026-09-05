@@ -10,23 +10,42 @@
 
 name: asset-tracker
 
-# Ten JVMs on one laptop. Without a ceiling each one sizes its GC threads,
-# ForkJoinPool and Tomcat pool for every core on the host, and they all do it at
-# once during `up`, which starves the host - including Docker Desktop's own
-# backend. ActiveProcessorCount is what actually shrinks those pools; `cpus` only
-# throttles afterwards, and a throttled-but-16-core-sized JVM is the worst case.
+# Ten JVMs on one host. Sized from measurement, not defaults.
+#
+# Without a ceiling each JVM sizes its GC threads, ForkJoinPool and Tomcat pool
+# for every core on the host, and all ten do it at once during `up`, which
+# starves the host - including Docker Desktop's own backend. ActiveProcessorCount
+# is what actually shrinks those pools; `cpus` only throttles afterwards, and a
+# throttled-but-16-core-sized JVM is the worst of both.
+#
+# Measured heap in use per service is 39-69MB, so a percentage-of-container heap
+# was handing each one a 483MB ceiling it never approached. 224MB is ~3x the
+# observed peak - room for a burst without paying for it at rest. Metaspace is
+# capped because it grows silently and is the largest single piece of a Spring
+# service's footprint (~100MB of classes).
+#
+# -XX:TieredStopAtLevel=1 was tried here and removed. It saves ~35MB a service,
+# but load testing through the gateway showed it *halves* throughput once there
+# is any concurrency: 1481 -> 3060 req/s at 50 concurrent, and p95 35ms instead
+# of 60ms. Paying twice the hardware to save a third of a gigabyte is the wrong
+# way round. Keep the JIT free to reach C2.
 x-jvm: &jvm-sizing
   JAVA_TOOL_OPTIONS: >-
     -XX:ActiveProcessorCount=2
-    -XX:MaxRAMPercentage=65
+    -Xms96m
+    -Xmx224m
+    -XX:MaxMetaspaceSize=160m
     -XX:+UseSerialGC
     -Xss512k
+    -Dspring.jmx.enabled=false
 
 x-service-defaults: &service-defaults
   restart: unless-stopped
   networks: [att]
   cpus: 2
-  mem_limit: 768m
+  # heap 224 + metaspace 160 + code cache 64 + stacks/native ~60 => ~510MB worst
+  # case, so 576 leaves headroom without letting a leak take the host with it.
+  mem_limit: 576m
   environment: &common-env
     <<: *jvm-sizing
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
@@ -59,7 +78,7 @@ services:
     restart: unless-stopped
     networks: [att]
     cpus: 2
-    mem_limit: 640m
+    mem_limit: 512m
     environment:
       <<: *jvm-sizing
     ports: ["8761:8761"]
@@ -94,7 +113,7 @@ services:
     restart: unless-stopped
     networks: [att]
     cpus: 2
-    mem_limit: 640m
+    mem_limit: 512m
     ports: ["8888:8888"]
     environment:
       <<: *jvm-sizing
