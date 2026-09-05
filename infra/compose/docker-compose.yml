@@ -10,10 +10,25 @@
 
 name: asset-tracker
 
+# Ten JVMs on one laptop. Without a ceiling each one sizes its GC threads,
+# ForkJoinPool and Tomcat pool for every core on the host, and they all do it at
+# once during `up`, which starves the host - including Docker Desktop's own
+# backend. ActiveProcessorCount is what actually shrinks those pools; `cpus` only
+# throttles afterwards, and a throttled-but-16-core-sized JVM is the worst case.
+x-jvm: &jvm-sizing
+  JAVA_TOOL_OPTIONS: >-
+    -XX:ActiveProcessorCount=2
+    -XX:MaxRAMPercentage=65
+    -XX:+UseSerialGC
+    -Xss512k
+
 x-service-defaults: &service-defaults
   restart: unless-stopped
   networks: [att]
+  cpus: 2
+  mem_limit: 768m
   environment: &common-env
+    <<: *jvm-sizing
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
     CONFIG_SERVER_URL: http://config-server:8888
     SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
@@ -43,6 +58,10 @@ services:
     container_name: discovery-server
     restart: unless-stopped
     networks: [att]
+    cpus: 2
+    mem_limit: 640m
+    environment:
+      <<: *jvm-sizing
     ports: ["8761:8761"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
@@ -54,6 +73,14 @@ services:
     container_name: rabbitmq
     restart: unless-stopped
     networks: [att]
+    cpus: 2
+    mem_limit: 512m
+    environment:
+      # The Erlang VM starts one scheduler per visible host CPU - 16 of them for a
+      # broker this idle - and they are what makes RabbitMQ spike during startup.
+      # `cpus` alone would not help: it throttles the schedulers rather than
+      # reducing them.
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 2:2"
     ports: ["5672:5672", "15672:15672"]   # amqp + management UI
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
@@ -66,8 +93,11 @@ services:
     container_name: config-server
     restart: unless-stopped
     networks: [att]
+    cpus: 2
+    mem_limit: 640m
     ports: ["8888:8888"]
     environment:
+      <<: *jvm-sizing
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
       CONFIG_REPO_LOCATIONS: file:/config-repo,file:/config-repo/{application}
     volumes:
@@ -204,6 +234,8 @@ services:
     container_name: prometheus
     restart: unless-stopped
     networks: [att]
+    cpus: 1
+    mem_limit: 384m
     ports: ["9090:9090"]
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -216,6 +248,8 @@ services:
     container_name: grafana
     restart: unless-stopped
     networks: [att]
+    cpus: 1
+    mem_limit: 384m
     ports: ["3001:3000"]
     environment:
       GF_SECURITY_ADMIN_USER: admin

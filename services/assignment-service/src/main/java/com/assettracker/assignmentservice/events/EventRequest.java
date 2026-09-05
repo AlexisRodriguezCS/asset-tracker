@@ -71,7 +71,7 @@ public class EventRequest {
   private Instant createdAt = Instant.now();
 
   @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
-  @JoinColumn(name = "request_id")
+  @JoinColumn(name = "request_id", nullable = false)
   private List<EventRequestLine> lines = new ArrayList<>();
 
   protected EventRequest() {}

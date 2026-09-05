@@ -20,9 +20,6 @@ public class EventRequestLine {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(name = "request_id", nullable = false)
-  private Long requestId;
-
   /** An asset type name, matching asset-service's per-client type catalog (e.g. "Laptop", "TV"). */
   @Column(nullable = false, length = 80)
   private String itemType;
@@ -47,14 +44,6 @@ public class EventRequestLine {
 
   public Long getId() {
     return id;
-  }
-
-  public Long getRequestId() {
-    return requestId;
-  }
-
-  void setRequestId(Long requestId) {
-    this.requestId = requestId;
   }
 
   public String getItemType() {
