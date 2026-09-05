@@ -15,6 +15,8 @@ const ALLOW: RegExp[] = [
   /^assignments\/return(\?.*)?$/,
   /^assignments\/transfer$/,
   /^assignments\/offboard(\?.*)?$/,
+  /^assignments\/event-requests$/,
+  /^assignments\/event-requests\/\d+\/(approve|deny|fulfil)$/,
   /^assets$/,
   /^assets\/\d+$/,
   /^assets\/\d+\/status$/,

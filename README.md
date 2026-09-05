@@ -25,6 +25,8 @@ publishes images.
 | **Reports** | live rollups per client: by type / status / condition / department, lifecycle events from the audit trail, break-and-loss by department, most-replaced tag slots, fleet value. |
 | **Audit trail** | every mutating call writes a `who / what / when` row in the same transaction as the change. |
 | **Tenancy** | every record belongs to a `clientId`; the JWT carries the set a user may act on. |
+| **Roles** | `ADMIN` · `TECH` (full asset operations) · `POC` (a customer's point of contact — approves for their own organisation) · `HR` (offboarding) · `USER` (an employee: only their own gear). Nothing is readable without a token, and a `USER`'s queries are forced onto their own person record server-side. |
+| **Event sign-out** | an employee requests gear for an event by name, date and quantity — "1 loaner laptop, 2 TVs" — a POC or tech approves it, and a tech hands it out by naming the real units, which check out through the normal custody path. |
 
 **A tag identifies a slot, not a unit** ([ADR 0007](docs/decisions/0007-tags-identify-slots-not-units.md)):
 uniqueness is per `(client, tag, type)` and only among in-service statuses, so a
@@ -39,8 +41,8 @@ returning one that was never checked out → **409**.
 
 ```
                          ┌──────────────┐
-  browser ──HTTPS──▶      │  api-gateway │  routing · CORS · RS256 JWT (JWKS) · forwards
-                          │    :8080     │  X-User-Id / X-User-Role / X-Client-Ids
+  browser ──HTTPS──▶      │  api-gateway │  routing · CORS · RS256 JWT (JWKS) · forwards X-User-Id /
+                          │    :8080     │  X-User-Role / X-Client-Ids / X-Person-Id
                           └──────┬───────┘
         ┌───────────┬───────────┼───────────┬────────────┬─────────────┐
         ▼           ▼           ▼           ▼            ▼             ▼
@@ -103,7 +105,10 @@ Then the console:
 cd web && cp .env.example .env.local && npm install && npm run dev   # localhost:3000
 ```
 
-Seeded login: `tech@acme.example` / `Passw0rd!` (also `hr@…`, `admin@…`).
+Seeded logins, one per role, all `Passw0rd!`: `admin@platform.example`,
+`tech@acme.example`, `poc@acme.example`, `hr@acme.example`, and
+`dana.reyes@acme.example` (an ordinary employee). With `DEMO_LOGINS_ENABLED=true`
+the account menu switches between them — see [infra/RUNBOOK.md](infra/RUNBOOK.md).
 Seed data: 3 clients (Acme / Globex / Initech), each with its own type list,
 people, desks across two buildings and several floors, person + desk kits, and a
 spread of statuses — ~145 assets in total.
@@ -119,10 +124,11 @@ Spotless + Checkstyle + JaCoCo for all services), `./gradlew :asset-service:boot
 
 ## The demo flow
 
-Browse the catalog (public) → sign in as the tech → check an asset out to a
-person → see it on that person → try to check it out again (**409**) → run
-offboarding → the asset is back in stock, and `notification-service` has the
-`ASSET_CHECKED_OUT` / `OFFBOARDING_COLLECTED` events. Scripted in
+Read with no token (**401** — nothing is public) → sign in as the tech → check an
+asset out to a person → see it on that person → sign in as that employee and see
+only her own gear → try to check it out again (**409**) → run offboarding → the
+asset is back in stock, and `notification-service` has the `ASSET_CHECKED_OUT` /
+`OFFBOARDING_COLLECTED` events. Scripted in
 [`e2e/`](e2e/src/test/java/com/assettracker/e2e/PlatformE2ETest.java).
 
 ## Testing

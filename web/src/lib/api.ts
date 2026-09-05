@@ -7,6 +7,7 @@ import type {
   AuditEvent,
   Client,
   Location,
+  EventRequest,
   Person,
 } from "@/lib/types";
 
@@ -80,11 +81,15 @@ const qs = (params: Record<string, string | number | undefined>) => {
   return s ? `?${s}` : "";
 };
 
-// --- reads (public) --------------------------------------------------------
+// --- reads -----------------------------------------------------------------
+//
+// Every read carries the bearer token. Reads used to be public; that ended when
+// ordinary employees became users of the console, because what comes back is now
+// scoped to the caller's role and person.
 
 // the tenant list changes rarely and is fetched on every navigation (layout) - cache it briefly
 export const listClients = () =>
-  gateway<Client[]>("/api/clients", { revalidate: 300 });
+  gateway<Client[]>("/api/clients", { auth: true, revalidate: 300 });
 
 export const listAssets = (params: {
   clientId: number;
@@ -93,35 +98,56 @@ export const listAssets = (params: {
   holderType?: string;
   holderId?: number;
   tag?: string;
-}) => gateway<Asset[]>(`/api/assets${qs(params)}`);
+}) => gateway<Asset[]>(`/api/assets${qs(params)}`, { auth: true });
 
 export const listAssetTypes = (clientId: number) =>
-  gateway<AssetTypeDef[]>(`/api/assets/types${qs({ clientId })}`);
+  gateway<AssetTypeDef[]>(`/api/assets/types${qs({ clientId })}`, {
+    auth: true,
+  });
 
 export const getAsset = (id: string | number) =>
-  gateway<Asset>(`/api/assets/${id}`);
+  gateway<Asset>(`/api/assets/${id}`, { auth: true });
 
 export const listPeople = (clientId: number, status?: string) =>
-  gateway<Person[]>(`/api/people${qs({ clientId, status })}`);
+  gateway<Person[]>(`/api/people${qs({ clientId, status })}`, { auth: true });
 
 export const getPerson = (id: string | number) =>
-  gateway<Person>(`/api/people/${id}`);
+  gateway<Person>(`/api/people/${id}`, { auth: true });
 
 export const listLocations = (clientId: number, kind?: string) =>
-  gateway<Location[]>(`/api/locations${qs({ clientId, kind })}`);
+  gateway<Location[]>(`/api/locations${qs({ clientId, kind })}`, {
+    auth: true,
+  });
 
 export const assignmentsForAsset = (assetId: number) =>
-  gateway<Assignment[]>(`/api/assignments${qs({ assetId })}`);
+  gateway<Assignment[]>(`/api/assignments${qs({ assetId })}`, { auth: true });
 
-// --- audit trail (append-only, public read) ------------------------------
+// --- audit trail (append-only) ---------------------------------------------
 
 export const assetAudit = (clientId: number, assetId: number) =>
-  gateway<AuditEvent[]>(`/api/assets/audit${qs({ clientId, assetId })}`);
+  gateway<AuditEvent[]>(`/api/assets/audit${qs({ clientId, assetId })}`, {
+    auth: true,
+  });
 
 export const personAudit = (clientId: number, personId: number) =>
   gateway<AuditEvent[]>(
     `/api/people/audit${qs({ clientId, entityId: personId })}`,
+    { auth: true },
   );
 
 export const clientActivity = (clientId: number) =>
-  gateway<AuditEvent[]>(`/api/assets/audit${qs({ clientId })}`);
+  gateway<AuditEvent[]>(`/api/assets/audit${qs({ clientId })}`, { auth: true });
+
+// --- event sign-out --------------------------------------------------------
+
+// Scoped server-side by role: an employee gets back only the requests they raised.
+export const listEventRequests = (clientId: number, status?: string) =>
+  gateway<EventRequest[]>(
+    `/api/assignments/event-requests${qs({ clientId, status })}`,
+    { auth: true },
+  );
+
+export const getEventRequest = (id: string | number) =>
+  gateway<EventRequest>(`/api/assignments/event-requests/${id}`, {
+    auth: true,
+  });

@@ -8,6 +8,8 @@ export interface Session {
   token: string;
   subject: string;
   role: string;
+  /** The employee record behind this login, when it maps to one. */
+  personId: number | null;
   clientIds: number[];
   expiresAt: number;
 }
@@ -32,6 +34,10 @@ export async function getSession(): Promise<Session | null> {
     token,
     subject: String(claims.sub ?? ""),
     role: String(claims.role ?? "TECH"),
+    personId:
+      claims.personId === null || claims.personId === undefined
+        ? null
+        : Number(claims.personId),
     clientIds,
     expiresAt,
   };

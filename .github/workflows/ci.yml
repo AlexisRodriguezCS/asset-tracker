@@ -159,25 +159,15 @@ jobs:
             api-gateway auth-service client-service people-service \
             location-service asset-service assignment-service notification-service
 
-      # Three separate readiness facts, and the suite needs all of them:
-      #   1. containers healthy      (compose already waited for this)
-      #   2. the gateway routes      - proves gateway -> asset-service
-      #   3. every service is in Eureka AND the callers have fetched the registry
-      #      - proves assignment-service -> asset-service, which is what the
-      #        check-out test needs and what 2. does NOT cover.
-      # Gating only on 2. is why the first version of this job flaked: writes
-      # 503'd for ~9s after the gateway started serving reads.
-      - name: Wait for the gateway to route
-        run: |
-          for i in $(seq 1 60); do
-            if curl -fsS "http://localhost:8080/api/assets?clientId=1" > /dev/null 2>&1; then
-              echo "gateway routing after ${i} attempts"
-              break
-            fi
-            [ "$i" = "60" ] && { echo "::error::gateway never started routing"; exit 1; }
-            sleep 5
-          done
-
+      # Two readiness facts beyond "containers healthy", and the suite needs both:
+      #   1. every service is in Eureka AND the callers have fetched the registry
+      #      - proves assignment-service -> asset-service, which the check-out
+      #        test needs. Gating on a served read alone is why the first version
+      #        of this job flaked: writes 503'd for ~9s afterwards.
+      #   2. the gateway actually routes to a live service. A catalog GET can no
+      #      longer prove that - reads need a token, so an unauthenticated one is
+      #      rejected at the gateway without any downstream service being touched.
+      #      Signing in does prove it, end to end.
       - name: Wait for every service to register in Eureka
         run: |
           # nine of the ten: discovery-server has register-with-eureka: false
@@ -196,6 +186,26 @@ jobs:
           # (eureka.client.registry-fetch-interval-seconds in config-repo), so
           # give them a couple of intervals to converge.
           sleep 15
+
+      # Capped at 5 tries 10s apart on purpose: the gateway rate-limits
+      # POST /api/auth/** to 10 a minute per IP, and a tight poll would trip its
+      # own brake and then report a false failure.
+      - name: Wait for the gateway to route
+        run: |
+          for i in $(seq 1 5); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' \
+              -X POST http://localhost:8080/api/auth/login \
+              -H 'Content-Type: application/json' \
+              -d '{"email":"tech@acme.example","password":"Passw0rd!"}')
+            if [ "$code" = "200" ]; then
+              echo "gateway routing to auth-service after ${i} attempts"
+              exit 0
+            fi
+            echo "attempt ${i}: login returned ${code}"
+            sleep 10
+          done
+          echo "::error::gateway never routed a successful sign-in"
+          exit 1
 
       - name: Run the e2e suite
         env:

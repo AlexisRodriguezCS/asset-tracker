@@ -163,3 +163,53 @@ export interface TokenResponse {
   tokenType: string;
   expiresInMs: number;
 }
+
+// --- event sign-out ---------------------------------------------------------
+
+export type EventRequestStatus =
+  "SUBMITTED" | "APPROVED" | "DENIED" | "FULFILLED" | "CLOSED";
+
+export interface EventRequestLine {
+  id: number;
+  itemType: string;
+  quantity: number;
+  notes: string | null;
+  fulfilledAssetIds: number[];
+}
+
+export interface EventRequest {
+  id: number;
+  clientId: number;
+  eventName: string;
+  eventDate: string;
+  location: string | null;
+  notes: string | null;
+  requestedBy: string;
+  requesterPersonId: number | null;
+  status: EventRequestStatus;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  decisionNote: string | null;
+  createdAt: string;
+  lines: EventRequestLine[];
+}
+
+/**
+ * The gear the sign-out form offers. These are asset *type* names, matching the
+ * per-client type catalog, so a fulfilled line maps onto real inventory.
+ */
+export const EVENT_ITEMS = [
+  { type: "Laptop", label: "Loaner laptop" },
+  { type: "Charger", label: "Loaner charger" },
+  { type: "Cable", label: "Cables" },
+  { type: "TV", label: "TVs" },
+  { type: "Speaker", label: "Speakers" },
+] as const;
+
+export const EVENT_STATUS_TONE: Record<EventRequestStatus, string> = {
+  SUBMITTED: "warn",
+  APPROVED: "primary",
+  DENIED: "danger",
+  FULFILLED: "success",
+  CLOSED: "muted",
+};

@@ -8,9 +8,9 @@ Local, offline operation of the **asset-tracker** stack.
 |---|---|---|
 | discovery-server | 8761 | Eureka registry; UI at http://localhost:8761 |
 | config-server | 8888 | Spring Cloud Config, **native** backend over the mounted `config-repo` |
-| api-gateway | **8080** | the only entry point; routes `/api/**`, public `GET`, JWT on writes, CORS, forwards `X-User-*` headers |
-| auth-service | 8081 | register / login; issues RS256 JWT with `role` + `clientIds`; validates Entra id-tokens |
-| assignment-service | 8082 | orchestrator: check-out / check-in / transfer / offboard; owns the assignment history |
+| api-gateway | **8080** | the only entry point; routes `/api/**`, JWT on everything but `/api/auth/**`, CORS, forwards `X-User-Id` / `X-User-Role` / `X-Client-Ids` / `X-Person-Id` |
+| auth-service | 8081 | register / login; issues RS256 JWT with `role`, `clientIds` + `personId`; validates Entra id-tokens |
+| assignment-service | 8082 | orchestrator: check-out / check-in / transfer / offboard; owns the assignment history and event sign-out requests |
 | asset-service | 8083 | the asset records; guarded custody transitions |
 | location-service | 8084 | sites / rooms / desks + QR tags |
 | client-service | 8085 | tenants |
@@ -68,14 +68,15 @@ Starts one `postgres:16` container (a database per JPA service), sets
 
 `infra/scripts/demo-flow.{ps1,sh}` drives everything through `http://localhost:8080`:
 
-1. `GET /api/clients` -> 3 tenants
-2. `GET /api/assets?clientId=1&status=IN_STOCK` -> pick an asset (public)
-3. `GET /api/assets?clientId=1&type=LAPTOP` -> "all laptops"
-4. `GET /api/people?clientId=1` -> pick a person (public)
-5. `POST /api/assignments` with **no token** -> **401**
-6. `POST /api/auth/login` (`tech@acme.example` / `Passw0rd!`) -> capture token
+1. `GET /api/assets?clientId=1` with **no token** -> **401** (nothing is public)
+2. `POST /api/auth/login` (`tech@acme.example` / `Passw0rd!`) -> capture token
+3. `GET /api/clients` -> 3 tenants
+4. `GET /api/assets?clientId=1&status=IN_STOCK` -> pick an asset
+5. `GET /api/assets?clientId=1&type=Laptop` -> "all laptops"
+6. `GET /api/people?clientId=1` -> pick a person
 7. `POST /api/assignments` -> `open: true`, `checkedOutBy` = the tech's email
 8. `GET /api/assets?...&holderType=PERSON&holderId=…` -> the asset shows on the person
+8b. sign in as `dana.reyes@acme.example` -> she sees only her own gear, not the tenant's ~59
 9. `POST /api/assignments` again -> **409** (already assigned)
 10. `POST /api/assignments/offboard?personId=…` -> `{returned:[...], failed:[]}`
 11. `GET /api/assets/{id}` -> back to `IN_STOCK`
@@ -106,8 +107,20 @@ actually route rather than merely report healthy, then runs the suite.
 - **locations (Acme):** HQ site, a Stockroom, `Desk 001`..`Desk 012` (`ACME-D-0nn`)
 - **assets (Acme):** ~59 — 10 MacBook/Latitude laptops, iPads, Dell monitors,
   CalDigit docks, chargers, cables; all start in the stockroom
-- **users:** `tech@acme.example` (TECH, clients 1-3), `hr@acme.example` (HR,
-  client 1), `admin@platform.example` (ADMIN) — all password `Passw0rd!`
+- **users:** one per role, all password `Passw0rd!`:
+
+  | Login | Role | Sees |
+  |---|---|---|
+  | `admin@platform.example` | ADMIN | every tenant, every action |
+  | `tech@acme.example` | TECH | full asset operations, clients 1-3 |
+  | `poc@acme.example` | POC | Acme only; approves event requests, does not edit assets |
+  | `hr@acme.example` | HR | Acme only; offboarding collection |
+  | `dana.reyes@acme.example` | USER | only the gear assigned to her, plus the event form |
+
+  The USER account is pinned to the first seeded person, which is what makes
+  "my assigned assets" resolve. Set `DEMO_LOGINS_ENABLED=true` in `web/.env.local`
+  and the account menu offers all five - each option is a real login as that
+  account, not impersonation.
 
 ## API docs (Swagger)
 
@@ -145,6 +158,39 @@ therefore allow roughly N × the budget, and a rolling restart resets every coun
 The cloud overlay runs two gateways and sets `AUTH_RATE_LIMIT_MAX: "5"` to keep the
 cluster-wide rate near 10/min. That makes credential stuffing expensive; it is not a
 hard limit. The real fix is Redis behind Spring Cloud Gateway's `RequestRateLimiter`.
+
+## Who can see what
+
+Reads are **not** public. Every `/api/**` call except `/api/auth/**` needs a
+bearer token, because an ordinary employee has to see only their own gear and
+that is impossible if the same data is readable with no token at all.
+
+The token carries `role`, `clientIds` and `personId`; the gateway forwards them
+as `X-User-Role` / `X-Client-Ids` / `X-Person-Id`, and each service enforces:
+
+- **USER** — asset and people queries are forced onto their own person record
+  whatever filter was asked for, and they see only the event requests they
+  raised. A USER with no person record sees nothing, not everything.
+- **POC** — their own client: people, assets, and approving or denying event
+  requests. Cannot create or edit assets.
+- **HR** — their own client, for offboarding collection.
+- **TECH / ADMIN** — full asset operations across their granted clients.
+
+Records the caller may not see answer **404, not 403** — whether an id exists is
+itself information they lack.
+
+## Event sign-out
+
+An employee submits an event (name, date, where) with quantity lines - "1 loaner
+laptop, 2 TVs, 1 speaker". A POC or tech approves or denies it. A tech then
+fulfils it by naming the actual units, and **each one is checked out through the
+normal custody path**, so event gear is indistinguishable downstream from any
+other check-out: same asset status, same assignment history, same audit trail,
+and the offboarding sweep already collects it.
+
+`SUBMITTED → APPROVED → FULFILLED` (or `DENIED`). Approval and fulfilment are
+separate on purpose: "we said yes" and "the TVs left the stockroom" are
+different facts, and only the second moves custody.
 
 ## Startup convergence
 

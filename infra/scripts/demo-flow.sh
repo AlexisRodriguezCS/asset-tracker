@@ -11,39 +11,22 @@ j() { "$PY" -c "import sys,json;d=json.load(sys.stdin);print(d$1)"; }
 step() { printf '\n=== %s ===\n' "$1"; }
 
 step "Wait for the gateway to route (lb:// routes activate after the first Eureka fetch)"
+# Signing in is the probe: reads need a token, so an unauthenticated GET is
+# rejected at the gateway without proving any downstream service is alive.
+# Capped well under the gateway's 10-per-minute brake on POST /api/auth/**.
 ready=""
-for i in $(seq 1 45); do
-  code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/assets?clientId=$CLIENT")
+for i in $(seq 1 9); do
+  code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/auth/login" \
+    -H 'Content-Type: application/json' \
+    -d '{"email":"tech@acme.example","password":"Passw0rd!"}')
   if [ "$code" = "200" ]; then ready=1; break; fi
-  sleep 2
+  sleep 5
 done
-[ -n "$ready" ] || { echo "gateway not routing after 90s"; exit 1; }
+[ -n "$ready" ] || { echo "gateway not routing after 45s"; exit 1; }
 echo "gateway ready"
 
-step "Clients (public)"
-curl -fsS "$BASE/api/clients"; echo
-
-step "Assets in stock for client $CLIENT (public)"
-STOCK=$(curl -fsS "$BASE/api/assets?clientId=$CLIENT&status=IN_STOCK")
-ASSET=$(echo "$STOCK" | j "[0]['id']")
-echo "picked asset $ASSET"
-
-step "All laptops (public)"
-curl -fsS "$BASE/api/assets?clientId=$CLIENT&type=Laptop" | j "[len(d)]" >/dev/null \
-  && echo "$(curl -fsS "$BASE/api/assets?clientId=$CLIENT&type=Laptop" | j "[len(d)]") laptops"
-
-step "People (public)"
-PEOPLE=$(curl -fsS "$BASE/api/people?clientId=$CLIENT")
-PERSON=$(echo "$PEOPLE" | j "[0]['id']")
-echo "picked person $PERSON"
-
-step "Desks (public)"
-echo "$(curl -fsS "$BASE/api/locations?clientId=$CLIENT&kind=DESK" | j "[len(d)]") desks"
-
-step "Failure: check-out with no token -> 401"
-code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/assignments" \
-  -H 'Content-Type: application/json' \
-  -d "{\"clientId\":$CLIENT,\"assetId\":$ASSET,\"holderType\":\"PERSON\",\"holderId\":$PERSON}")
+step "Failure: read with no token -> 401 (nothing is public any more)"
+code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/assets?clientId=$CLIENT")
 echo "got $code"; [ "$code" = "401" ] || exit 1
 
 step "Sign in as the seeded tech"
@@ -51,6 +34,25 @@ TOKEN=$(curl -fsS -X POST "$BASE/api/auth/login" -H 'Content-Type: application/j
   -d '{"email":"tech@acme.example","password":"Passw0rd!"}' | j "['token']")
 AUTH="Authorization: Bearer $TOKEN"
 echo "token acquired"
+
+step "Clients"
+curl -fsS -H "$AUTH" "$BASE/api/clients"; echo
+
+step "Assets in stock for client $CLIENT"
+STOCK=$(curl -fsS -H "$AUTH" "$BASE/api/assets?clientId=$CLIENT&status=IN_STOCK")
+ASSET=$(echo "$STOCK" | j "[0]['id']")
+echo "picked asset $ASSET"
+
+step "All laptops"
+echo "$(curl -fsS -H "$AUTH" "$BASE/api/assets?clientId=$CLIENT&type=Laptop" | j "[len(d)]") laptops"
+
+step "People"
+PEOPLE=$(curl -fsS -H "$AUTH" "$BASE/api/people?clientId=$CLIENT")
+PERSON=$(echo "$PEOPLE" | j "[0]['id']")
+echo "picked person $PERSON"
+
+step "Desks"
+echo "$(curl -fsS -H "$AUTH" "$BASE/api/locations?clientId=$CLIENT&kind=DESK" | j "[len(d)]") desks"
 
 step "Check asset $ASSET out to person $PERSON"
 ASSIGN=$(curl -fsS -X POST "$BASE/api/assignments" -H "$AUTH" -H 'Content-Type: application/json' \
@@ -62,7 +64,15 @@ ACTOR=$(echo "$ASSIGN" | j "['checkedOutBy']")
 [ "$ACTOR" = "tech@acme.example" ] || { echo "expected checkedOutBy=tech@acme.example, got $ACTOR"; exit 1; }
 
 step "It shows on the person"
-curl -fsS "$BASE/api/assets?clientId=$CLIENT&holderType=PERSON&holderId=$PERSON" | j "[[a['assetTag'] for a in d]]"
+curl -fsS -H "$AUTH" "$BASE/api/assets?clientId=$CLIENT&holderType=PERSON&holderId=$PERSON" | j "[[a['assetTag'] for a in d]]"
+
+step "An ordinary employee sees only their own gear"
+HERS=$(curl -fsS -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
+  -d '{"email":"dana.reyes@acme.example","password":"Passw0rd!"}' | j "['token']")
+MINE=$(curl -fsS -H "Authorization: Bearer $HERS" "$BASE/api/assets?clientId=$CLIENT" | j "[len(d)]")
+ALL=$(curl -fsS -H "$AUTH" "$BASE/api/assets?clientId=$CLIENT" | j "[len(d)]")
+echo "Dana sees $MINE of the tenant's $ALL assets"
+[ "$MINE" -lt "$ALL" ] || { echo "expected the employee's view to be narrower"; exit 1; }
 
 step "Failure: check it out again -> 409"
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/assignments" -H "$AUTH" \
@@ -75,10 +85,10 @@ RESULT=$(curl -fsS -X POST "$BASE/api/assignments/offboard?clientId=$CLIENT&pers
 echo "$RESULT"
 
 step "Asset $ASSET is back in stock"
-ST=$(curl -fsS "$BASE/api/assets/$ASSET" | j "['status']")
+ST=$(curl -fsS -H "$AUTH" "$BASE/api/assets/$ASSET" | j "['status']")
 echo "status = $ST"; [ "$ST" = "IN_STOCK" ] || exit 1
 
-step "Notifications for client $CLIENT (public)"
-curl -fsS "$BASE/api/notifications?clientId=$CLIENT" | j "[[n['type'] for n in d]]"
+step "Notifications for client $CLIENT"
+curl -fsS -H "$AUTH" "$BASE/api/notifications?clientId=$CLIENT" | j "[[n['type'] for n in d]]"
 
 printf '\nAll demo steps passed.\n'

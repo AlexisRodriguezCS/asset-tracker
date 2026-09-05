@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import { demoLoginsEnabled } from "@/lib/demo";
 import { Nav } from "@/components/nav";
 import { getSession } from "@/lib/session";
 import { currentClientId } from "@/lib/client";
@@ -48,6 +49,7 @@ export default async function RootLayout({
           role={session?.role ?? null}
           clients={clients}
           currentClient={currentClient}
+          demo={demoLoginsEnabled()}
         />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
           {children}

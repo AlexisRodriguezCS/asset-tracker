@@ -11,17 +11,37 @@ import {
   Shapes,
   Search,
   LayoutDashboard,
+  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClientPicker } from "@/components/client-picker";
 import { cn } from "@/lib/cn";
+import { PersonaSwitcher } from "@/components/persona-switcher";
+import {
+  canOperateAssets,
+  isSelfServiceUser,
+  ROLE_LABELS,
+  type Role,
+} from "@/lib/roles";
 import type { Client } from "@/lib/types";
 
-const LINKS = [
+const STAFF_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/", label: "Assets", icon: Boxes },
   { href: "/people", label: "People", icon: Users },
   { href: "/desks", label: "Desks", icon: MapPin },
+  { href: "/events", label: "Events", icon: CalendarDays },
+];
+
+// An employee gets two things: their own gear, and the sign-out form.
+const EMPLOYEE_LINKS = [
+  { href: "/", label: "My assets", icon: Boxes },
+  { href: "/events", label: "Event sign-out", icon: CalendarDays },
+];
+
+const OPERATOR_EXTRAS = [
+  { href: "/types", label: "Types", icon: Shapes },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 
 export function Nav({
@@ -29,23 +49,25 @@ export function Nav({
   role,
   clients,
   currentClient,
+  demo = false,
 }: {
   email: string | null;
   role: string | null;
   clients: Client[];
   currentClient: number;
+  /** Demo environment: offer the persona switcher instead of a static label. */
+  demo?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const [q, setQ] = useState("");
 
-  const links = email
-    ? [
-        ...LINKS,
-        { href: "/types", label: "Types", icon: Shapes },
-        { href: "/reports", label: "Reports", icon: BarChart3 },
-      ]
-    : LINKS;
+  const employee = isSelfServiceUser(role);
+  const links = employee
+    ? EMPLOYEE_LINKS
+    : canOperateAssets(role)
+      ? [...STAFF_LINKS, ...OPERATOR_EXTRAS]
+      : STAFF_LINKS;
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -72,11 +94,16 @@ export function Nav({
             </span>
             asset<span className="text-muted-foreground">tracker</span>
           </Link>
-          <span className="hidden h-5 w-px bg-border sm:block" />
-          <ClientPicker clients={clients} current={currentClient} />
+          {!employee && (
+            <>
+              <span className="hidden h-5 w-px bg-border sm:block" />
+              <ClientPicker clients={clients} current={currentClient} />
+            </>
+          )}
         </div>
 
         <form
+          hidden={employee}
           onSubmit={search}
           className="relative mx-auto hidden w-full max-w-xs md:block"
         >
@@ -114,14 +141,18 @@ export function Nav({
           <div className="ml-2 flex items-center gap-2">
             {email ? (
               <>
-                <span className="hidden text-xs text-muted-foreground md:inline">
-                  {email}
-                  {role && (
-                    <span className="ml-1 rounded bg-muted px-1.5 py-0.5 font-medium">
-                      {role}
-                    </span>
-                  )}
-                </span>
+                {demo ? (
+                  <PersonaSwitcher email={email} role={role} />
+                ) : (
+                  <span className="hidden text-xs text-muted-foreground md:inline">
+                    {email}
+                    {role && (
+                      <span className="ml-1 rounded bg-muted px-1.5 py-0.5 font-medium">
+                        {ROLE_LABELS[role as Role] ?? role}
+                      </span>
+                    )}
+                  </span>
+                )}
                 <Button variant="outline" size="sm" onClick={logout}>
                   Sign out
                 </Button>
