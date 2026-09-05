@@ -1,23 +1,27 @@
-# CI overlay: run the stack from published GHCR images instead of building
-# locally. Used by the e2e workflow.
+# CI overlay: run the stack from the GHCR images ci.yml just published, rather
+# than building them again. Used by the "e2e" job in .github/workflows/ci.yml.
 #
 #   IMAGE_TAG=<sha> docker compose \
-#     -f docker-compose.yml -f docker-compose.postgres.yml -f docker-compose.ci.yml up -d
+#     -f docker-compose.yml -f docker-compose.ci.yml up -d
+#
+# `build: !reset null` drops the build section inherited from docker-compose.yml
+# so Compose pulls instead of building. IMAGE_TAG should be a commit SHA; the
+# "main" default is only for poking at it by hand.
 
-name: ecom
+name: asset-tracker
 
 x-img: &img
   build: !reset null
   pull_policy: always
 
 services:
-  discovery-server:     { <<: *img, image: "ghcr.io/ar-ecommerce-platform/discovery-server:${IMAGE_TAG:-develop}" }
-  config-server:        { <<: *img, image: "ghcr.io/ar-ecommerce-platform/config-server:${IMAGE_TAG:-develop}" }
-  api-gateway:          { <<: *img, image: "ghcr.io/ar-ecommerce-platform/api-gateway:${IMAGE_TAG:-develop}" }
-  auth-service:         { <<: *img, image: "ghcr.io/ar-ecommerce-platform/auth-service:${IMAGE_TAG:-develop}" }
-  user-service:         { <<: *img, image: "ghcr.io/ar-ecommerce-platform/user-service:${IMAGE_TAG:-develop}" }
-  product-service:      { <<: *img, image: "ghcr.io/ar-ecommerce-platform/product-service:${IMAGE_TAG:-develop}" }
-  inventory-service:    { <<: *img, image: "ghcr.io/ar-ecommerce-platform/inventory-service:${IMAGE_TAG:-develop}" }
-  order-service:        { <<: *img, image: "ghcr.io/ar-ecommerce-platform/order-service:${IMAGE_TAG:-develop}" }
-  payment-service:      { <<: *img, image: "ghcr.io/ar-ecommerce-platform/payment-service:${IMAGE_TAG:-develop}" }
-  notification-service: { <<: *img, image: "ghcr.io/ar-ecommerce-platform/notification-service:${IMAGE_TAG:-develop}" }
+  discovery-server:     { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-discovery-server:${IMAGE_TAG:-main}" }
+  config-server:        { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-config-server:${IMAGE_TAG:-main}" }
+  api-gateway:          { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-api-gateway:${IMAGE_TAG:-main}" }
+  auth-service:         { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-auth-service:${IMAGE_TAG:-main}" }
+  client-service:       { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-client-service:${IMAGE_TAG:-main}" }
+  people-service:       { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-people-service:${IMAGE_TAG:-main}" }
+  location-service:     { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-location-service:${IMAGE_TAG:-main}" }
+  asset-service:        { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-asset-service:${IMAGE_TAG:-main}" }
+  assignment-service:   { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-assignment-service:${IMAGE_TAG:-main}" }
+  notification-service: { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-notification-service:${IMAGE_TAG:-main}" }

@@ -11,9 +11,15 @@ dependencies {
 
 // These tests only make sense against a running stack. They self-skip (JUnit
 // assumption) when the gateway isn't reachable, so `./gradlew build` stays green
-// in CI where the stack isn't up; a dedicated stage runs them for real.
+// where no stack is up. The dedicated CI stage sets E2E_REQUIRED=true, which turns
+// "unreachable" into a failure instead of a skip - otherwise a stack that never
+// came up would report green, which is exactly what used to happen.
 tasks.named('test') {
     systemProperty 'e2e.baseUrl',
         System.getProperty('e2e.baseUrl', System.getenv('E2E_BASE_URL') ?: 'http://localhost:8080')
+    systemProperty 'e2e.required',
+        System.getProperty('e2e.required', System.getenv('E2E_REQUIRED') ?: 'false')
     testLogging { events 'passed', 'skipped', 'failed' }
+    // the stack is external state Gradle can't see; never call this task up-to-date
+    outputs.upToDateWhen { false }
 }

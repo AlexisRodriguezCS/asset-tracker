@@ -132,13 +132,23 @@ offboarding → the asset is back in stock, and `notification-service` has the
 | Unit (service logic, guarded transitions) | each service `src/test` |
 | Controller slice (`@WebMvcTest` + MockMvc) | the REST services |
 | Repository slice (`@DataJpaTest`) | the JPA services with custom queries |
-| End-to-end (REST-Assured through the gateway) | `e2e/`, self-skips with no stack |
+| End-to-end (REST-Assured through the gateway) | `e2e/`, run for real by CI's `e2e` job |
+
+`e2e/` self-skips when no stack is reachable, so `./gradlew build` stays green on a
+bare checkout. CI's `e2e` job sets `E2E_REQUIRED=true`, which turns "unreachable"
+into a failure — otherwise a stack that never booted would report green.
 
 ## CI
 
-`.github/workflows/ci.yml`: one Gradle build, the web build (lint + typecheck +
-`next build`), a gitleaks scan, and — on `main` — a matrix that builds and pushes
-all ten service images to `ghcr.io/<owner>/asset-tracker-<service>`.
+`.github/workflows/ci.yml`:
+
+| Job | What it does |
+|---|---|
+| `build` | one Gradle build — compile, unit + slice tests, Testcontainers Postgres ITs, Spotless, Checkstyle, JaCoCo |
+| `web` | `next build` + ESLint + Prettier + `tsc --noEmit` |
+| `secret-scan` | gitleaks over the full history |
+| `images` | on `main`: builds and pushes all ten service images to `ghcr.io/<owner>/asset-tracker-<service>`, tagged by SHA |
+| `e2e` | pulls those exact images, brings the stack up with Compose, waits for the gateway to route, and drives the demo flow through it |
 
 ## Not done yet
 

@@ -83,6 +83,22 @@ Starts one `postgres:16` container (a database per JPA service), sets
 
 `infra/http/platform.http` runs the same walkthrough from IntelliJ's HTTP client.
 
+### The same flow as a test
+
+`e2e/` is the REST-Assured version, driven through the gateway:
+
+```bash
+./gradlew :e2e:test                        # against a stack you already have up
+E2E_BASE_URL=http://localhost:8080 E2E_REQUIRED=true ./gradlew :e2e:test
+```
+
+With no stack reachable the suite **skips** so `./gradlew build` stays green on a
+bare checkout. `E2E_REQUIRED=true` turns that skip into a failure — CI's `e2e` job
+sets it, because a suite that quietly skips itself in the one place it is meant to
+run is worse than no suite. That job pulls the ten images the `images` job just
+pushed (`docker-compose.ci.yml` pins them by commit SHA), waits for the gateway to
+actually route rather than merely report healthy, then runs the suite.
+
 ## Seed data (dev profile)
 
 - **clients:** Acme (1), Globex (2), Initech (3)

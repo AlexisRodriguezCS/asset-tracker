@@ -23,8 +23,11 @@ import org.junit.jupiter.api.TestMethodOrder;
 /**
  * The automated demo: browse the catalog (public), sign in as the seeded tech, check an asset out
  * to a person, confirm it shows on that person, reject a double check-out, then run offboarding.
- * Self-skips (JUnit assumption) when the gateway is unreachable, so it is safe in a build with no
- * running stack.
+ *
+ * <p>When the gateway is unreachable this self-skips (JUnit assumption) so a plain {@code ./gradlew
+ * build} stays green with no stack running - <b>unless {@code -De2e.required=true} is set</b>,
+ * which turns the same check into a hard failure. CI's e2e stage sets it: a suite that silently
+ * skips itself in the one place it is supposed to run is worse than no suite at all.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(OrderAnnotation.class)
@@ -45,7 +48,13 @@ class PlatformE2ETest {
     } catch (Exception notReachable) {
       status = -1;
     }
-    assumeThat(status).as("gateway routing at %s", RestAssured.baseURI).isEqualTo(200);
+
+    String where = "gateway routing at " + RestAssured.baseURI;
+    if (Boolean.getBoolean("e2e.required")) {
+      assertThat(status).as("%s (e2e.required=true, so this is a failure)", where).isEqualTo(200);
+      return;
+    }
+    assumeThat(status).as(where).isEqualTo(200);
   }
 
   @Test

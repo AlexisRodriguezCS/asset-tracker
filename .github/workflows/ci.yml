@@ -117,3 +117,85 @@ jobs:
           tags: |
             ghcr.io/${{ env.OWNER_LC }}/asset-tracker-${{ matrix.service }}:${{ github.sha }}
             ghcr.io/${{ env.OWNER_LC }}/asset-tracker-${{ matrix.service }}:${{ github.ref_name }}
+
+  # Stand the ten images that were just published up as a real stack and drive it
+  # through the gateway. The suite self-skips when no stack is reachable, so this
+  # job sets E2E_REQUIRED=true - without it a stack that never booted would report
+  # green, which is what happened for as long as nothing ran the suite at all.
+  e2e:
+    needs: [images]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Named explicitly so Prometheus and Grafana stay down - the suite doesn't
+      # use them and a 7GB runner is already hosting ten JVMs. Compose still
+      # starts each service's depends_on (discovery, config, rabbitmq).
+      - name: Start the stack from the images built above
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker compose -f infra/compose/docker-compose.yml \
+                         -f infra/compose/docker-compose.ci.yml up -d \
+            api-gateway auth-service client-service people-service \
+            location-service asset-service assignment-service notification-service
+
+      # Container health only says a service booted. The gateway additionally has
+      # to resolve the route through Eureka, which lags healthy by ~20-30s on a
+      # cold stack, so poll the routed endpoint the suite actually calls.
+      - name: Wait for the gateway to route
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS "http://localhost:8080/api/assets?clientId=1" > /dev/null 2>&1; then
+              echo "gateway routing after ${i} attempts"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::gateway never started routing"
+          exit 1
+
+      - name: Run the e2e suite
+        env:
+          E2E_BASE_URL: http://localhost:8080
+          E2E_REQUIRED: "true"
+        run: ./gradlew :e2e:test --no-daemon --console=plain
+
+      - name: Stack logs (on failure)
+        if: failure()
+        run: |
+          docker compose -f infra/compose/docker-compose.yml \
+                         -f infra/compose/docker-compose.ci.yml ps
+          docker compose -f infra/compose/docker-compose.yml \
+                         -f infra/compose/docker-compose.ci.yml logs --tail=200
+
+      - name: Upload e2e report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-report
+          path: e2e/build/reports/
+          if-no-files-found: ignore
+
+      - name: Tear down
+        if: always()
+        run: |
+          docker compose -f infra/compose/docker-compose.yml \
+                         -f infra/compose/docker-compose.ci.yml down -v
