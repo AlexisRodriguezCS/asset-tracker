@@ -46,3 +46,44 @@ much larger change than a flag.
 
 Practical sizing: a 4GB host is the realistic minimum, 8GB comfortable. Dropping
 Prometheus and Grafana (dev conveniences) saves ~85MB.
+
+## Frontend
+
+Measured the same way — production build, warm medians, real session.
+
+Bundle is not the problem: 103 kB of shared First Load JS is essentially the
+React 19 + Next 15 baseline, and no page adds more than 14 kB on top. Nine
+runtime dependencies, no chart or date library. Server-rendered TTFB is 4–7 ms
+because every page is a server component batching its gateway calls with
+`Promise.all` — there is no client fetch waterfall to remove.
+
+The problem was the catalog list, which rendered a row per asset with no bound:
+
+| assets | HTML | page total | API payload |
+|---|---|---|---|
+| 69 | 212 kB | 29 ms | 416 kB |
+| 1,069 (before) | **2,344 kB** | 176 ms | 416 kB |
+| 1,069 (after) | **166 kB** | 33 ms | 21 kB |
+
+~2.2 kB of HTML per asset, growing linearly — a 10,000-asset tenant would have
+shipped roughly 22 MB per page load.
+
+`GET /api/assets/paged` is a separate endpoint rather than a changed shape on
+`GET /api/assets`, because the dashboard, reports and type counts legitimately
+want every row to aggregate, and a response that is sometimes an array and
+sometimes an envelope is worse than two honest endpoints. Size is clamped
+server-side (`spring.data.web.pageable.max-page-size`) so the paged route cannot
+be used to pull a whole tenant.
+
+Free-text search still scans the full set, because it matches on the holder's
+name and asset-service does not know people. That path is bounded by slicing
+what gets *rendered*, so the HTML stays small either way — a search for one tag
+across 1,069 assets returns 42 kB. Pushing search into the database (and
+denormalising the holder name to do it) is the next step if tenants get large.
+
+### Still unbounded
+
+The stat strip and `/dashboard`, `/reports`, `/types` each still fetch every
+asset to aggregate — 416 kB server-side per render. Invisible to the user
+(server-to-server, ~17 ms) but it is the next thing to fix, with count/rollup
+endpoints so the aggregation happens in the database.

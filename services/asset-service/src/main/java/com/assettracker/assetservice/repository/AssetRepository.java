@@ -6,6 +6,8 @@ import com.assettracker.assetservice.entity.HolderType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -72,4 +74,28 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
       @Param("holderType") HolderType holderType,
       @Param("holderId") Long holderId,
       @Param("assetTag") String assetTag);
+
+  /**
+   * The same filter, one page at a time. The catalog list renders a row per asset, so an unbounded
+   * query there costs roughly 2kB of HTML per asset - fine for a demo tenant, not for a real one.
+   * Aggregating callers (dashboard, reports, type counts) still use the unpaged twin above.
+   */
+  @Query(
+      """
+      select a from Asset a
+      where a.clientId = :clientId
+        and (:type is null or a.type = :type)
+        and (:status is null or a.status = :status)
+        and (:holderType is null or a.holderType = :holderType)
+        and (:holderId is null or a.holderId = :holderId)
+        and (:assetTag is null or a.assetTag = :assetTag)
+      """)
+  Page<Asset> searchPage(
+      @Param("clientId") Long clientId,
+      @Param("type") String type,
+      @Param("status") AssetStatus status,
+      @Param("holderType") HolderType holderType,
+      @Param("holderId") Long holderId,
+      @Param("assetTag") String assetTag,
+      Pageable pageable);
 }

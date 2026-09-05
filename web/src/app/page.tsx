@@ -2,6 +2,7 @@ import Link from "next/link";
 import { currentClientId } from "@/lib/client";
 import {
   listAssets,
+  listAssetsPaged,
   listAssetTypes,
   listLocations,
   listPeople,
@@ -10,12 +11,20 @@ import { getSession } from "@/lib/session";
 import { AssetStatusBadge, ConditionBadge } from "@/components/ui/badge";
 import { StatStrip } from "@/components/ui/stat";
 import { PageHeader, TableCard } from "@/components/ui/page-header";
+import { Pagination } from "@/components/pagination";
 import { Button } from "@/components/ui/button";
 import { dateOnly, disposition, isPast, label, withinDays } from "@/lib/format";
 import type { AssetStatus } from "@/lib/types";
 
 /** Warranty counts as "expiring soon" this many days before it ends. */
 const WARRANTY_SOON_DAYS = 60;
+
+/**
+ * Rows rendered per page. This table used to render every asset a client owns,
+ * which cost ~2kB of HTML each - 2.3MB for a 1000-asset tenant, measured. The
+ * cap is on what is *rendered*, so it holds on the search path too.
+ */
+const PAGE_SIZE = 50;
 
 const STATUSES: AssetStatus[] = [
   "IN_STOCK",
@@ -36,6 +45,7 @@ export default async function AssetsPage({
     status?: string;
     q?: string;
     warranty?: string;
+    page?: string;
   }>;
 }) {
   const [clientId, sp, session] = await Promise.all([
@@ -44,14 +54,38 @@ export default async function AssetsPage({
     getSession(),
   ]);
 
-  // the unfiltered set drives the stat strip; the table uses the active filter
-  const [all, filtered, types, people, desks] = await Promise.all([
+  const term = (sp.q ?? "").trim().toLowerCase();
+  const pageIndex = Math.max(0, Number(sp.page ?? "0") || 0);
+
+  // Free-text and warranty filtering happen here rather than in the database -
+  // the search covers the holder's name, which asset-service does not know. Those
+  // paths therefore still need the full set; plain browsing takes the paged
+  // endpoint and never materialises more than PAGE_SIZE rows.
+  const needsFullSet = Boolean(term) || Boolean(sp.warranty);
+
+  const [all, page, types, people, desks] = await Promise.all([
     listAssets({ clientId }),
-    listAssets({ clientId, type: sp.type, status: sp.status }),
+    needsFullSet
+      ? null
+      : listAssetsPaged({
+          clientId,
+          type: sp.type,
+          status: sp.status,
+          page: pageIndex,
+          size: PAGE_SIZE,
+        }),
     listAssetTypes(clientId).catch(() => []),
     listPeople(clientId).catch(() => []),
     listLocations(clientId, "DESK").catch(() => []),
   ]);
+
+  const filtered = needsFullSet
+    ? all.filter(
+        (a) =>
+          (!sp.type || a.type === sp.type) &&
+          (!sp.status || a.status === sp.status),
+      )
+    : [];
 
   const personName = new Map(people.map((p) => [p.id, p.fullName]));
   const deskName = new Map(desks.map((d) => [d.id, d.label]));
@@ -62,22 +96,37 @@ export default async function AssetsPage({
     return deskName.get(a.holderId) ?? `Location #${a.holderId}`;
   };
 
-  const term = (sp.q ?? "").trim().toLowerCase();
   const warrantyMatch = (a: (typeof all)[number]) => {
     if (sp.warranty === "expired") return isPast(a.warrantyEndsOn);
     if (sp.warranty === "soon")
       return withinDays(a.warrantyEndsOn, WARRANTY_SOON_DAYS);
     return true;
   };
-  const assets = filtered
-    .filter(warrantyMatch)
-    .filter(
-      (a) =>
-        !term ||
-        [a.assetTag, a.serialNumber, a.make, a.model, a.type, holderLabel(a)]
-          .filter(Boolean)
-          .some((v) => (v as string).toLowerCase().includes(term)),
-    );
+  const matches = needsFullSet
+    ? filtered
+        .filter(warrantyMatch)
+        .filter(
+          (a) =>
+            !term ||
+            [
+              a.assetTag,
+              a.serialNumber,
+              a.make,
+              a.model,
+              a.type,
+              holderLabel(a),
+            ]
+              .filter(Boolean)
+              .some((v) => (v as string).toLowerCase().includes(term)),
+        )
+    : [];
+
+  // one shape for the table whichever path produced it
+  const assets = needsFullSet
+    ? matches.slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE)
+    : (page?.items ?? []);
+  const matchTotal = needsFullSet ? matches.length : (page?.total ?? 0);
+  const totalPages = Math.max(1, Math.ceil(matchTotal / PAGE_SIZE));
 
   const count = (...ss: AssetStatus[]) =>
     all.filter((a) => ss.includes(a.status)).length;
@@ -91,6 +140,21 @@ export default async function AssetsPage({
     const s = new URLSearchParams(merged).toString();
     return s ? `/?${s}` : "/";
   };
+
+  // Paging keeps the active filters; changing a filter drops the page, because
+  // "page 7 of the old filter" is never what you meant.
+  const pageLink = (next: number) => {
+    const merged: Record<string, string> = {
+      ...(sp.type ? { type: sp.type } : {}),
+      ...(sp.status ? { status: sp.status } : {}),
+      ...(term ? { q: sp.q as string } : {}),
+      ...(sp.warranty ? { warranty: sp.warranty } : {}),
+      ...(next > 0 ? { page: String(next) } : {}),
+    };
+    const s = new URLSearchParams(merged).toString();
+    return s ? `/?${s}` : "/";
+  };
+
   // filters that survive when you click a chip in another row
   const keepType: Record<string, string> = sp.type ? { type: sp.type } : {};
   const keepStatus: Record<string, string> = sp.status
@@ -104,7 +168,7 @@ export default async function AssetsPage({
         title="Assets"
         subtitle={
           term
-            ? `${assets.length} of ${all.length} match "${sp.q}"`
+            ? `${matchTotal} of ${all.length} match "${sp.q}"`
             : outOfWarranty > 0
               ? `${all.length} tracked for this client · ${outOfWarranty} out of warranty`
               : `${all.length} tracked for this client`
@@ -318,6 +382,14 @@ export default async function AssetsPage({
           )}
         </tbody>
       </TableCard>
+
+      <Pagination
+        page={pageIndex}
+        totalPages={totalPages}
+        total={matchTotal}
+        size={PAGE_SIZE}
+        href={pageLink}
+      />
     </div>
   );
 }

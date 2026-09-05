@@ -12,6 +12,8 @@ import com.assettracker.assetservice.web.dto.AssignRequest;
 import com.assettracker.assetservice.web.dto.CreateAssetRequest;
 import com.assettracker.assetservice.web.dto.UpdateAssetRequest;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -110,6 +112,31 @@ public class AssetService {
       return repository.search(clientId, type, status, HolderType.PERSON, self, assetTag);
     }
     return repository.search(clientId, type, status, holderType, holderId, assetTag);
+  }
+
+  /**
+   * One page of the same query. Applies the identical scoping rules - an employee is still confined
+   * to their own person - so pagination can never widen what a caller can see.
+   */
+  @Transactional(readOnly = true)
+  public Page<Asset> searchPage(
+      Long clientId,
+      String type,
+      AssetStatus status,
+      HolderType holderType,
+      Long holderId,
+      String assetTag,
+      Pageable pageable) {
+    TenantContext.requireAllowed(clientId);
+    if (CallerContext.isSelfServiceUser()) {
+      Long self = CallerContext.personId();
+      if (self == null) {
+        return Page.empty(pageable);
+      }
+      return repository.searchPage(
+          clientId, type, status, HolderType.PERSON, self, assetTag, pageable);
+    }
+    return repository.searchPage(clientId, type, status, holderType, holderId, assetTag, pageable);
   }
 
   /** True when the caller is allowed to see this particular asset. */

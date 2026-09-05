@@ -8,6 +8,7 @@ import type {
   Client,
   Location,
   EventRequest,
+  PagedAssets,
   Person,
 } from "@/lib/types";
 
@@ -151,3 +152,19 @@ export const getEventRequest = (id: string | number) =>
   gateway<EventRequest>(`/api/assignments/event-requests/${id}`, {
     auth: true,
   });
+
+/**
+ * The catalog list, one page at a time. The unpaged listAssets stays for callers
+ * that aggregate (dashboard, reports, type counts) or filter narrowly; this is
+ * for the screen that renders a row per asset.
+ */
+export const listAssetsPaged = (params: {
+  clientId: number;
+  type?: string;
+  status?: string;
+  holderType?: string;
+  holderId?: number;
+  tag?: string;
+  page?: number;
+  size?: number;
+}) => gateway<PagedAssets>(`/api/assets/paged${qs(params)}`, { auth: true });

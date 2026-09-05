@@ -7,10 +7,13 @@ import com.assettracker.assetservice.web.dto.AssetResponse;
 import com.assettracker.assetservice.web.dto.AssignRequest;
 import com.assettracker.assetservice.web.dto.ChangeStatusRequest;
 import com.assettracker.assetservice.web.dto.CreateAssetRequest;
+import com.assettracker.assetservice.web.dto.PagedAssets;
 import com.assettracker.assetservice.web.dto.UpdateAssetRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -31,6 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/assets")
 public class AssetController {
+
+  private static final int DEFAULT_PAGE_SIZE = 50;
 
   private static final String ACTOR = "X-User-Id";
 
@@ -59,6 +64,28 @@ public class AssetController {
     return service.search(clientId, type, status, holderType, holderId, tag).stream()
         .map(AssetResponse::from)
         .toList();
+  }
+
+  /**
+   * The catalog list, paginated. Separate from the unpaged {@code GET /assets} rather than changing
+   * its shape: aggregating callers (dashboard, reports, type counts) legitimately want every row,
+   * and a response that is sometimes an array and sometimes an envelope is worse than two honest
+   * endpoints. Size is clamped so a caller cannot ask for the whole tenant through this route.
+   */
+  @GetMapping("/paged")
+  public PagedAssets searchPage(
+      @RequestParam Long clientId,
+      @RequestParam(required = false) String type,
+      @RequestParam(required = false) AssetStatus status,
+      @RequestParam(required = false) HolderType holderType,
+      @RequestParam(required = false) Long holderId,
+      @RequestParam(required = false) String tag,
+      @PageableDefault(
+              size = DEFAULT_PAGE_SIZE,
+              sort = {"type", "assetTag"})
+          Pageable pageable) {
+    return PagedAssets.from(
+        service.searchPage(clientId, type, status, holderType, holderId, tag, pageable));
   }
 
   @GetMapping("/{id}")

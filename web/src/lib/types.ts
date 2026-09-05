@@ -213,3 +213,12 @@ export const EVENT_STATUS_TONE: Record<EventRequestStatus, string> = {
   FULFILLED: "success",
   CLOSED: "muted",
 };
+
+/** One page of the catalog, from `GET /api/assets/paged`. */
+export interface PagedAssets {
+  items: Asset[];
+  total: number;
+  page: number;
+  size: number;
+  totalPages: number;
+}

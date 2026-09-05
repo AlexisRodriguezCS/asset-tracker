@@ -1,5 +1,11 @@
 ---
 spring:
+  data:
+    web:
+      pageable:
+        # a caller cannot pull the whole tenant through the paged route
+        default-page-size: 50
+        max-page-size: 200
   application:
     name: asset-service
   servlet:
