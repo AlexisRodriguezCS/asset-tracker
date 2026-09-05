@@ -8,14 +8,10 @@ import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.repository.AssetRepository;
 import com.assettracker.assetservice.web.CallerContext;
 import com.assettracker.assetservice.web.TenantContext;
-import com.assettracker.assetservice.web.dto.AssetStats;
 import com.assettracker.assetservice.web.dto.AssignRequest;
 import com.assettracker.assetservice.web.dto.CreateAssetRequest;
 import com.assettracker.assetservice.web.dto.UpdateAssetRequest;
-import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -141,73 +137,6 @@ public class AssetService {
           clientId, type, status, HolderType.PERSON, self, assetTag, pageable);
     }
     return repository.searchPage(clientId, type, status, holderType, holderId, assetTag, pageable);
-  }
-
-  /**
-   * Counts for the summary strips, aggregated in the database rather than by fetching every asset
-   * and counting in the caller.
-   *
-   * <p>An ordinary employee is the exception: their gear is a handful of rows, and the grouped
-   * queries would have to be re-written per-person to scope correctly. Counting their own small set
-   * in memory is both simpler and cheaper than a scoped group-by.
-   */
-  @Transactional(readOnly = true)
-  public AssetStats stats(Long clientId, int soonDays) {
-    TenantContext.requireAllowed(clientId);
-    if (CallerContext.isSelfServiceUser()) {
-      return statsOf(search(clientId, null, null, null, null, null), soonDays);
-    }
-
-    LocalDate today = LocalDate.now();
-    long expired = repository.countWarrantyEndingBefore(clientId, today, AssetStatus.IN_SERVICE);
-    long throughSoon =
-        repository.countWarrantyEndingBefore(
-            clientId, today.plusDays(soonDays), AssetStatus.IN_SERVICE);
-
-    return new AssetStats(
-        repository.countByClientId(clientId),
-        toMap(repository.countByStatus(clientId)),
-        toMap(repository.countByType(clientId)),
-        toMap(repository.countByCondition(clientId)),
-        expired,
-        throughSoon - expired);
-  }
-
-  private static Map<String, Long> toMap(List<AssetRepository.Bucket> rows) {
-    Map<String, Long> counts = new LinkedHashMap<>();
-    for (AssetRepository.Bucket row : rows) {
-      if (row.getBucket() != null) {
-        counts.put(row.getBucket(), row.getTotal());
-      }
-    }
-    return counts;
-  }
-
-  /** The same shape computed over an already-loaded list, for the self-service case. */
-  private static AssetStats statsOf(List<Asset> assets, int soonDays) {
-    LocalDate today = LocalDate.now();
-    LocalDate soon = today.plusDays(soonDays);
-    Map<String, Long> byStatus = new LinkedHashMap<>();
-    Map<String, Long> byType = new LinkedHashMap<>();
-    Map<String, Long> byCondition = new LinkedHashMap<>();
-    long expired = 0;
-    long expiringSoon = 0;
-    for (Asset a : assets) {
-      byStatus.merge(a.getStatus().name(), 1L, Long::sum);
-      byType.merge(a.getType(), 1L, Long::sum);
-      if (a.getCondition() != null) {
-        byCondition.merge(a.getCondition().name(), 1L, Long::sum);
-      }
-      LocalDate ends = a.getWarrantyEndsOn();
-      if (ends != null && AssetStatus.IN_SERVICE.contains(a.getStatus())) {
-        if (ends.isBefore(today)) {
-          expired++;
-        } else if (ends.isBefore(soon)) {
-          expiringSoon++;
-        }
-      }
-    }
-    return new AssetStats(assets.size(), byStatus, byType, byCondition, expired, expiringSoon);
   }
 
   /** True when the caller is allowed to see this particular asset. */

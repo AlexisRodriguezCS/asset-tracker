@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { currentClientId } from "@/lib/client";
-import { listAssets, listAssetTypes } from "@/lib/api";
+import { listAssetTypes, typeUsage } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { TypeManager } from "@/components/type-manager";
@@ -17,28 +17,30 @@ export default async function TypesPage() {
   ]);
   if (!session) redirect("/login");
 
-  const [types, assets] = await Promise.all([
-    listAssetTypes(clientId),
-    listAssets({ clientId }),
-  ]);
+  const types = await listAssetTypes(clientId);
 
-  const usage: Record<
-    string,
-    {
-      id: number;
-      assetTag: string;
-      make: string | null;
-      model: string | null;
-    }[]
-  > = {};
-  for (const a of assets) {
-    (usage[a.type] ??= []).push({
-      id: a.id,
-      assetTag: a.assetTag,
-      make: a.make,
-      model: a.model,
-    });
-  }
+  // Count and a few examples per type, from the database. This page used to pull
+  // the whole catalog and group it here just to say "12 assets" and list a
+  // handful of tags in the delete confirmation.
+  const rows = types.length
+    ? await typeUsage(
+        clientId,
+        types.map((t) => t.name),
+      ).catch(() => [])
+    : [];
+
+  const usage = Object.fromEntries(
+    rows.map((r) => [
+      r.type,
+      r.sample.map((a) => ({
+        id: a.id,
+        assetTag: a.assetTag,
+        make: a.make,
+        model: a.model,
+      })),
+    ]),
+  );
+  const usageTotals = Object.fromEntries(rows.map((r) => [r.type, r.total]));
 
   return (
     <div className="max-w-2xl animate-fade-in-up">
@@ -55,7 +57,12 @@ export default async function TypesPage() {
         />
       </div>
       <Card className="mt-6">
-        <TypeManager clientId={clientId} types={types} usage={usage} />
+        <TypeManager
+          clientId={clientId}
+          types={types}
+          usage={usage}
+          totals={usageTotals}
+        />
       </Card>
     </div>
   );

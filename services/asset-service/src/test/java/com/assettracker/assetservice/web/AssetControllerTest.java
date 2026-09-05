@@ -13,6 +13,7 @@ import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.service.AssetNotFoundException;
 import com.assettracker.assetservice.service.AssetService;
+import com.assettracker.assetservice.service.AssetSummaryService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,7 @@ class AssetControllerTest {
 
   @Autowired MockMvc mvc;
   @MockitoBean AssetService service;
+  @MockitoBean AssetSummaryService summary;
 
   @Test
   void searchReturnsTheMatchingAssets() throws Exception {

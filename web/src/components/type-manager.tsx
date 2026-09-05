@@ -17,11 +17,15 @@ export function TypeManager({
   clientId,
   types,
   usage,
+  totals,
 }: {
   clientId: number;
   types: AssetTypeDef[];
   /** assets currently on each type, keyed by type name */
+  /** Up to a few example assets per type - not the whole set. */
   usage: Record<string, LinkedAsset[]>;
+  /** The real count per type; `usage` only carries enough to preview. */
+  totals: Record<string, number>;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -98,6 +102,7 @@ export function TypeManager({
       <ul className="divide-y divide-border rounded-lg border border-border">
         {types.map((t) => {
           const on = usage[t.name] ?? [];
+          const total = totals[t.name] ?? 0;
           const confirming = confirmId === t.id;
           return (
             <li key={t.id} className="px-4 py-3 text-sm">
@@ -105,9 +110,9 @@ export function TypeManager({
                 <div>
                   <span className="font-medium">{t.name}</span>
                   <span className="ml-2 text-xs text-muted-foreground">
-                    {on.length === 0
+                    {total === 0
                       ? "no assets"
-                      : `${on.length} asset${on.length === 1 ? "" : "s"}`}
+                      : `${total} asset${total === 1 ? "" : "s"}`}
                   </span>
                 </div>
                 {confirming ? (
@@ -124,7 +129,7 @@ export function TypeManager({
                     variant="ghost"
                     disabled={busy}
                     onClick={() =>
-                      on.length === 0 ? remove(t.id) : setConfirmId(t.id)
+                      total === 0 ? remove(t.id) : setConfirmId(t.id)
                     }
                   >
                     Delete
@@ -136,7 +141,7 @@ export function TypeManager({
                 <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
                   <p className="text-sm">
                     Deleting <span className="font-medium">{t.name}</span>{" "}
-                    affects {on.length} asset{on.length === 1 ? "" : "s"}:
+                    affects {total} asset{total === 1 ? "" : "s"}:
                   </p>
                   <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                     {on.slice(0, 8).map((a) => (
@@ -147,7 +152,9 @@ export function TypeManager({
                           : ""}
                       </li>
                     ))}
-                    {on.length > 8 && <li>…and {on.length - 8} more</li>}
+                    {total > on.length && (
+                      <li>…and {total - on.length} more</li>
+                    )}
                   </ul>
                   <div className="mt-3 flex flex-wrap items-end gap-2">
                     <label className="text-xs">

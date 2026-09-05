@@ -105,7 +105,25 @@ third query. Scoping is applied to the summary as well as the list — otherwise
 an employee could read tenant-wide totals off a page that shows them none of the
 rows — and there is a test for exactly that.
 
-Still fetching the full catalog to aggregate: `/dashboard`, `/reports` and
-`/types`. `/types` additionally needs up to 8 example tags per type for its
-delete confirmation, so it wants a small usage endpoint rather than the counts.
-`/reports` is genuinely heavy aggregation and is an admin page visited rarely.
+`/dashboard` and `/types` followed. Neither wanted plain counts:
+
+- the dashboard needs four counts **and** a short preview of each, so
+  `GET /api/assets/attention` answers that question in one call (5.7kB). Composing
+  it from the generic list endpoint would have meant five round trips and a
+  status filter that cannot express "IN_REPAIR or BROKEN".
+- `/types` needs a count **and** up to 8 example tags per type for its delete
+  confirmation, so `GET /api/assets/types/usage` returns both. Feeding it plain
+  counts would have been wrong in the other direction - a type with 1,008 assets
+  would have reported 8.
+
+Desk occupancy still reads rows, but only those held by a location, which is
+bounded by desk count rather than catalog size. Offboarding asks per departing
+person - normally a handful - instead of building a map over every assignment.
+
+Verified in the browser at 1,069 assets: 1069 / 31 in use / 1032 available /
+7 of 28 desks, and attention reading 2 / 12 / 5 / 1, all matching the API.
+
+`/reports` still pulls the catalog. It is genuinely heavy aggregation - rollups
+by type, status, condition and department, fleet value, break-and-loss, most-
+replaced tags - and it is an admin page visited rarely, so it is deliberately
+left until it is worth a purpose-built rollup endpoint.

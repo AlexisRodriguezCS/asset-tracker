@@ -232,3 +232,21 @@ export interface AssetStats {
   outOfWarranty: number;
   warrantyExpiringSoon: number;
 }
+
+/** One "needs attention" bucket from `GET /api/assets/attention`. */
+export interface AttentionBucket {
+  key: string;
+  total: number;
+  sample: Asset[];
+}
+
+export interface AssetAttention {
+  buckets: AttentionBucket[];
+}
+
+/** Count plus example assets for one type, from `GET /api/assets/types/usage`. */
+export interface TypeUsage {
+  type: string;
+  total: number;
+  sample: Asset[];
+}

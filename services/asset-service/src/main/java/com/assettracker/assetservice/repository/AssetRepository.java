@@ -98,6 +98,32 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
 
   long countByClientId(Long clientId);
 
+  /**
+   * In-service assets whose warranty ends inside a window. {@code from} null means "however long
+   * ago", so (null, today) is everything already expired and (today, today+N) is expiring soon.
+   * Paged so a caller can take a handful for a preview without loading the rest.
+   */
+  @Query(
+      """
+      select a from Asset a
+      where a.clientId = :clientId
+        and a.warrantyEndsOn is not null
+        and a.status in :inService
+        and (:from is null or a.warrantyEndsOn >= :from)
+        and a.warrantyEndsOn < :to
+      order by a.warrantyEndsOn
+      """)
+  Page<Asset> findByWarrantyWindow(
+      @Param("clientId") Long clientId,
+      @Param("from") java.time.LocalDate from,
+      @Param("to") java.time.LocalDate to,
+      @Param("inService") Collection<AssetStatus> inService,
+      Pageable pageable);
+
+  /** A client's assets in any of the given statuses - the "needs attention" buckets. */
+  Page<Asset> findByClientIdAndStatusIn(
+      Long clientId, Collection<AssetStatus> statuses, Pageable pageable);
+
   List<Asset> findByHolderTypeAndHolderId(HolderType holderType, Long holderId);
 
   /**

@@ -3,12 +3,15 @@ package com.assettracker.assetservice.web;
 import com.assettracker.assetservice.entity.AssetStatus;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.service.AssetService;
+import com.assettracker.assetservice.service.AssetSummaryService;
+import com.assettracker.assetservice.web.dto.AssetAttention;
 import com.assettracker.assetservice.web.dto.AssetResponse;
 import com.assettracker.assetservice.web.dto.AssetStats;
 import com.assettracker.assetservice.web.dto.AssignRequest;
 import com.assettracker.assetservice.web.dto.ChangeStatusRequest;
 import com.assettracker.assetservice.web.dto.CreateAssetRequest;
 import com.assettracker.assetservice.web.dto.PagedAssets;
+import com.assettracker.assetservice.web.dto.TypeUsage;
 import com.assettracker.assetservice.web.dto.UpdateAssetRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -41,9 +44,11 @@ public class AssetController {
   private static final String ACTOR = "X-User-Id";
 
   private final AssetService service;
+  private final AssetSummaryService summary;
 
-  public AssetController(AssetService service) {
+  public AssetController(AssetService service, AssetSummaryService summary) {
     this.service = service;
+    this.summary = summary;
   }
 
   @PostMapping
@@ -96,7 +101,31 @@ public class AssetController {
   @GetMapping("/stats")
   public AssetStats stats(
       @RequestParam Long clientId, @RequestParam(defaultValue = "60") int warrantySoonDays) {
-    return service.stats(clientId, warrantySoonDays);
+    return summary.stats(clientId, warrantySoonDays);
+  }
+
+  /**
+   * The dashboard's "needs attention" panel: four buckets with counts and short previews, in one
+   * call. Replaces fetching the whole catalog and bucketing it in the render.
+   */
+  @GetMapping("/attention")
+  public AssetAttention attention(
+      @RequestParam Long clientId,
+      @RequestParam(defaultValue = "5") int sampleSize,
+      @RequestParam(defaultValue = "60") int warrantySoonDays) {
+    return summary.attention(clientId, sampleSize, warrantySoonDays);
+  }
+
+  /**
+   * Usage per type - count plus a few example assets - for the type manager's delete confirmation.
+   * Types come from the caller because it has already loaded the catalog of them.
+   */
+  @GetMapping("/types/usage")
+  public List<TypeUsage> typeUsage(
+      @RequestParam Long clientId,
+      @RequestParam List<String> type,
+      @RequestParam(defaultValue = "8") int sampleSize) {
+    return summary.typeUsage(clientId, type, sampleSize);
   }
 
   @GetMapping("/{id}")

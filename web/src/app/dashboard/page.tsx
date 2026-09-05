@@ -1,5 +1,7 @@
 import Link from "next/link";
 import {
+  assetAttention,
+  assetStats,
   listAssets,
   listPeople,
   listLocations,
@@ -12,18 +14,14 @@ import { StatStrip } from "@/components/ui/stat";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AuditFeed } from "@/components/audit-feed";
-import { isPast, withinDays } from "@/lib/format";
 import type { Asset, AssetStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
+// Which statuses count as still-in-the-fleet used to be duplicated here; it now
+// lives once in the backend (AssetStatus.IN_SERVICE), which is what decides the
+// warranty buckets this page renders.
 const WARRANTY_SOON_DAYS = 60;
-const IN_SERVICE: AssetStatus[] = [
-  "IN_STOCK",
-  "ASSIGNED",
-  "IN_REPAIR",
-  "BROKEN",
-];
 const RECENT_ROWS = 8;
 const PREVIEW_ROWS = 5;
 
@@ -33,40 +31,50 @@ export default async function DashboardPage() {
     currentClientId(),
   ]);
 
-  const [assets, people, desks, activity] = await Promise.all([
-    listAssets({ clientId }).catch(() => [] as Asset[]),
-    listPeople(clientId).catch(() => []),
-    listLocations(clientId, "DESK").catch(() => []),
-    clientActivity(clientId).catch(() => []),
-  ]);
+  // Counts and previews are aggregated in the database. Desk occupancy still
+  // needs rows, but only the ones held by a location - bounded by desk count,
+  // not by the size of the catalog.
+  const [stats, attention, deskAssets, people, desks, activity] =
+    await Promise.all([
+      assetStats(clientId, WARRANTY_SOON_DAYS).catch(() => null),
+      assetAttention(clientId, WARRANTY_SOON_DAYS).catch(() => null),
+      listAssets({ clientId, holderType: "LOCATION" }).catch(
+        () => [] as Asset[],
+      ),
+      listPeople(clientId).catch(() => []),
+      listLocations(clientId, "DESK").catch(() => []),
+      clientActivity(clientId).catch(() => []),
+    ]);
 
-  // one pass over assets builds every index the page needs (O(assets), not O(assets·people))
-  const is = (...ss: AssetStatus[]) =>
-    assets.filter((a) => ss.includes(a.status));
+  const bucket = (key: string) =>
+    attention?.buckets.find((b) => b.key === key) ?? {
+      key,
+      total: 0,
+      sample: [] as Asset[],
+    };
+  const statusCount = (...ss: AssetStatus[]) =>
+    ss.reduce((n, s2) => n + (stats?.byStatus[s2] ?? 0), 0);
+
   const heldByDesk = new Set<number | null>();
-  const heldByPerson = new Map<number, number>();
-  for (const a of assets) {
-    if (a.holderType === "LOCATION") heldByDesk.add(a.holderId);
-    if (a.holderType === "PERSON" && a.holderId != null) {
-      heldByPerson.set(a.holderId, (heldByPerson.get(a.holderId) ?? 0) + 1);
-    }
-  }
+  for (const a of deskAssets) heldByDesk.add(a.holderId);
 
-  const repair = is("IN_REPAIR", "BROKEN");
-  const pendingRecycle = is("PENDING_RECYCLE");
-  const outOfWarranty = assets.filter(
-    (a) => IN_SERVICE.includes(a.status) && isPast(a.warrantyEndsOn),
-  );
-  const expiringSoon = assets.filter(
-    (a) =>
-      IN_SERVICE.includes(a.status) &&
-      withinDays(a.warrantyEndsOn, WARRANTY_SOON_DAYS),
-  );
-
-  const offboardingWithGear = people
-    .filter((p) => p.status === "OFFBOARDING")
-    .map((p) => ({ person: p, held: heldByPerson.get(p.id) ?? 0 }))
-    .filter((r) => r.held > 0);
+  // Offboarding is normally a handful of people, so ask about each rather than
+  // pulling every assignment to build a map that is mostly zeroes.
+  const offboarding = people.filter((p) => p.status === "OFFBOARDING");
+  const offboardingWithGear = (
+    await Promise.all(
+      offboarding.map(async (person) => ({
+        person,
+        held: (
+          await listAssets({
+            clientId,
+            holderType: "PERSON",
+            holderId: person.id,
+          }).catch(() => [] as Asset[])
+        ).length,
+      })),
+    )
+  ).filter((r) => r.held > 0);
 
   const label = (a: Asset) =>
     [a.make, a.model].filter(Boolean).join(" ") || a.type;
@@ -87,16 +95,16 @@ export default async function DashboardPage() {
 
       <StatStrip
         stats={[
-          { label: "Assets", value: assets.length, href: "/" },
+          { label: "Assets", value: stats?.total ?? 0, href: "/" },
           {
             label: "In use",
-            value: is("ASSIGNED").length,
+            value: statusCount("ASSIGNED"),
             tone: "primary",
             href: "/?status=ASSIGNED",
           },
           {
             label: "Available",
-            value: is("IN_STOCK").length,
+            value: statusCount("IN_STOCK"),
             tone: "success",
             href: "/?status=IN_STOCK",
           },
@@ -117,50 +125,58 @@ export default async function DashboardPage() {
           <AttentionCard
             title="In repair or broken"
             tone="warn"
-            count={repair.length}
+            count={bucket("repair").total}
             href="/?status=IN_REPAIR"
-            rows={repair.slice(0, PREVIEW_ROWS).map((a) => ({
-              key: a.id,
-              href: `/assets/${a.id}`,
-              left: a.assetTag,
-              right: label(a),
-            }))}
+            rows={bucket("repair")
+              .sample.slice(0, PREVIEW_ROWS)
+              .map((a) => ({
+                key: a.id,
+                href: `/assets/${a.id}`,
+                left: a.assetTag,
+                right: label(a),
+              }))}
           />
           <AttentionCard
             title="Out of warranty"
             tone="danger"
-            count={outOfWarranty.length}
+            count={bucket("outOfWarranty").total}
             href="/?warranty=expired"
-            rows={outOfWarranty.slice(0, PREVIEW_ROWS).map((a) => ({
-              key: a.id,
-              href: `/assets/${a.id}`,
-              left: a.assetTag,
-              right: label(a),
-            }))}
+            rows={bucket("outOfWarranty")
+              .sample.slice(0, PREVIEW_ROWS)
+              .map((a) => ({
+                key: a.id,
+                href: `/assets/${a.id}`,
+                left: a.assetTag,
+                right: label(a),
+              }))}
           />
           <AttentionCard
             title="Warranty expiring soon"
             tone="warn"
-            count={expiringSoon.length}
+            count={bucket("warrantyExpiringSoon").total}
             href="/?warranty=soon"
-            rows={expiringSoon.slice(0, PREVIEW_ROWS).map((a) => ({
-              key: a.id,
-              href: `/assets/${a.id}`,
-              left: a.assetTag,
-              right: label(a),
-            }))}
+            rows={bucket("warrantyExpiringSoon")
+              .sample.slice(0, PREVIEW_ROWS)
+              .map((a) => ({
+                key: a.id,
+                href: `/assets/${a.id}`,
+                left: a.assetTag,
+                right: label(a),
+              }))}
           />
           <AttentionCard
             title="Pending recycle"
             tone="danger"
-            count={pendingRecycle.length}
+            count={bucket("pendingRecycle").total}
             href="/?status=PENDING_RECYCLE"
-            rows={pendingRecycle.slice(0, PREVIEW_ROWS).map((a) => ({
-              key: a.id,
-              href: `/assets/${a.id}`,
-              left: a.assetTag,
-              right: label(a),
-            }))}
+            rows={bucket("pendingRecycle")
+              .sample.slice(0, PREVIEW_ROWS)
+              .map((a) => ({
+                key: a.id,
+                href: `/assets/${a.id}`,
+                left: a.assetTag,
+                right: label(a),
+              }))}
           />
           <AttentionCard
             title="Offboarding · gear not collected"

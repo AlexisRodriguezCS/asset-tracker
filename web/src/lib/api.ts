@@ -7,10 +7,12 @@ import type {
   AuditEvent,
   Client,
   Location,
+  AssetAttention,
   AssetStats,
   EventRequest,
   PagedAssets,
   Person,
+  TypeUsage,
 } from "@/lib/types";
 
 const GATEWAY = process.env.GATEWAY_URL ?? "http://localhost:8080";
@@ -177,5 +179,23 @@ export const listAssetsPaged = (params: {
 export const assetStats = (clientId: number, warrantySoonDays?: number) =>
   gateway<AssetStats>(
     `/api/assets/stats${qs({ clientId, warrantySoonDays })}`,
+    { auth: true },
+  );
+
+/**
+ * The dashboard's "needs attention" buckets - counts and short previews - in one
+ * call, instead of loading the catalog and bucketing it in the render.
+ */
+export const assetAttention = (clientId: number, warrantySoonDays?: number) =>
+  gateway<AssetAttention>(
+    `/api/assets/attention${qs({ clientId, warrantySoonDays })}`,
+    { auth: true },
+  );
+
+/** Count + example assets per type, for the type manager's delete confirmation. */
+export const typeUsage = (clientId: number, types: string[]) =>
+  gateway<TypeUsage[]>(
+    `/api/assets/types/usage?clientId=${clientId}` +
+      types.map((t) => `&type=${encodeURIComponent(t)}`).join(""),
     { auth: true },
   );

@@ -42,6 +42,10 @@ class AssetVisibilityTest {
     return new AssetService(repository, audit);
   }
 
+  private AssetSummaryService summary() {
+    return new AssetSummaryService(repository, service());
+  }
+
   @AfterEach
   void clearCaller() {
     CallerContextTestSupport.reset();
@@ -103,7 +107,7 @@ class AssetVisibilityTest {
     when(repository.search(eq(ACME), isNull(), isNull(), eq(HolderType.PERSON), eq(DANA), isNull()))
         .thenReturn(List.of(heldBy(DANA), heldBy(DANA)));
 
-    AssetStats stats = service().stats(ACME, 60);
+    AssetStats stats = summary().stats(ACME, 60);
 
     assertThat(stats.total()).isEqualTo(2);
     assertThat(stats.byStatus()).containsEntry("ASSIGNED", 2L);
@@ -121,7 +125,7 @@ class AssetVisibilityTest {
     when(repository.countByCondition(ACME)).thenReturn(List.of(bucket("GOOD", 1069)));
     when(repository.countWarrantyEndingBefore(eq(ACME), any(), any())).thenReturn(12L, 17L);
 
-    AssetStats stats = service().stats(ACME, 60);
+    AssetStats stats = summary().stats(ACME, 60);
 
     assertThat(stats.total()).isEqualTo(1069);
     assertThat(stats.byStatus()).containsEntry("IN_STOCK", 1028L);
