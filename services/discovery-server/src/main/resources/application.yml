@@ -12,3 +12,8 @@ eureka:
     fetch-registry: false
   server:
     enable-self-preservation: false
+    # Eureka caches the registry payload it serves to clients for 30s by default,
+    # so a newly-registered instance stays invisible for up to that long even to a
+    # client polling hard. On a fleet this size freshness is worth far more than
+    # the saved cache churn - see infra/RUNBOOK.md "Startup convergence".
+    response-cache-update-interval-ms: 5000

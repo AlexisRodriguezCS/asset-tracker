@@ -159,20 +159,43 @@ jobs:
             api-gateway auth-service client-service people-service \
             location-service asset-service assignment-service notification-service
 
-      # Container health only says a service booted. The gateway additionally has
-      # to resolve the route through Eureka, which lags healthy by ~20-30s on a
-      # cold stack, so poll the routed endpoint the suite actually calls.
+      # Three separate readiness facts, and the suite needs all of them:
+      #   1. containers healthy      (compose already waited for this)
+      #   2. the gateway routes      - proves gateway -> asset-service
+      #   3. every service is in Eureka AND the callers have fetched the registry
+      #      - proves assignment-service -> asset-service, which is what the
+      #        check-out test needs and what 2. does NOT cover.
+      # Gating only on 2. is why the first version of this job flaked: writes
+      # 503'd for ~9s after the gateway started serving reads.
       - name: Wait for the gateway to route
         run: |
           for i in $(seq 1 60); do
             if curl -fsS "http://localhost:8080/api/assets?clientId=1" > /dev/null 2>&1; then
               echo "gateway routing after ${i} attempts"
-              exit 0
+              break
             fi
+            [ "$i" = "60" ] && { echo "::error::gateway never started routing"; exit 1; }
             sleep 5
           done
-          echo "::error::gateway never started routing"
-          exit 1
+
+      - name: Wait for every service to register in Eureka
+        run: |
+          # nine of the ten: discovery-server has register-with-eureka: false
+          expected=9
+          for i in $(seq 1 60); do
+            n=$(curl -fsS -H 'Accept: application/json' http://localhost:8761/eureka/apps \
+                | grep -o '"name":"[A-Z-]*"' | sort -u | wc -l) || n=0
+            if [ "$n" -ge "$expected" ]; then
+              echo "all $n services registered after ${i} attempts"
+              break
+            fi
+            [ "$i" = "60" ] && { echo "::error::only $n/$expected registered"; exit 1; }
+            sleep 5
+          done
+          # registered != every caller has fetched it; the clients poll every 5s
+          # (eureka.client.registry-fetch-interval-seconds in config-repo), so
+          # give them a couple of intervals to converge.
+          sleep 15
 
       - name: Run the e2e suite
         env:

@@ -146,6 +146,28 @@ The cloud overlay runs two gateways and sets `AUTH_RATE_LIMIT_MAX: "5"` to keep 
 cluster-wide rate near 10/min. That makes credential stuffing expensive; it is not a
 hard limit. The real fix is Redis behind Spring Cloud Gateway's `RequestRateLimiter`.
 
+## Startup convergence
+
+A container reporting healthy does **not** mean it can call its neighbours. Reads
+through the gateway come up first; a write like check-out additionally needs
+`assignment-service` to have discovered `asset-service` through Eureka, and until
+it has, the call returns `503 ASSET_SERVICE_UNAVAILABLE`.
+
+Stock Eureka timings make that window long — 30s registry fetch, 30s heartbeat,
+90s lease, plus the server's own 30s response cache. Measured on a cold
+`compose up`: gateway routing at **53s**, first successful check-out at **73s**.
+
+`config-repo/application.yml` now sets `registry-fetch-interval-seconds: 5` and a
+10s heartbeat / 30s lease, and `discovery-server` sets
+`response-cache-update-interval-ms: 5000`. Same measurement after: routing at
+**29s**, first check-out at **38s** — a 9s gap instead of 20s. Ten small services
+on one network can afford the extra gossip; the defaults are tuned for far larger
+fleets where registry chatter actually costs something.
+
+The gap is smaller, not gone. Anything scripted against a freshly-started stack
+should wait for the write path, not just a health check — `infra/scripts/demo-flow.*`
+and CI's `e2e` job both do.
+
 ## Scaling: what can and cannot run multi-replica
 
 The cloud overlay (`deploy/k8s/overlays/cloud`) runs two of everything **except

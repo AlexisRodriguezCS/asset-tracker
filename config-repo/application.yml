@@ -42,7 +42,15 @@ eureka:
     fetch-registry: true
     service-url:
       defaultZone: http://localhost:8761/eureka
+    # Defaults (30s registry fetch, 30s heartbeat, 90s lease, plus the server's
+    # own 30s response cache) leave a cold stack unable to make one service call
+    # another for ~50s - the first check-out after `compose up` used to 503.
+    # Ten small services on one network can afford to gossip more often; this is
+    # the dominant term in startup convergence. See infra/RUNBOOK.md.
+    registry-fetch-interval-seconds: 5
 
   instance:
     prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
 
