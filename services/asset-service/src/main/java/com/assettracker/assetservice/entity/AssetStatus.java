@@ -27,4 +27,15 @@ public enum AssetStatus {
    */
   public static final Set<AssetStatus> ACTIVE =
       Collections.unmodifiableSet(EnumSet.of(IN_STOCK, ASSIGNED, IN_REPAIR));
+
+  /**
+   * Statuses in which an asset is still part of the fleet, so facts about it - notably whether its
+   * warranty has run out - are still worth reporting.
+   *
+   * <p>Deliberately wider than {@link #ACTIVE}: a broken laptop no longer holds its tag against a
+   * replacement, but it is still owned and its warranty is exactly what someone wants to know
+   * about. Anything recycled, retired or lost has left the fleet entirely.
+   */
+  public static final Set<AssetStatus> IN_SERVICE =
+      Collections.unmodifiableSet(EnumSet.of(IN_STOCK, ASSIGNED, IN_REPAIR, BROKEN));
 }

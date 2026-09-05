@@ -14,6 +14,7 @@ import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.repository.AssetRepository;
 import com.assettracker.assetservice.web.CallerContextTestSupport;
+import com.assettracker.assetservice.web.dto.AssetStats;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -89,6 +90,59 @@ class AssetVisibilityTest {
     when(repository.findById(9L)).thenReturn(Optional.of(heldBy(SAM)));
 
     assertThatThrownBy(() -> service().getById(9L)).isInstanceOf(AssetNotFoundException.class);
+  }
+
+  /**
+   * The counts are aggregated in the database for staff, so the scoping cannot be inherited from
+   * the list query - it has to be applied to the summary too, or an employee could read tenant-wide
+   * totals off a page that shows them none of the rows.
+   */
+  @Test
+  void anEmployeesStatsCountOnlyTheirOwnGear() {
+    CallerContextTestSupport.as("USER", DANA);
+    when(repository.search(eq(ACME), isNull(), isNull(), eq(HolderType.PERSON), eq(DANA), isNull()))
+        .thenReturn(List.of(heldBy(DANA), heldBy(DANA)));
+
+    AssetStats stats = service().stats(ACME, 60);
+
+    assertThat(stats.total()).isEqualTo(2);
+    assertThat(stats.byStatus()).containsEntry("ASSIGNED", 2L);
+    // the grouped queries are tenant-wide; an employee must never reach them
+    verify(repository, never()).countByClientId(any());
+    verify(repository, never()).countByStatus(any());
+  }
+
+  @Test
+  void staffStatsComeFromTheDatabaseNotTheCatalog() {
+    CallerContextTestSupport.as("TECH", null);
+    when(repository.countByClientId(ACME)).thenReturn(1069L);
+    when(repository.countByStatus(ACME)).thenReturn(List.of(bucket("IN_STOCK", 1028)));
+    when(repository.countByType(ACME)).thenReturn(List.of(bucket("Laptop", 1008)));
+    when(repository.countByCondition(ACME)).thenReturn(List.of(bucket("GOOD", 1069)));
+    when(repository.countWarrantyEndingBefore(eq(ACME), any(), any())).thenReturn(12L, 17L);
+
+    AssetStats stats = service().stats(ACME, 60);
+
+    assertThat(stats.total()).isEqualTo(1069);
+    assertThat(stats.byStatus()).containsEntry("IN_STOCK", 1028L);
+    assertThat(stats.outOfWarranty()).isEqualTo(12);
+    // "expiring soon" is the difference between the two windows, not a third query
+    assertThat(stats.warrantyExpiringSoon()).isEqualTo(5);
+    verify(repository, never()).search(any(), any(), any(), any(), any(), any());
+  }
+
+  private static AssetRepository.Bucket bucket(String name, long total) {
+    return new AssetRepository.Bucket() {
+      @Override
+      public String getBucket() {
+        return name;
+      }
+
+      @Override
+      public long getTotal() {
+        return total;
+      }
+    };
   }
 
   @Test

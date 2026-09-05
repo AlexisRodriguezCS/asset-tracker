@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { currentClientId } from "@/lib/client";
 import {
+  assetStats,
   listAssets,
   listAssetsPaged,
   listAssetTypes,
@@ -14,7 +15,7 @@ import { PageHeader, TableCard } from "@/components/ui/page-header";
 import { Pagination } from "@/components/pagination";
 import { Button } from "@/components/ui/button";
 import { dateOnly, disposition, isPast, label, withinDays } from "@/lib/format";
-import type { AssetStatus } from "@/lib/types";
+import type { Asset, AssetStatus } from "@/lib/types";
 
 /** Warranty counts as "expiring soon" this many days before it ends. */
 const WARRANTY_SOON_DAYS = 60;
@@ -63,8 +64,9 @@ export default async function AssetsPage({
   // endpoint and never materialises more than PAGE_SIZE rows.
   const needsFullSet = Boolean(term) || Boolean(sp.warranty);
 
-  const [all, page, types, people, desks] = await Promise.all([
-    listAssets({ clientId }),
+  const [stats, page, everything, types, people, desks] = await Promise.all([
+    // counts come from the database; the strip no longer needs the catalog
+    assetStats(clientId, WARRANTY_SOON_DAYS),
     needsFullSet
       ? null
       : listAssetsPaged({
@@ -74,29 +76,28 @@ export default async function AssetsPage({
           page: pageIndex,
           size: PAGE_SIZE,
         }),
+    needsFullSet ? listAssets({ clientId }) : null,
     listAssetTypes(clientId).catch(() => []),
     listPeople(clientId).catch(() => []),
     listLocations(clientId, "DESK").catch(() => []),
   ]);
 
-  const filtered = needsFullSet
-    ? all.filter(
-        (a) =>
-          (!sp.type || a.type === sp.type) &&
-          (!sp.status || a.status === sp.status),
-      )
-    : [];
+  const filtered = (everything ?? []).filter(
+    (a) =>
+      (!sp.type || a.type === sp.type) &&
+      (!sp.status || a.status === sp.status),
+  );
 
   const personName = new Map(people.map((p) => [p.id, p.fullName]));
   const deskName = new Map(desks.map((d) => [d.id, d.label]));
-  const holderLabel = (a: (typeof all)[number]) => {
+  const holderLabel = (a: Asset) => {
     if (a.holderType === "STOCKROOM" || a.holderId == null) return "Stockroom";
     if (a.holderType === "PERSON")
       return personName.get(a.holderId) ?? `Person #${a.holderId}`;
     return deskName.get(a.holderId) ?? `Location #${a.holderId}`;
   };
 
-  const warrantyMatch = (a: (typeof all)[number]) => {
+  const warrantyMatch = (a: Asset) => {
     if (sp.warranty === "expired") return isPast(a.warrantyEndsOn);
     if (sp.warranty === "soon")
       return withinDays(a.warrantyEndsOn, WARRANTY_SOON_DAYS);
@@ -129,7 +130,7 @@ export default async function AssetsPage({
   const totalPages = Math.max(1, Math.ceil(matchTotal / PAGE_SIZE));
 
   const count = (...ss: AssetStatus[]) =>
-    all.filter((a) => ss.includes(a.status)).length;
+    ss.reduce((n, status) => n + (stats.byStatus[status] ?? 0), 0);
   const link = (p: Record<string, string>) => {
     const merged: Record<string, string> = {
       ...(term ? { q: sp.q as string } : {}),
@@ -160,7 +161,7 @@ export default async function AssetsPage({
   const keepStatus: Record<string, string> = sp.status
     ? { status: sp.status }
     : {};
-  const outOfWarranty = all.filter((a) => isPast(a.warrantyEndsOn)).length;
+  const outOfWarranty = stats.outOfWarranty;
 
   return (
     <div className="animate-fade-in-up space-y-6">
@@ -168,10 +169,10 @@ export default async function AssetsPage({
         title="Assets"
         subtitle={
           term
-            ? `${matchTotal} of ${all.length} match "${sp.q}"`
+            ? `${matchTotal} of ${stats.total} match "${sp.q}"`
             : outOfWarranty > 0
-              ? `${all.length} tracked for this client · ${outOfWarranty} out of warranty`
-              : `${all.length} tracked for this client`
+              ? `${stats.total} tracked for this client · ${outOfWarranty} out of warranty`
+              : `${stats.total} tracked for this client`
         }
         action={
           session ? (
@@ -200,7 +201,7 @@ export default async function AssetsPage({
         stats={[
           {
             label: "Total",
-            value: all.length,
+            value: stats.total,
             href: "/",
             active: !sp.status && !sp.type,
           },

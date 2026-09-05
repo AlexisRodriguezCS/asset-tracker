@@ -7,6 +7,7 @@ import type {
   AuditEvent,
   Client,
   Location,
+  AssetStats,
   EventRequest,
   PagedAssets,
   Person,
@@ -168,3 +169,13 @@ export const listAssetsPaged = (params: {
   page?: number;
   size?: number;
 }) => gateway<PagedAssets>(`/api/assets/paged${qs(params)}`, { auth: true });
+
+/**
+ * Counts for the summary strips. Replaces fetching every asset and counting in
+ * the render — that was a 416kB payload per page load on four pages.
+ */
+export const assetStats = (clientId: number, warrantySoonDays?: number) =>
+  gateway<AssetStats>(
+    `/api/assets/stats${qs({ clientId, warrantySoonDays })}`,
+    { auth: true },
+  );

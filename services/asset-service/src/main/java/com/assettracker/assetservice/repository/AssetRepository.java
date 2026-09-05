@@ -50,6 +50,54 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
       @Param("type") String type,
       @Param("statuses") Collection<AssetStatus> statuses);
 
+  /** Grouped counts for the summary strips - one row per bucket, not one per asset. */
+  interface Bucket {
+    String getBucket();
+
+    long getTotal();
+  }
+
+  @Query(
+      """
+      select cast(a.status as string) as bucket, count(a) as total from Asset a
+      where a.clientId = :clientId group by a.status
+      """)
+  List<Bucket> countByStatus(@Param("clientId") Long clientId);
+
+  @Query(
+      """
+      select a.type as bucket, count(a) as total from Asset a
+      where a.clientId = :clientId group by a.type
+      """)
+  List<Bucket> countByType(@Param("clientId") Long clientId);
+
+  @Query(
+      """
+      select cast(a.condition as string) as bucket, count(a) as total from Asset a
+      where a.clientId = :clientId group by a.condition
+      """)
+  List<Bucket> countByCondition(@Param("clientId") Long clientId);
+
+  /**
+   * In-service assets whose warranty ends before {@code before}. Passing today gives the
+   * already-expired count; passing today+N gives expired plus expiring within N, so "expiring soon"
+   * is the difference between the two.
+   */
+  @Query(
+      """
+      select count(a) from Asset a
+      where a.clientId = :clientId
+        and a.warrantyEndsOn is not null
+        and a.warrantyEndsOn < :before
+        and a.status in :inService
+      """)
+  long countWarrantyEndingBefore(
+      @Param("clientId") Long clientId,
+      @Param("before") java.time.LocalDate before,
+      @Param("inService") Collection<AssetStatus> inService);
+
+  long countByClientId(Long clientId);
+
   List<Asset> findByHolderTypeAndHolderId(HolderType holderType, Long holderId);
 
   /**

@@ -222,3 +222,13 @@ export interface PagedAssets {
   size: number;
   totalPages: number;
 }
+
+/** Counts from `GET /api/assets/stats`, aggregated in the database. */
+export interface AssetStats {
+  total: number;
+  byStatus: Record<string, number>;
+  byType: Record<string, number>;
+  byCondition: Record<string, number>;
+  outOfWarranty: number;
+  warrantyExpiringSoon: number;
+}

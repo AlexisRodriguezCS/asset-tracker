@@ -87,3 +87,25 @@ The stat strip and `/dashboard`, `/reports`, `/types` each still fetch every
 asset to aggregate — 416 kB server-side per render. Invisible to the user
 (server-to-server, ~17 ms) but it is the next thing to fix, with count/rollup
 endpoints so the aggregation happens in the database.
+
+### Aggregation moved into the database
+
+The follow-up above is done for the catalog page. `GET /api/assets/stats` returns
+the counts the summary strips need — totals by status, type and condition, plus
+the two warranty buckets — instead of the console fetching every asset and
+counting in the render:
+
+| | payload |
+|---|---|
+| `GET /api/assets` (what the strip used to do) | 416,062 bytes |
+| `GET /api/assets/stats` | **331 bytes** |
+
+"Expiring soon" is the difference between two windowed counts rather than a
+third query. Scoping is applied to the summary as well as the list — otherwise
+an employee could read tenant-wide totals off a page that shows them none of the
+rows — and there is a test for exactly that.
+
+Still fetching the full catalog to aggregate: `/dashboard`, `/reports` and
+`/types`. `/types` additionally needs up to 8 example tags per type for its
+delete confirmation, so it wants a small usage endpoint rather than the counts.
+`/reports` is genuinely heavy aggregation and is an admin page visited rarely.

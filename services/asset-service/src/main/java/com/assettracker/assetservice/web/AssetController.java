@@ -4,6 +4,7 @@ import com.assettracker.assetservice.entity.AssetStatus;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.service.AssetService;
 import com.assettracker.assetservice.web.dto.AssetResponse;
+import com.assettracker.assetservice.web.dto.AssetStats;
 import com.assettracker.assetservice.web.dto.AssignRequest;
 import com.assettracker.assetservice.web.dto.ChangeStatusRequest;
 import com.assettracker.assetservice.web.dto.CreateAssetRequest;
@@ -86,6 +87,16 @@ public class AssetController {
           Pageable pageable) {
     return PagedAssets.from(
         service.searchPage(clientId, type, status, holderType, holderId, tag, pageable));
+  }
+
+  /**
+   * Counts for the console's summary strips. Exists so those pages stop fetching the whole catalog
+   * to count it - that cost a 416kB payload per render on four pages.
+   */
+  @GetMapping("/stats")
+  public AssetStats stats(
+      @RequestParam Long clientId, @RequestParam(defaultValue = "60") int warrantySoonDays) {
+    return service.stats(clientId, warrantySoonDays);
   }
 
   @GetMapping("/{id}")
