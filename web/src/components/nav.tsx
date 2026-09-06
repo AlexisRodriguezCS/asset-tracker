@@ -44,6 +44,11 @@ const OPERATOR_EXTRAS = [
   { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 
+/**
+ * The signed-in chrome. The root layout does not render this at all when there
+ * is no session - signed out, the only reachable pages are the landing page and
+ * the auth routes, and every link here would have bounced straight back to it.
+ */
 export function Nav({
   email,
   role,
@@ -51,7 +56,7 @@ export function Nav({
   currentClient,
   demo = false,
 }: {
-  email: string | null;
+  email: string;
   role: string | null;
   clients: Client[];
   currentClient: number;
@@ -139,29 +144,21 @@ export function Nav({
           })}
 
           <div className="ml-2 flex items-center gap-2">
-            {email ? (
-              <>
-                {demo ? (
-                  <PersonaSwitcher email={email} role={role} />
-                ) : (
-                  <span className="hidden text-xs text-muted-foreground md:inline">
-                    {email}
-                    {role && (
-                      <span className="ml-1 rounded bg-muted px-1.5 py-0.5 font-medium">
-                        {ROLE_LABELS[role as Role] ?? role}
-                      </span>
-                    )}
+            {demo ? (
+              <PersonaSwitcher email={email} role={role} />
+            ) : (
+              <span className="hidden text-xs text-muted-foreground md:inline">
+                {email}
+                {role && (
+                  <span className="ml-1 rounded bg-muted px-1.5 py-0.5 font-medium">
+                    {ROLE_LABELS[role as Role] ?? role}
                   </span>
                 )}
-                <Button variant="outline" size="sm" onClick={logout}>
-                  Sign out
-                </Button>
-              </>
-            ) : (
-              <Link href="/welcome">
-                <Button size="sm">Sign in</Button>
-              </Link>
+              </span>
             )}
+            <Button variant="outline" size="sm" onClick={logout}>
+              Sign out
+            </Button>
           </div>
         </nav>
       </div>

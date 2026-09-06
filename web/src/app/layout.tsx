@@ -34,23 +34,28 @@ export default async function RootLayout({
     getSession(),
     currentClientId(),
   ]);
+  // The tenant list is only needed by the nav, which only signed-in people see.
   let clients: Client[] = [];
-  try {
-    clients = await listClients();
-  } catch {
-    /* gateway may be down at build time */
+  if (session) {
+    try {
+      clients = await listClients();
+    } catch {
+      /* gateway may be down at build time */
+    }
   }
 
   return (
     <html lang="en" className={`${inter.variable} ${display.variable}`}>
       <body className="flex min-h-screen flex-col">
-        <Nav
-          email={session?.subject ?? null}
-          role={session?.role ?? null}
-          clients={clients}
-          currentClient={currentClient}
-          demo={demoLoginsEnabled()}
-        />
+        {session && (
+          <Nav
+            email={session.subject}
+            role={session.role}
+            clients={clients}
+            currentClient={currentClient}
+            demo={demoLoginsEnabled()}
+          />
+        )}
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
           {children}
         </main>
