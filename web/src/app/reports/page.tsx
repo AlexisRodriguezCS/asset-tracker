@@ -1,110 +1,91 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { currentClientId } from "@/lib/client";
-import { listAssets, listPeople, clientActivity } from "@/lib/api";
+import { assetReport, listPeople } from "@/lib/api";
+import { isSelfServiceUser } from "@/lib/roles";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { StatStrip } from "@/components/ui/stat";
-import { isPast, label, withinDays } from "@/lib/format";
-import type { Asset } from "@/lib/types";
+import { label } from "@/lib/format";
+import type { Holdings, Person } from "@/lib/types";
 
 const WARRANTY_SOON_DAYS = 60;
+const TOP_ROWS = 10;
 
 export const dynamic = "force-dynamic";
+
+/** The audit actions this page names, in the order it lists them. */
+const LIFECYCLE: [string, string][] = [
+  ["ASSET_ASSIGNED", "Checked out"],
+  ["ASSET_RETURNED", "Returned"],
+  ["ASSET_STATUS_IN_REPAIR", "Sent for repair"],
+  ["ASSET_STATUS_BROKEN", "Marked broken"],
+  ["ASSET_STATUS_LOST", "Marked lost"],
+  ["ASSET_STATUS_RETIRED", "Retired"],
+  ["ASSET_STATUS_RECYCLED", "Recycled"],
+];
 
 export default async function ReportsPage() {
   const [session, clientId] = await Promise.all([
     getSession(),
     currentClientId(),
   ]);
-  if (!session) redirect("/welcome");
+  if (!session) redirect("/welcome?next=/reports");
+  // every number here is a tenant-wide total, which is the one thing an employee
+  // must not see - the API refuses them too, this just avoids an error page
+  if (isSelfServiceUser(session.role)) redirect("/");
 
-  const [assets, people, audit] = await Promise.all([
-    listAssets({ clientId }),
+  const [report, people] = await Promise.all([
+    assetReport(clientId, WARRANTY_SOON_DAYS),
     listPeople(clientId),
-    clientActivity(clientId).catch(() => []),
   ]);
 
   const personById = new Map(people.map((p) => [p.id, p]));
-  const assetById = new Map(assets.map((a) => [a.id, a]));
 
-  const tally = <T,>(items: T[], key: (t: T) => string): [string, number][] => {
-    const m = new Map<string, number>();
-    for (const it of items) {
-      const k = key(it);
-      m.set(k, (m.get(k) ?? 0) + 1);
+  const rows = (
+    counts: Record<string, number>,
+    name: (key: string) => string = (key) => key,
+  ): [string, number][] =>
+    Object.entries(counts)
+      .map(([key, n]): [string, number] => [name(key), n])
+      .sort((a, b) => b[1] - a[1]);
+
+  /**
+   * The one rollup the API cannot finish: an asset knows the id of the person
+   * holding it, but the department lives in people-service. The counts arrive
+   * per holder - bounded by headcount, not catalog size - and are folded into
+   * departments here, against the people list this page already loads.
+   */
+  const byDepartment = (holdings: Holdings): [string, number][] => {
+    const totals = new Map<string, number>();
+    for (const [personId, n] of Object.entries(holdings.byPerson)) {
+      const dept = departmentOf(personById.get(Number(personId)));
+      totals.set(dept, (totals.get(dept) ?? 0) + n);
     }
-    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+    if (holdings.onDesk > 0) totals.set("On a desk", holdings.onDesk);
+    if (holdings.unassigned > 0) {
+      totals.set("Stockroom / unassigned", holdings.unassigned);
+    }
+    return [...totals.entries()].sort((a, b) => b[1] - a[1]);
   };
 
-  const deptOf = (a: Asset): string => {
-    if (a.holderType === "LOCATION") return "On a desk";
-    if (a.holderType !== "PERSON" || a.holderId == null)
-      return "Stockroom / unassigned";
-    return personById.get(a.holderId)?.department ?? "Unknown dept";
-  };
+  const conditionRows: [string, number][] = [
+    ...rows(report.byCondition, label),
+    ...(report.unrated > 0
+      ? ([["Unrated", report.unrated]] as [string, number][])
+      : []),
+  ];
 
-  const byType = tally(assets, (a) => a.type);
-  const byStatus = tally(assets, (a) => label(a.status));
   const warrantyRows: [string, number][] = [
-    ["Out of warranty", assets.filter((a) => isPast(a.warrantyEndsOn)).length],
-    [
-      `Expiring within ${WARRANTY_SOON_DAYS} days`,
-      assets.filter((a) => withinDays(a.warrantyEndsOn, WARRANTY_SOON_DAYS))
-        .length,
-    ],
-    [
-      "In warranty",
-      assets.filter(
-        (a) =>
-          a.warrantyEndsOn &&
-          !isPast(a.warrantyEndsOn) &&
-          !withinDays(a.warrantyEndsOn, WARRANTY_SOON_DAYS),
-      ).length,
-    ],
-  ];
-  const byCondition = tally(assets, (a) =>
-    a.condition ? label(a.condition) : "Unrated",
-  );
-  const byDept = tally(assets, deptOf);
-
-  // an asset with supersedesAssetId set was created by retire-and-replace to
-  // take over from another unit - no more guessing from matching tags + dates
-  const superseding = assets.filter((a) => a.supersedesAssetId != null);
-  const totalReplacements = superseding.length;
-  const replacements = tally(
-    superseding,
-    (a) => `${a.assetTag}||${a.type}`,
-  ).map(([k, n]) => {
-    const [tag, type] = k.split("||");
-    return { tag, type, n };
-  });
-
-  const events = (action: string) =>
-    audit.filter((e) => e.action === action).length;
-  const lifecycle: [string, number][] = [
-    ["Checked out", events("ASSET_ASSIGNED")],
-    ["Returned", events("ASSET_RETURNED")],
-    ["Sent for repair", events("ASSET_STATUS_IN_REPAIR")],
-    ["Marked broken", events("ASSET_STATUS_BROKEN")],
-    ["Marked lost", events("ASSET_STATUS_LOST")],
-    ["Retired", events("ASSET_STATUS_RETIRED")],
-    ["Recycled", events("ASSET_STATUS_RECYCLED")],
+    ["Out of warranty", report.outOfWarranty],
+    [`Expiring within ${WARRANTY_SOON_DAYS} days`, report.warrantyExpiringSoon],
+    ["In warranty", report.inWarranty],
   ];
 
-  const incidents = audit
-    .filter(
-      (e) =>
-        e.action === "ASSET_STATUS_BROKEN" || e.action === "ASSET_STATUS_LOST",
-    )
-    .map((e) => assetById.get(e.entityId))
-    .filter((a): a is Asset => Boolean(a));
-  const incidentsByDept = tally(incidents, deptOf);
-  const incidentsByType = tally(incidents, (a) => a.type);
-
-  const totalCost = assets
-    .filter((a) => ["ASSIGNED", "IN_STOCK", "IN_REPAIR"].includes(a.status))
-    .reduce((s, a) => s + (a.purchaseCostCents ?? 0), 0);
+  const lifecycleRows: [string, number][] = LIFECYCLE.map(([action, name]) => [
+    name,
+    report.lifecycle[action] ?? 0,
+  ]);
 
   return (
     <div className="animate-fade-in-up space-y-6">
@@ -115,71 +96,77 @@ export default async function ReportsPage() {
 
       <StatStrip
         stats={[
-          { label: "Assets", value: assets.length },
+          { label: "Assets", value: report.total },
           { label: "People", value: people.length },
           {
             label: "Replacements",
-            value: totalReplacements,
+            value: report.replacements,
             tone: "warn",
           },
           {
             label: "Break / loss events",
-            value: incidents.length,
+            value: report.incidents.total,
             tone: "danger",
           },
           {
             label: "Fleet value (live)",
-            value: `$${Math.round(totalCost / 100).toLocaleString()}`,
+            value: `$${Math.round(report.fleetValueCents / 100).toLocaleString()}`,
             tone: "primary",
           },
         ]}
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Breakdown title="By type" rows={byType} />
-        <Breakdown title="By status" rows={byStatus} />
-        <Breakdown title="By condition" rows={byCondition} />
+        <Breakdown title="By type" rows={rows(report.byType)} />
+        <Breakdown title="By status" rows={rows(report.byStatus, label)} />
+        <Breakdown title="By condition" rows={conditionRows} />
         <Breakdown title="Warranty" rows={warrantyRows} />
-        <Breakdown title="By department (who holds it)" rows={byDept} />
-        <Breakdown title="Lifecycle events (audit trail)" rows={lifecycle} />
+        <Breakdown
+          title="By department (who holds it)"
+          rows={byDepartment(report.holdings)}
+        />
+        <Breakdown
+          title="Lifecycle events (audit trail)"
+          rows={lifecycleRows}
+        />
         <Breakdown
           title="Break / loss by department"
-          rows={incidentsByDept}
+          rows={byDepartment(report.incidents.holdings)}
           empty="No breakage or loss recorded."
         />
         <Breakdown
           title="Break / loss by asset type"
-          rows={incidentsByType}
+          rows={rows(report.incidents.byType)}
           empty="No breakage or loss recorded."
         />
 
         <Card>
           <h2 className="text-sm font-semibold">
-            Most-replaced slots ({totalReplacements} replacements)
+            Most-replaced slots ({report.replacements} replacements)
           </h2>
           <p className="text-xs text-muted-foreground">
             A tag that has carried more than one unit of a type — chargers and
             cables lead here.
           </p>
-          {replacements.length === 0 ? (
+          {report.topReplacedSlots.length === 0 ? (
             <p className="mt-4 text-sm text-muted-foreground">
               Nothing has been replaced yet.
             </p>
           ) : (
             <ul className="mt-3 divide-y divide-border text-sm">
-              {replacements.slice(0, 8).map((r) => (
+              {report.topReplacedSlots.map((slot) => (
                 <li
-                  key={`${r.tag}-${r.type}`}
+                  key={`${slot.assetTag}-${slot.type}`}
                   className="flex items-center justify-between py-2"
                 >
                   <span>
                     <span className="font-mono text-xs text-primary">
-                      {r.tag}
+                      {slot.assetTag}
                     </span>{" "}
-                    · {r.type}
+                    · {slot.type}
                   </span>
                   <span className="tabular-nums text-muted-foreground">
-                    ×{r.n}
+                    ×{slot.count}
                   </span>
                 </li>
               ))}
@@ -189,6 +176,10 @@ export default async function ReportsPage() {
       </div>
     </div>
   );
+}
+
+function departmentOf(person: Person | undefined): string {
+  return person?.department ?? "Unknown dept";
 }
 
 function Breakdown({
@@ -209,7 +200,7 @@ function Breakdown({
         <p className="mt-4 text-sm text-muted-foreground">{empty}</p>
       ) : (
         <ul className="mt-3 space-y-2 text-sm">
-          {nonZero.slice(0, 10).map(([name, n]) => (
+          {nonZero.slice(0, TOP_ROWS).map(([name, n]) => (
             <li key={name} className="flex items-center gap-3">
               <span className="w-48 shrink-0 truncate text-muted-foreground">
                 {name}

@@ -50,33 +50,26 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
       @Param("type") String type,
       @Param("statuses") Collection<AssetStatus> statuses);
 
-  /** Grouped counts for the summary strips - one row per bucket, not one per asset. */
-  interface Bucket {
-    String getBucket();
-
-    long getTotal();
-  }
-
   @Query(
       """
       select cast(a.status as string) as bucket, count(a) as total from Asset a
       where a.clientId = :clientId group by a.status
       """)
-  List<Bucket> countByStatus(@Param("clientId") Long clientId);
+  List<CountBucket> countByStatus(@Param("clientId") Long clientId);
 
   @Query(
       """
       select a.type as bucket, count(a) as total from Asset a
       where a.clientId = :clientId group by a.type
       """)
-  List<Bucket> countByType(@Param("clientId") Long clientId);
+  List<CountBucket> countByType(@Param("clientId") Long clientId);
 
   @Query(
       """
       select cast(a.condition as string) as bucket, count(a) as total from Asset a
       where a.clientId = :clientId group by a.condition
       """)
-  List<Bucket> countByCondition(@Param("clientId") Long clientId);
+  List<CountBucket> countByCondition(@Param("clientId") Long clientId);
 
   /**
    * In-service assets whose warranty ends before {@code before}. Passing today gives the
@@ -172,4 +165,74 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
       @Param("holderId") Long holderId,
       @Param("assetTag") String assetTag,
       Pageable pageable);
+
+  // --- reports rollups ------------------------------------------------------
+  //
+  // The reports page used to pull every asset and group it in the render. These
+  // answer the same questions in the database; each returns one row per bucket.
+
+  /** Purchase cost of the assets still in the estate - written off units do not count. */
+  @Query(
+      """
+      select coalesce(sum(a.purchaseCostCents), 0) from Asset a
+      where a.clientId = :clientId and a.status in :statuses
+      """)
+  long sumPurchaseCost(
+      @Param("clientId") Long clientId, @Param("statuses") Collection<AssetStatus> statuses);
+
+  /** In-service assets that carry a warranty date at all, so "in warranty" is a subtraction. */
+  @Query(
+      """
+      select count(a) from Asset a
+      where a.clientId = :clientId
+        and a.warrantyEndsOn is not null
+        and a.status in :inService
+      """)
+  long countWarrantyKnown(
+      @Param("clientId") Long clientId, @Param("inService") Collection<AssetStatus> inService);
+
+  /** Assets with no condition recorded - a group-by on condition cannot count nulls as a bucket. */
+  long countByClientIdAndConditionIsNull(Long clientId);
+
+  /** Units created by retire-and-replace to take over from another. */
+  long countByClientIdAndSupersedesAssetIdNotNull(Long clientId);
+
+  @Query(
+      """
+      select cast(a.holderType as string) as bucket, count(a) as total from Asset a
+      where a.clientId = :clientId group by a.holderType
+      """)
+  List<CountBucket> countByHolderType(@Param("clientId") Long clientId);
+
+  /**
+   * Assets per holding person. Bounded by headcount rather than catalog size, which is what makes
+   * it safe to return whole: the department each id belongs to lives in people-service, so the
+   * caller finishes this rollup by joining the people list it already has.
+   */
+  @Query(
+      """
+      select cast(a.holderId as string) as bucket, count(a) as total from Asset a
+      where a.clientId = :clientId and a.holderType = :holderType and a.holderId is not null
+      group by a.holderId
+      """)
+  List<CountBucket> countByHolder(
+      @Param("clientId") Long clientId, @Param("holderType") HolderType holderType);
+
+  /** A tag + type slot and the units it has burned through, heaviest first. */
+  interface Slot {
+    String getAssetTag();
+
+    String getType();
+
+    long getTotal();
+  }
+
+  @Query(
+      """
+      select a.assetTag as assetTag, a.type as type, count(a) as total from Asset a
+      where a.clientId = :clientId and a.supersedesAssetId is not null
+      group by a.assetTag, a.type
+      order by count(a) desc, a.assetTag
+      """)
+  List<Slot> countReplacedSlots(@Param("clientId") Long clientId, Pageable pageable);
 }

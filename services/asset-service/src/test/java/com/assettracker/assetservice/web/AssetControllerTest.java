@@ -12,6 +12,7 @@ import com.assettracker.assetservice.entity.AlreadyAssignedException;
 import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.service.AssetNotFoundException;
+import com.assettracker.assetservice.service.AssetReportService;
 import com.assettracker.assetservice.service.AssetService;
 import com.assettracker.assetservice.service.AssetSummaryService;
 import java.util.List;
@@ -27,6 +28,7 @@ class AssetControllerTest {
   @Autowired MockMvc mvc;
   @MockitoBean AssetService service;
   @MockitoBean AssetSummaryService summary;
+  @MockitoBean AssetReportService reports;
 
   @Test
   void searchReturnsTheMatchingAssets() throws Exception {

@@ -14,7 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuditService {
 
-  static final String ENTITY_TYPE = "ASSET";
+  /** Every row this service writes describes an asset; the reports rollups filter on it too. */
+  public static final String ENTITY_TYPE = "ASSET";
 
   private final AuditEventRepository repository;
 

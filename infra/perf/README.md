@@ -81,12 +81,13 @@ what gets *rendered*, so the HTML stays small either way — a search for one ta
 across 1,069 assets returns 42 kB. Pushing search into the database (and
 denormalising the holder name to do it) is the next step if tenants get large.
 
-### Still unbounded
+### Once unbounded
 
-The stat strip and `/dashboard`, `/reports`, `/types` each still fetch every
-asset to aggregate — 416 kB server-side per render. Invisible to the user
-(server-to-server, ~17 ms) but it is the next thing to fix, with count/rollup
-endpoints so the aggregation happens in the database.
+The stat strip and `/dashboard`, `/reports`, `/types` each fetched every asset
+to aggregate — 416 kB server-side per render. Invisible to the user
+(server-to-server, ~17 ms) but the cost grew with the tenant while the rendered
+page stayed the same size. All four now read count/rollup endpoints instead, so
+the aggregation happens in the database. What that took, in order:
 
 ### Aggregation moved into the database
 
@@ -123,7 +124,50 @@ person - normally a handful - instead of building a map over every assignment.
 Verified in the browser at 1,069 assets: 1069 / 31 in use / 1032 available /
 7 of 28 desks, and attention reading 2 / 12 / 5 / 1, all matching the API.
 
-`/reports` still pulls the catalog. It is genuinely heavy aggregation - rollups
-by type, status, condition and department, fleet value, break-and-loss, most-
-replaced tags - and it is an admin page visited rarely, so it is deliberately
-left until it is worth a purpose-built rollup endpoint.
+`/reports` was the last one, and the most tangled: rollups by type, status,
+condition and department, fleet value, break-and-loss, most-replaced tags. It
+pulled the whole catalog **and** the whole audit trail — the trail being the one
+nobody had noticed, because it is invisible until a tenant has been running for
+a while.
+
+`GET /api/assets/reports` answers all of it. Measured against the seeded demo
+tenant (76 assets, 41 audit rows) rather than the 1,069-asset load tenant the
+figures above use, because that is the state the stack was in:
+
+| | payload |
+|---|---|
+| `GET /api/assets` + `GET /api/assets/audit` (what the page used to do) | 32,854 + 9,382 bytes |
+| `GET /api/assets/reports` | **920 bytes** |
+
+The point is not the 46× at this size — it is which way each number grows. The
+two it replaces are linear in assets and in audit rows, both unbounded. The
+report is bounded by the number of *buckets*: types, statuses, conditions,
+actions, and one entry per person holding something. A tenant ten times the size
+sends roughly the same response.
+
+Two things made it more than another group-by:
+
+- **Departments cannot be rolled up in asset-service.** An asset knows the id of
+  the person holding it; the department lives in people-service. So the endpoint
+  returns counts per holder id — bounded by headcount, not by catalog size — and
+  the page folds those into departments against the people list it already
+  loads. Pushing the whole rollup down would have meant either duplicating
+  department into the asset row or a cross-service join; per-holder counts are
+  the seam that keeps both services owning what they own.
+- **Break-and-loss spans the two halves.** It counts audit rows but groups them
+  by the *asset's* current type and holder, so it is an ad-hoc join from an
+  entity id rather than a foreign key — the trail outlives what it describes, and
+  an event whose asset is gone drops out. That is what the page did in the
+  browser with a lookup map; `AssetReportQueriesTest` pins the behaviour.
+
+Every rollup was diffed against the arithmetic the page used to do in the
+browser — type, status, department, fleet value, replacements, incidents by type
+and department, lifecycle — and all ten match exactly.
+
+One number moved, deliberately. The warranty split is now in-service only,
+matching the definition `/api/assets/stats` and the dashboard already used;
+the page had been counting end-of-life units towards warranty coverage. On the
+seeded tenant that is four assets — one `RETIRED`, one `RECYCLED`, one
+`LOST`, one `PENDING_RECYCLE` — moving the split from 14 / 7 / 55 to
+14 / 6 / 52. Reporting warranty cover on a recycled laptop was the bug; the two
+pages disagreeing about it was how it stayed invisible.

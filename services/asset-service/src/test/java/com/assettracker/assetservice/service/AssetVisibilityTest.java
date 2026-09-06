@@ -14,6 +14,7 @@ import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.AssetStatus;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.repository.AssetRepository;
+import com.assettracker.assetservice.repository.CountBucket;
 import com.assettracker.assetservice.web.CallerContextTestSupport;
 import com.assettracker.assetservice.web.ForbiddenRoleException;
 import com.assettracker.assetservice.web.dto.AssetStats;
@@ -191,8 +192,8 @@ class AssetVisibilityTest {
     assertThat(updated.getNotes()).isEqualTo("tech note");
   }
 
-  private static AssetRepository.Bucket bucket(String name, long total) {
-    return new AssetRepository.Bucket() {
+  private static CountBucket bucket(String name, long total) {
+    return new CountBucket() {
       @Override
       public String getBucket() {
         return name;

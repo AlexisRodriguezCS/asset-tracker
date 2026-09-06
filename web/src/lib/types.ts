@@ -240,3 +240,43 @@ export interface TypeUsage {
   total: number;
   sample: Asset[];
 }
+
+/** One tag + type slot and how many units it has burned through. */
+export interface ReplacedSlot {
+  assetTag: string;
+  type: string;
+  count: number;
+}
+
+/**
+ * Where a set of assets sits. Desks and the stockroom are named outright; people
+ * arrive as holder ids, because the department behind an id belongs to
+ * people-service and the console joins it against the people list it has.
+ */
+export interface Holdings {
+  onDesk: number;
+  unassigned: number;
+  byPerson: Record<string, number>;
+}
+
+/** Everything the reports page draws, from `GET /api/assets/reports`. */
+export interface AssetReport {
+  total: number;
+  byType: Record<string, number>;
+  byStatus: Record<string, number>;
+  byCondition: Record<string, number>;
+  unrated: number;
+  outOfWarranty: number;
+  warrantyExpiringSoon: number;
+  inWarranty: number;
+  fleetValueCents: number;
+  replacements: number;
+  topReplacedSlots: ReplacedSlot[];
+  holdings: Holdings;
+  lifecycle: Record<string, number>;
+  incidents: {
+    total: number;
+    byType: Record<string, number>;
+    holdings: Holdings;
+  };
+}

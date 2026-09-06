@@ -8,6 +8,7 @@ import type {
   Client,
   Location,
   AssetAttention,
+  AssetReport,
   AssetStats,
   EventRequest,
   PagedAssets,
@@ -197,5 +198,15 @@ export const typeUsage = (clientId: number, types: string[]) =>
   gateway<TypeUsage[]>(
     `/api/assets/types/usage?clientId=${clientId}` +
       types.map((t) => `&type=${encodeURIComponent(t)}`).join(""),
+    { auth: true },
+  );
+
+/**
+ * Every rollup the reports page draws, in one call. It was the last page pulling
+ * the whole catalog - and the whole audit trail - to group them in the render.
+ */
+export const assetReport = (clientId: number, warrantySoonDays?: number) =>
+  gateway<AssetReport>(
+    `/api/assets/reports${qs({ clientId, warrantySoonDays })}`,
     { auth: true },
   );

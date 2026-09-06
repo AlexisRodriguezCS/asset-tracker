@@ -3,6 +3,7 @@ package com.assettracker.assetservice.service;
 import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.AssetStatus;
 import com.assettracker.assetservice.repository.AssetRepository;
+import com.assettracker.assetservice.repository.CountBucket;
 import com.assettracker.assetservice.web.CallerContext;
 import com.assettracker.assetservice.web.TenantContext;
 import com.assettracker.assetservice.web.dto.AssetAttention;
@@ -132,9 +133,9 @@ public class AssetSummaryService {
         key, page.getTotalElements(), page.getContent().stream().map(AssetResponse::from).toList());
   }
 
-  private static Map<String, Long> toMap(List<AssetRepository.Bucket> rows) {
+  private static Map<String, Long> toMap(List<CountBucket> rows) {
     Map<String, Long> counts = new LinkedHashMap<>();
-    for (AssetRepository.Bucket row : rows) {
+    for (CountBucket row : rows) {
       if (row.getBucket() != null) {
         counts.put(row.getBucket(), row.getTotal());
       }

@@ -2,9 +2,11 @@ package com.assettracker.assetservice.web;
 
 import com.assettracker.assetservice.entity.AssetStatus;
 import com.assettracker.assetservice.entity.HolderType;
+import com.assettracker.assetservice.service.AssetReportService;
 import com.assettracker.assetservice.service.AssetService;
 import com.assettracker.assetservice.service.AssetSummaryService;
 import com.assettracker.assetservice.web.dto.AssetAttention;
+import com.assettracker.assetservice.web.dto.AssetReport;
 import com.assettracker.assetservice.web.dto.AssetResponse;
 import com.assettracker.assetservice.web.dto.AssetStats;
 import com.assettracker.assetservice.web.dto.AssignRequest;
@@ -45,10 +47,13 @@ public class AssetController {
 
   private final AssetService service;
   private final AssetSummaryService summary;
+  private final AssetReportService reports;
 
-  public AssetController(AssetService service, AssetSummaryService summary) {
+  public AssetController(
+      AssetService service, AssetSummaryService summary, AssetReportService reports) {
     this.service = service;
     this.summary = summary;
+    this.reports = reports;
   }
 
   @PostMapping
@@ -126,6 +131,20 @@ public class AssetController {
       @RequestParam List<String> type,
       @RequestParam(defaultValue = "8") int sampleSize) {
     return summary.typeUsage(clientId, type, sampleSize);
+  }
+
+  /**
+   * Every rollup the reports page draws, in one call: counts by type / status / condition, the
+   * warranty split, fleet value, replacement slots, who holds what, and the lifecycle and
+   * break-and-loss tallies from the audit trail. It was the last page fetching the whole catalog -
+   * and the whole trail - to group in the render.
+   */
+  @GetMapping("/reports")
+  public AssetReport report(
+      @RequestParam Long clientId,
+      @RequestParam(defaultValue = "60") int warrantySoonDays,
+      @RequestParam(defaultValue = "8") int topSlots) {
+    return reports.report(clientId, warrantySoonDays, topSlots);
   }
 
   @GetMapping("/{id}")
