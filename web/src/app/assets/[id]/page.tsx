@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import {
   getAsset,
@@ -54,6 +54,9 @@ export default async function AssetDetailPage({
       listLocations(asset.clientId, "DESK").catch(() => []),
     ]);
   const mine = isSelfServiceUser(session?.role);
+  // Nothing links here for an employee; if one arrives by URL, send them back to
+  // their list rather than rendering a technician's view with most of it removed.
+  if (mine) redirect("/");
   const types = session
     ? (await listAssetTypes(asset.clientId).catch(() => [])).map((t) => t.name)
     : [];
@@ -126,7 +129,7 @@ export default async function AssetDetailPage({
                   : "—"
               }
             />
-            {!mine && <Field k="Cost" v={money(asset.purchaseCostCents)} />}
+            <Field k="Cost" v={money(asset.purchaseCostCents)} />
             {replaces && (
               <Field
                 k="Replaces"

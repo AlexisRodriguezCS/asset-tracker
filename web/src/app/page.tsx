@@ -330,12 +330,24 @@ export default async function AssetsPage({
           {assets.map((a) => (
             <tr key={a.id} className="transition-colors hover:bg-accent/40">
               <td className="px-4 py-2">
-                <Link
-                  href={`/assets/${a.id}`}
-                  className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-primary hover:bg-accent"
-                >
-                  {a.assetTag}
-                </Link>
+                {/*
+                  The detail page is a technician's view - custody history,
+                  activity log, purchase and deploy dates. An employee's list
+                  already shows everything about their own gear that concerns
+                  them, so the tag is not a door out of it.
+                */}
+                {mine ? (
+                  <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
+                    {a.assetTag}
+                  </span>
+                ) : (
+                  <Link
+                    href={`/assets/${a.id}`}
+                    className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-primary hover:bg-accent"
+                  >
+                    {a.assetTag}
+                  </Link>
+                )}
               </td>
               <td className="px-4 py-2">{a.type}</td>
               <td className="px-4 py-2">
