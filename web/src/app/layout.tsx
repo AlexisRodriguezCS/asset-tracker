@@ -35,10 +35,14 @@ export default async function RootLayout({
     currentClientId(),
   ]);
   // The tenant list is only needed by the nav, which only signed-in people see.
+  // Narrowed to the tenants this token may act on: the picker used to offer every
+  // client, so a POC scoped to one organisation could select another and get a
+  // page of zeroes rather than being told they cannot see it.
   let clients: Client[] = [];
   if (session) {
     try {
-      clients = await listClients();
+      const all = await listClients();
+      clients = all.filter((c) => session.clientIds.includes(c.id));
     } catch {
       /* gateway may be down at build time */
     }
@@ -56,11 +60,11 @@ export default async function RootLayout({
             demo={demoLoginsEnabled()}
           />
         )}
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8">
           {children}
         </main>
         <footer className="border-t border-border/60">
-          <div className="mx-auto max-w-6xl px-4 py-6 text-xs text-muted-foreground">
+          <div className="mx-auto max-w-7xl px-4 py-6 text-xs text-muted-foreground">
             asset-tracker · Next.js console · talks to the API gateway over a
             server-side BFF, JWT in an httpOnly cookie.
           </div>
