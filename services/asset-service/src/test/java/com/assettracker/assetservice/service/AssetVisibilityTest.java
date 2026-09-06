@@ -11,10 +11,14 @@ import static org.mockito.Mockito.when;
 
 import com.assettracker.assetservice.audit.AuditService;
 import com.assettracker.assetservice.entity.Asset;
+import com.assettracker.assetservice.entity.AssetStatus;
 import com.assettracker.assetservice.entity.HolderType;
 import com.assettracker.assetservice.repository.AssetRepository;
 import com.assettracker.assetservice.web.CallerContextTestSupport;
+import com.assettracker.assetservice.web.ForbiddenRoleException;
 import com.assettracker.assetservice.web.dto.AssetStats;
+import com.assettracker.assetservice.web.dto.CreateAssetRequest;
+import com.assettracker.assetservice.web.dto.UpdateAssetRequest;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -133,6 +137,57 @@ class AssetVisibilityTest {
     // "expiring soon" is the difference between the two windows, not a third query
     assertThat(stats.warrantyExpiringSoon()).isEqualTo(5);
     verify(repository, never()).search(any(), any(), any(), any(), any(), any());
+  }
+
+  /**
+   * Reads were scoped long before writes were. An employee could edit an asset, retire it, and
+   * create new ones - the UI simply did not offer the buttons, which is not a control.
+   */
+  @Test
+  void anEmployeeCannotChangeAnything() {
+    CallerContextTestSupport.as("USER", DANA);
+    AssetService service = service();
+
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    new CreateAssetRequest(
+                        ACME, "Cable", null, null, "SN-X", "EMP-1", null, null, null, null, null,
+                        null, null),
+                    "dana.reyes@acme.example"))
+        .isInstanceOf(ForbiddenRoleException.class);
+
+    assertThatThrownBy(
+            () ->
+                service.update(
+                    9L,
+                    new UpdateAssetRequest(null, null, "edited", null, null, null, null, null),
+                    "dana.reyes@acme.example"))
+        .isInstanceOf(ForbiddenRoleException.class);
+
+    assertThatThrownBy(
+            () -> service.changeStatus(9L, AssetStatus.RETIRED, "dana.reyes@acme.example"))
+        .isInstanceOf(ForbiddenRoleException.class);
+
+    // nothing reached the database
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void aTechStillCan() {
+    CallerContextTestSupport.as("TECH", null);
+    // update() mutates the managed entity; JPA dirty-checking persists it, so
+    // there is no save() to stub here
+    when(repository.findById(9L)).thenReturn(Optional.of(heldBy(SAM)));
+
+    Asset updated =
+        service()
+            .update(
+                9L,
+                new UpdateAssetRequest(null, null, "tech note", null, null, null, null, null),
+                "tech@acme.example");
+
+    assertThat(updated.getNotes()).isEqualTo("tech note");
   }
 
   private static AssetRepository.Bucket bucket(String name, long total) {

@@ -7,6 +7,7 @@ import com.assettracker.assetservice.entity.AssetType;
 import com.assettracker.assetservice.repository.AssetRepository;
 import com.assettracker.assetservice.service.AssetNotFoundException;
 import com.assettracker.assetservice.type.AssetTypeInUseException.LinkedAsset;
+import com.assettracker.assetservice.web.CallerContext;
 import com.assettracker.assetservice.web.TenantContext;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,7 @@ public class AssetTypeService {
 
   @Transactional
   public AssetType create(Long clientId, String rawName, String actor) {
+    CallerContext.requireAssetOperator();
     TenantContext.requireAllowed(clientId);
     String name = rawName == null ? "" : rawName.trim();
     if (name.isEmpty()) {

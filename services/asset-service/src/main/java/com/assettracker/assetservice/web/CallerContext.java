@@ -40,4 +40,39 @@ public final class CallerContext {
   public static boolean isSelfServiceUser() {
     return ROLE_USER.equals(ROLE.get());
   }
+
+  private static final java.util.Set<String> STAFF = java.util.Set.of("ADMIN", "TECH", "POC", "HR");
+  private static final java.util.Set<String> ASSET_OPERATORS = java.util.Set.of("ADMIN", "TECH");
+  private static final java.util.Set<String> COLLECTORS = java.util.Set.of("ADMIN", "TECH", "HR");
+
+  /**
+   * A null role means the request never passed the gateway - a direct call inside the network, or
+   * one service calling another. Those are already authorized at the edge they came through;
+   * verifying a signed principal inside the mesh is the RUNBOOK's "deferred" item.
+   */
+  private static boolean isOneOf(java.util.Set<String> allowed) {
+    String role = ROLE.get();
+    return role == null || allowed.contains(role);
+  }
+
+  /** Creating or changing assets, people and locations: tech or admin. */
+  public static void requireAssetOperator() {
+    if (!isOneOf(ASSET_OPERATORS)) {
+      throw new ForbiddenRoleException(ROLE.get(), "change assets");
+    }
+  }
+
+  /** Collecting gear back in - tech, admin, or HR doing an offboarding sweep. */
+  public static void requireCollector() {
+    if (!isOneOf(COLLECTORS)) {
+      throw new ForbiddenRoleException(ROLE.get(), "collect or return assets");
+    }
+  }
+
+  /** Anything an ordinary employee has no business doing. */
+  public static void requireStaff() {
+    if (!isOneOf(STAFF)) {
+      throw new ForbiddenRoleException(ROLE.get(), "perform this action");
+    }
+  }
 }

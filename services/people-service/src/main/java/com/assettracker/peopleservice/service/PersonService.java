@@ -29,6 +29,7 @@ public class PersonService {
 
   @Transactional
   public Person create(CreatePersonRequest request, String actor) {
+    CallerContext.requireAssetOperator();
     TenantContext.requireAllowed(request.clientId());
     if (repository.existsByClientIdAndEmailIgnoreCase(request.clientId(), request.email())) {
       throw new EmailTakenException(request.email());
@@ -80,6 +81,7 @@ public class PersonService {
   /** Marks a person as offboarding - the signal for HR to collect their assets. */
   @Transactional
   public Person beginOffboarding(Long id, String actor) {
+    CallerContext.requireCollector();
     Person person = getById(id);
     TenantContext.requireAllowed(person.getClientId());
     person.setStatus(PersonStatus.OFFBOARDING);
@@ -99,6 +101,7 @@ public class PersonService {
    */
   @Transactional
   public Person markDeparted(Long id, String actor) {
+    CallerContext.requireCollector();
     Person person = getById(id);
     TenantContext.requireAllowed(person.getClientId());
     List<Long> stillHeld = assetClient.assetIdsHeldBy(person.getClientId(), person.getId());
@@ -118,6 +121,7 @@ public class PersonService {
 
   @Transactional
   public Person assignDesk(Long id, Long deskId, String actor) {
+    CallerContext.requireAssetOperator();
     Person person = getById(id);
     TenantContext.requireAllowed(person.getClientId());
     Long before = person.getDeskId();

@@ -13,6 +13,7 @@ public final class CallerContext {
   private static final String ROLE_USER = "USER";
   private static final java.util.Set<String> APPROVERS = java.util.Set.of("ADMIN", "TECH", "POC");
   private static final java.util.Set<String> ASSET_OPERATORS = java.util.Set.of("ADMIN", "TECH");
+  private static final java.util.Set<String> COLLECTORS = java.util.Set.of("ADMIN", "TECH", "HR");
 
   private static final ThreadLocal<String> ROLE = new ThreadLocal<>();
   private static final ThreadLocal<Long> PERSON_ID = new ThreadLocal<>();
@@ -64,6 +65,13 @@ public final class CallerContext {
   public static void requireAssetOperator() {
     if (!isOneOf(ASSET_OPERATORS)) {
       throw new ForbiddenRoleException(ROLE.get(), "hand out assets");
+    }
+  }
+
+  /** Collecting gear back in - tech, admin, or HR running an offboarding sweep. */
+  public static void requireCollector() {
+    if (!isOneOf(COLLECTORS)) {
+      throw new ForbiddenRoleException(ROLE.get(), "collect or return assets");
     }
   }
 }

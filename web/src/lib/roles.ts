@@ -23,6 +23,7 @@ export const ROLE_BLURBS: Record<Role, string> = {
 
 const APPROVERS: Role[] = ["ADMIN", "TECH", "POC"];
 const ASSET_OPERATORS: Role[] = ["ADMIN", "TECH"];
+const COLLECTORS: Role[] = ["ADMIN", "TECH", "HR"];
 
 export function asRole(value: string | null | undefined): Role | null {
   return value && value in ROLE_LABELS ? (value as Role) : null;
@@ -41,4 +42,9 @@ export function canApprove(role: string | null | undefined): boolean {
 /** May create/edit assets and hand gear out. */
 export function canOperateAssets(role: string | null | undefined): boolean {
   return ASSET_OPERATORS.includes(role as Role);
+}
+
+/** May take gear back in - techs and admins, plus HR running an offboarding sweep. */
+export function canCollect(role: string | null | undefined): boolean {
+  return COLLECTORS.includes(role as Role);
 }

@@ -32,6 +32,11 @@ public class GlobalExceptionHandler {
     return build(HttpStatus.FORBIDDEN, "CLIENT_FORBIDDEN", ex.getMessage());
   }
 
+  @ExceptionHandler(ForbiddenRoleException.class)
+  public ResponseEntity<ApiError> handleForbiddenRole(ForbiddenRoleException ex) {
+    return build(HttpStatus.FORBIDDEN, "ROLE_FORBIDDEN", ex.getMessage());
+  }
+
   @ExceptionHandler(PersonStillHoldsAssetsException.class)
   public ResponseEntity<HeldAssetsError> handleStillHolds(PersonStillHoldsAssetsException ex) {
     return ResponseEntity.status(HttpStatus.CONFLICT)

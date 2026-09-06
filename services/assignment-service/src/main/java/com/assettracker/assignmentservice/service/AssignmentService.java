@@ -5,6 +5,7 @@ import com.assettracker.assignmentservice.audit.AuditService;
 import com.assettracker.assignmentservice.client.AssetClient;
 import com.assettracker.assignmentservice.entity.Assignment;
 import com.assettracker.assignmentservice.messaging.NotificationPublisher;
+import com.assettracker.assignmentservice.web.CallerContext;
 import com.assettracker.assignmentservice.web.TenantContext;
 import com.assettracker.assignmentservice.web.dto.CheckOutRequest;
 import com.assettracker.assignmentservice.web.dto.OffboardingResult;
@@ -56,6 +57,7 @@ public class AssignmentService {
    * @throws AssetNotMovableException asset-service returned 422 (retired / lost)
    */
   public Assignment checkOut(CheckOutRequest request, String actor) {
+    CallerContext.requireAssetOperator();
     TenantContext.requireAllowed(request.clientId());
     assetClient.assign(request.assetId(), request.holderType().name(), request.holderId(), actor);
 
@@ -83,6 +85,7 @@ public class AssignmentService {
 
   /** Return an asset to the stockroom and close its open assignment. */
   public Assignment checkIn(Long assetId, String actor) {
+    CallerContext.requireCollector();
     assetClient.returnToStock(assetId, actor);
     Assignment closed = store.close(assetId, actor);
     notifications.publish(
@@ -92,6 +95,7 @@ public class AssignmentService {
 
   /** Return from the current holder, then check out to a new one. */
   public Assignment transfer(TransferRequest request, String actor) {
+    CallerContext.requireAssetOperator();
     TenantContext.requireAllowed(request.clientId());
     checkIn(request.assetId(), actor);
     return checkOut(
@@ -109,6 +113,7 @@ public class AssignmentService {
    * abort the rest; the result lists what came back and what did not.
    */
   public OffboardingResult offboardPerson(Long clientId, Long personId, String actor) {
+    CallerContext.requireCollector();
     TenantContext.requireAllowed(clientId);
     List<Long> assetIds = assetClient.assetsHeldByPerson(clientId, personId);
     OffboardingResult result = new OffboardingResult(personId);

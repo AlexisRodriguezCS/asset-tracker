@@ -12,6 +12,7 @@ import {
   GatewayError,
 } from "@/lib/api";
 import { getSession } from "@/lib/session";
+import { canCollect, canOperateAssets, isSelfServiceUser } from "@/lib/roles";
 import { AssetStatusBadge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { AssetActions } from "@/components/asset-actions";
@@ -52,6 +53,7 @@ export default async function AssetDetailPage({
       listPeople(asset.clientId).catch(() => []),
       listLocations(asset.clientId, "DESK").catch(() => []),
     ]);
+  const mine = isSelfServiceUser(session?.role);
   const types = session
     ? (await listAssetTypes(asset.clientId).catch(() => [])).map((t) => t.name)
     : [];
@@ -124,7 +126,7 @@ export default async function AssetDetailPage({
                   : "—"
               }
             />
-            <Field k="Cost" v={money(asset.purchaseCostCents)} />
+            {!mine && <Field k="Cost" v={money(asset.purchaseCostCents)} />}
             {replaces && (
               <Field
                 k="Replaces"
@@ -176,11 +178,11 @@ export default async function AssetDetailPage({
             <AssetActions
               asset={asset}
               people={people}
-              signedIn={Boolean(session)}
+              canAct={canCollect(session?.role)}
             />
             <AssetAdmin
               asset={asset}
-              signedIn={Boolean(session)}
+              canAct={canOperateAssets(session?.role)}
               types={types}
             />
           </div>

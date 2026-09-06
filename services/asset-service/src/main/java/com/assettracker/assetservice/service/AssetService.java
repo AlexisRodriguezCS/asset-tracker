@@ -35,6 +35,7 @@ public class AssetService {
 
   @Transactional
   public Asset create(CreateAssetRequest request, String actor) {
+    CallerContext.requireAssetOperator();
     TenantContext.requireAllowed(request.clientId());
     if (repository.existsActiveWithTag(
         request.clientId(), request.assetTag(), request.type(), AssetStatus.ACTIVE)) {
@@ -179,6 +180,7 @@ public class AssetService {
 
   @Transactional
   public Asset update(Long id, UpdateAssetRequest request, String actor) {
+    CallerContext.requireAssetOperator();
     Asset asset = getById(id);
     TenantContext.requireAllowed(asset.getClientId());
     String before = "make=" + asset.getMake() + " model=" + asset.getModel();
@@ -204,6 +206,7 @@ public class AssetService {
   /** Called by assignment-service. Throws {@code AlreadyAssignedException} (409) if not free. */
   @Transactional
   public Asset assign(Long id, AssignRequest request, String actor) {
+    CallerContext.requireAssetOperator();
     Asset asset = getById(id);
     TenantContext.requireAllowed(asset.getClientId());
     asset.assignTo(request.holderType(), request.holderId());
@@ -220,6 +223,7 @@ public class AssetService {
   /** Called by assignment-service on check-in. */
   @Transactional
   public Asset returnToStock(Long id, String actor) {
+    CallerContext.requireCollector();
     Asset asset = getById(id);
     TenantContext.requireAllowed(asset.getClientId());
     Long from = asset.getHolderId();
@@ -236,6 +240,7 @@ public class AssetService {
 
   @Transactional
   public Asset changeStatus(Long id, AssetStatus status, String actor) {
+    CallerContext.requireAssetOperator();
     Asset asset = getById(id);
     TenantContext.requireAllowed(asset.getClientId());
     AssetStatus before = asset.getStatus();

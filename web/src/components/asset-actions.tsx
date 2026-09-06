@@ -10,11 +10,12 @@ import type { Asset, Person } from "@/lib/types";
 export function AssetActions({
   asset,
   people,
-  signedIn,
+  canAct,
 }: {
   asset: Asset;
   people: Person[];
-  signedIn: boolean;
+  /** Whether the caller may move this asset's custody (tech, admin, or HR collecting). */
+  canAct: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -22,13 +23,11 @@ export function AssetActions({
   const [personId, setPersonId] = useState<number | "">(people[0]?.id ?? "");
   const [deskId, setDeskId] = useState<string>("");
 
-  if (!signedIn) {
+  if (!canAct) {
     return (
       <p className="text-sm text-muted-foreground">
-        <a href="/login" className="text-primary hover:underline">
-          Sign in
-        </a>{" "}
-        to check this asset out.
+        Ask IT to move this asset — check-out and returns are handled by a
+        technician.
       </p>
     );
   }

@@ -16,11 +16,12 @@ const ACTIVE = ["IN_STOCK", "ASSIGNED", "IN_REPAIR"];
  */
 export function AssetAdmin({
   asset,
-  signedIn,
+  canAct,
   types = [],
 }: {
   asset: Asset;
-  signedIn: boolean;
+  /** Whether the caller may edit or retire assets (tech or admin). */
+  canAct: boolean;
   types?: string[];
 }) {
   const router = useRouter();
@@ -28,7 +29,7 @@ export function AssetAdmin({
   const [reason, setReason] = useState<string>("LOST");
   const [busy, setBusy] = useState(false);
 
-  if (!signedIn) return null;
+  if (!canAct) return null;
 
   async function replace() {
     setBusy(true);

@@ -28,6 +28,11 @@ public class GlobalExceptionHandler {
     return build(HttpStatus.FORBIDDEN, "CLIENT_FORBIDDEN", ex.getMessage());
   }
 
+  @ExceptionHandler(ForbiddenRoleException.class)
+  public ResponseEntity<ApiError> handleForbiddenRole(ForbiddenRoleException ex) {
+    return build(HttpStatus.FORBIDDEN, "ROLE_FORBIDDEN", ex.getMessage());
+  }
+
   @ExceptionHandler(AssetTagTakenException.class)
   public ResponseEntity<ApiError> handleTagTaken(AssetTagTakenException ex) {
     return build(HttpStatus.CONFLICT, "ASSET_TAG_TAKEN", ex.getMessage());
