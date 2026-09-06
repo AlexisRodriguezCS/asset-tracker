@@ -45,9 +45,11 @@ const OPERATOR_EXTRAS = [{ href: "/types", label: "Types", icon: Shapes }];
  * the auth routes, and every link here would have bounced straight back to it.
  *
  * Widths, narrow to wide: a hamburger holds the links until there is room for
- * them; icons gain labels at `lg`; the search field appears at `md` and the
- * tenant picker at `sm`. Everything account-related lives in one menu, because
- * a row of email + role chip + "Sign out" is what made this wrap.
+ * them; the search field appears at `md`, the tenant picker at `sm`, and icons
+ * gain labels only at `xl` - seven labelled links plus a search box do not fit
+ * at 1100px, and the thing that gets squeezed is the search. Everything
+ * account-related lives in one menu, because a row of email + role chip +
+ * "Sign out" is what made this wrap in the first place.
  */
 export function Nav({
   email,
@@ -126,7 +128,9 @@ export function Nav({
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search tag, serial, model, holder…"
+              placeholder="Search assets…"
+              aria-label="Search assets by tag, serial, model or holder"
+              title="Search by tag, serial, model or holder"
               className="h-9 w-full min-w-0 rounded-md border border-border bg-background/60 pl-8 pr-3 text-sm outline-none focus-visible:border-primary"
             />
           </form>
@@ -141,14 +145,14 @@ export function Nav({
                 href={l.href}
                 title={l.label}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2 py-1.5 transition-colors lg:px-3",
+                  "flex items-center gap-1.5 rounded-md px-2 py-1.5 transition-colors xl:px-3",
                   isActive(l.href)
                     ? "bg-accent text-primary"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span className="hidden lg:inline">{l.label}</span>
+                <span className="hidden xl:inline">{l.label}</span>
               </Link>
             );
           })}
@@ -190,7 +194,9 @@ export function Nav({
                   <input
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
-                    placeholder="Search tag, serial, model, holder…"
+                    placeholder="Search assets…"
+                    aria-label="Search assets by tag, serial, model or holder"
+                    title="Search by tag, serial, model or holder"
                     className="h-9 w-full rounded-md border border-border bg-background/60 pl-8 pr-3 text-sm outline-none focus-visible:border-primary"
                   />
                 </form>

@@ -6,18 +6,38 @@
 const B = process.env.BASE || "http://localhost:8080";
 const PW = "Passw0rd!";
 
+// Every run must be able to follow the last one. Tags are unique per run, the
+// gear this script needs is created if the pool is short, and anything it checks
+// out is returned at the end - otherwise run two dies on a tag collision and an
+// empty stockroom, which looks like a product bug and is not one.
+const RUN = Date.now().toString(36).slice(-5).toUpperCase();
+const checkedOut = [];
+
 const results = [];
 function check(area, what, actual, expected) {
   const ok = Array.isArray(expected) ? expected.includes(actual) : actual === expected;
   results.push({ area, what, actual, expected: String(expected), ok });
 }
 
-async function login(email) {
+/**
+ * The gateway rate-limits POST /api/auth/** to ten a minute per IP, and this
+ * script signs in five times. Run straight after the e2e suite - which also
+ * signs in - and the budget is already gone, so a plain fetch here dies at 429
+ * on an unrelated failure. Wait the window out rather than reporting a false
+ * negative for the whole matrix.
+ */
+async function login(email, attempt = 1) {
   const r = await fetch(`${B}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password: PW }),
   });
+  if (r.status === 429 && attempt <= 3) {
+    const wait = Number(r.headers.get("Retry-After") ?? 60) * 1000;
+    console.log(`  rate-limited signing in as ${email}; waiting ${wait / 1000}s`);
+    await new Promise((res) => setTimeout(res, wait + 1000));
+    return login(email, attempt + 1);
+  }
   if (!r.ok) throw new Error(`login ${email} -> ${r.status}`);
   return (await r.json()).token;
 }
@@ -81,12 +101,13 @@ async function main() {
 
   // --- 6. writes are role-gated -------------------------------------------
   const newAsset = (tag) => ({
-    method: "POST", body: JSON.stringify({ clientId: 1, type: "Cable", assetTag: tag, serialNumber: "QA-" + tag }),
+    method: "POST",
+    body: JSON.stringify({ clientId: 1, type: "Cable", assetTag: `QA-${RUN}-${tag}`, serialNumber: `QA-${RUN}-${tag}` }),
   });
-  check("write", "employee create asset", await status(tok.user, "/api/assets", newAsset("QA-U-1")), 403);
-  check("write", "HR create asset", await status(tok.hr, "/api/assets", newAsset("QA-H-1")), 403);
-  check("write", "POC create asset", await status(tok.poc, "/api/assets", newAsset("QA-P-1")), 403);
-  check("write", "tech create asset", await status(tok.tech, "/api/assets", newAsset("QA-T-1")), 201);
+  check("write", "employee create asset", await status(tok.user, "/api/assets", newAsset("U1")), 403);
+  check("write", "HR create asset", await status(tok.hr, "/api/assets", newAsset("H1")), 403);
+  check("write", "POC create asset", await status(tok.poc, "/api/assets", newAsset("P1")), 403);
+  check("write", "tech create asset", await status(tok.tech, "/api/assets", newAsset("T1")), 201);
 
   const anyAsset = (await json(tok.tech, "/api/assets?clientId=1&status=IN_STOCK"))[0];
   const patch = { method: "PATCH", body: JSON.stringify({ notes: "qa" }) };
@@ -104,9 +125,13 @@ async function main() {
   const co = (who, holderId) => status(tok[who], "/api/assignments",
     { method: "POST", body: JSON.stringify({ clientId: 1, assetId: stock.id, holderType: "PERSON", holderId }) });
   check("custody", "employee cannot check out", await co("user", 2), 403);
-  check("custody", "tech checks out", await co("tech", 2), 201);
+  const checkoutStatus = await co("tech", 2);
+  if (checkoutStatus === 201) checkedOut.push(stock.id);
+  check("custody", "tech checks out", checkoutStatus, 201);
   check("custody", "double check-out is rejected", await co("tech", 3), 409);
-  check("custody", "HR can return (collector)", await status(tok.hr, `/api/assignments/return?assetId=${stock.id}&clientId=1`, { method: "POST" }), 200);
+  const returned = await status(tok.hr, `/api/assignments/return?assetId=${stock.id}&clientId=1`, { method: "POST" });
+  if (returned === 200) checkedOut.length = 0;
+  check("custody", "HR can return (collector)", returned, 200);
 
   // --- 8. event sign-out lifecycle ----------------------------------------
   const req = await json(tok.user, "/api/assignments/event-requests", {
@@ -119,11 +144,23 @@ async function main() {
     await status(tok.user, `/api/assignments/event-requests/${req.id}/approve`, { method: "POST", body: "{}" }), 403);
   check("events", "POC approves",
     await status(tok.poc, `/api/assignments/event-requests/${req.id}/approve`, { method: "POST", body: JSON.stringify({ note: "ok" }) }), 200);
-  check("events", "POC cannot hand out gear",
-    await status(tok.poc, `/api/assignments/event-requests/${req.id}/fulfil`, { method: "POST", body: JSON.stringify({ lines: [] }) }), [403, 400]);
-
   const full = await json(tok.tech, `/api/assignments/event-requests/${req.id}`);
-  const tvs = (await json(tok.tech, "/api/assets?clientId=1&type=TV&status=IN_STOCK")).slice(0, 2).map((a) => a.id);
+
+  // Top the stockroom up rather than depending on what earlier runs left behind.
+  let inStock = await json(tok.tech, "/api/assets?clientId=1&type=TV&status=IN_STOCK");
+  for (let i = inStock.length; i < 2; i++) {
+    await call(tok.tech, "/api/assets", {
+      method: "POST",
+      body: JSON.stringify({ clientId: 1, type: "TV", assetTag: `QA-${RUN}-TV${i}`, make: "QA" }),
+    });
+  }
+  inStock = await json(tok.tech, "/api/assets?clientId=1&type=TV&status=IN_STOCK");
+  const tvs = inStock.slice(0, 2).map((a) => a.id);
+
+  // A body that passes validation, so a refusal can only come from the role gate.
+  const validFulfil = { method: "POST", body: JSON.stringify({ lines: [{ lineId: full.lines[0].id, assetIds: tvs.slice(0, 1) }] }) };
+  check("events", "POC cannot hand out gear (valid body, so this is the role gate)",
+    await status(tok.poc, `/api/assignments/event-requests/${req.id}/fulfil`, validFulfil), 403);
   check("events", "two TVs are in stock to fulfil with", tvs.length, 2);
   const fulfilled = await json(tok.tech, `/api/assignments/event-requests/${req.id}/fulfil`, {
     method: "POST", body: JSON.stringify({ lines: [{ lineId: full.lines[0].id, assetIds: tvs }] }),
@@ -137,6 +174,11 @@ async function main() {
   check("errors", "unknown asset id", await status(tok.tech, "/api/assets/99999"), 404);
   check("errors", "employee opening someone else's asset", await status(tok.user, `/api/assets/${stock.id}`), 404);
   check("errors", "invalid body rejected", await status(tok.tech, "/api/assets", { method: "POST", body: JSON.stringify({ clientId: 1 }) }), 400);
+
+  // --- put the gear back ----------------------------------------------------
+  for (const id of [...tvs, ...checkedOut]) {
+    await call(tok.tech, `/api/assignments/return?assetId=${id}&clientId=1`, { method: "POST" });
+  }
 
   // --- report ---------------------------------------------------------------
   const pad = (s, n) => String(s).padEnd(n);

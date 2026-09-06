@@ -69,7 +69,7 @@ export function UserMenu({
           {email.slice(0, 1)}
         </span>
         {roleLabel && (
-          <span className="hidden text-xs text-muted-foreground lg:inline">
+          <span className="hidden whitespace-nowrap text-xs text-muted-foreground xl:inline">
             {roleLabel}
           </span>
         )}
