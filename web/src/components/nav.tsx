@@ -27,6 +27,7 @@ const STAFF_LINKS = [
   { href: "/people", label: "People", icon: Users },
   { href: "/desks", label: "Desks", icon: MapPin },
   { href: "/events", label: "Events", icon: CalendarDays },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 
 // An employee gets two things: their own gear, and the sign-out form.
@@ -35,10 +36,8 @@ const EMPLOYEE_LINKS = [
   { href: "/events", label: "Event sign-out", icon: CalendarDays },
 ];
 
-const OPERATOR_EXTRAS = [
-  { href: "/types", label: "Types", icon: Shapes },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
-];
+// Curating the type catalog is an operator job; reports are just reads.
+const OPERATOR_EXTRAS = [{ href: "/types", label: "Types", icon: Shapes }];
 
 /**
  * The signed-in chrome. The root layout does not render this at all when there

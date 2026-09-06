@@ -196,18 +196,6 @@ export interface EventRequest {
   lines: EventRequestLine[];
 }
 
-/**
- * The gear the sign-out form offers. These are asset *type* names, matching the
- * per-client type catalog, so a fulfilled line maps onto real inventory.
- */
-export const EVENT_ITEMS = [
-  { type: "Laptop", label: "Loaner laptop" },
-  { type: "Charger", label: "Loaner charger" },
-  { type: "Cable", label: "Cables" },
-  { type: "TV", label: "TVs" },
-  { type: "Speaker", label: "Speakers" },
-] as const;
-
 export const EVENT_STATUS_TONE: Record<EventRequestStatus, string> = {
   SUBMITTED: "warn",
   APPROVED: "primary",

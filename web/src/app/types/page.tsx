@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { getSession } from "@/lib/session";
+import { canOperateAssets } from "@/lib/roles";
 import { currentClientId } from "@/lib/client";
 import { listAssetTypes, typeUsage } from "@/lib/api";
 import { Card } from "@/components/ui/card";
@@ -16,6 +17,8 @@ export default async function TypesPage() {
     currentClientId(),
   ]);
   if (!session) redirect("/welcome");
+  // Everything on this page is a tech action; anyone else would only collect 403s.
+  if (!canOperateAssets(session.role)) redirect("/");
 
   const types = await listAssetTypes(clientId);
 

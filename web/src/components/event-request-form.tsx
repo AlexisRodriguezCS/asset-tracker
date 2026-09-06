@@ -4,31 +4,51 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { EVENT_ITEMS } from "@/lib/types";
 
 type Counts = Record<string, number>;
 
-const ZERO: Counts = Object.fromEntries(EVENT_ITEMS.map((i) => [i.type, 0]));
+/** Nobody signs out a hundred of anything for one event. */
+const MAX_PER_ITEM = 99;
 
 /**
  * The event sign-out form. Quantities, not specific assets: the requester knows
  * they need two TVs, not which two - a tech attaches real asset tags when the
  * gear is handed out.
  */
-export function EventRequestForm({ clientId }: { clientId: number }) {
+export function EventRequestForm({
+  clientId,
+  types,
+}: {
+  clientId: number;
+  /** The client's own asset types - what can actually be signed out. */
+  types: string[];
+}) {
   const router = useRouter();
   const [eventName, setEventName] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
-  const [counts, setCounts] = useState<Counts>(ZERO);
+  const [counts, setCounts] = useState<Counts>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const countOf = (type: string) => counts[type] ?? 0;
 
+  const clamp = (n: number) => Math.max(0, Math.min(MAX_PER_ITEM, n));
+
+  /** Absolute value, for typing straight into the box. */
   function setCount(type: string, next: number) {
-    setCounts((c) => ({ ...c, [type]: Math.max(0, Math.min(99, next)) }));
+    setCounts((c) => ({ ...c, [type]: clamp(next) }));
+  }
+
+  /**
+   * Step relative to whatever is in state at the time, not to what this render
+   * saw. Reading the count from the closure meant two quick clicks on "+" both
+   * computed 0 + 1, so the second one silently did nothing.
+   */
+  function bump(type: string, delta: number) {
+    setCounts((c) => ({ ...c, [type]: clamp((c[type] ?? 0) + delta) }));
   }
 
   async function submit(e: React.FormEvent) {
@@ -48,11 +68,9 @@ export function EventRequestForm({ clientId }: { clientId: number }) {
         eventDate,
         location: location || null,
         notes: notes || null,
-        lines: EVENT_ITEMS.filter((i) => counts[i.type] > 0).map((i) => ({
-          itemType: i.type,
-          quantity: counts[i.type],
-          notes: null,
-        })),
+        lines: types
+          .filter((t) => countOf(t) > 0)
+          .map((t) => ({ itemType: t, quantity: countOf(t), notes: null })),
       }),
     });
     setBusy(false);
@@ -117,32 +135,29 @@ export function EventRequestForm({ clientId }: { clientId: number }) {
           </span>
         </div>
         <ul className="divide-y divide-border/70">
-          {EVENT_ITEMS.map((item) => (
+          {types.map((item) => (
             <li
-              key={item.type}
+              key={item}
               className="flex items-center justify-between gap-4 py-3"
             >
-              <div>
-                <p className="text-sm font-medium">{item.label}</p>
-                <p className="text-xs text-muted-foreground">{item.type}</p>
-              </div>
+              <p className="text-sm font-medium">{item}</p>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  aria-label={`One fewer ${item.label}`}
-                  onClick={() => setCount(item.type, counts[item.type] - 1)}
+                  aria-label={`One fewer ${item}`}
+                  onClick={() => bump(item, -1)}
                 >
                   −
                 </Button>
                 <input
-                  aria-label={`How many ${item.label}`}
+                  aria-label={`How many ${item}`}
                   inputMode="numeric"
-                  value={counts[item.type]}
+                  value={countOf(item)}
                   onChange={(e) =>
                     setCount(
-                      item.type,
+                      item,
                       Number(e.target.value.replace(/\D/g, "")) || 0,
                     )
                   }
@@ -152,8 +167,8 @@ export function EventRequestForm({ clientId }: { clientId: number }) {
                   type="button"
                   variant="outline"
                   size="sm"
-                  aria-label={`One more ${item.label}`}
-                  onClick={() => setCount(item.type, counts[item.type] + 1)}
+                  aria-label={`One more ${item}`}
+                  onClick={() => bump(item, 1)}
                 >
                   +
                 </Button>

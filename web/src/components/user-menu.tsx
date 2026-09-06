@@ -26,6 +26,7 @@ export function UserMenu({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<Role | null>(null);
+  const [switchError, setSwitchError] = useState<string | null>(null);
   const roleLabel = role ? (ROLE_LABELS[role as Role] ?? role) : null;
 
   async function switchTo(next: Role) {
@@ -36,11 +37,15 @@ export function UserMenu({
       body: JSON.stringify({ role: next }),
     });
     setBusy(null);
-    setOpen(false);
-    if (res.ok) {
-      router.push(next === "USER" ? "/" : "/dashboard");
-      router.refresh();
+    if (!res.ok) {
+      const problem = await res.json().catch(() => null);
+      setSwitchError(problem?.message ?? "Could not switch account.");
+      return;
     }
+    setSwitchError(null);
+    setOpen(false);
+    router.push(next === "USER" ? "/" : "/dashboard");
+    router.refresh();
   }
 
   async function logout() {
@@ -139,6 +144,14 @@ export function UserMenu({
                     );
                   })}
                 </ul>
+                {switchError && (
+                  <p
+                    role="alert"
+                    className="border-t border-border/70 px-3 py-2 text-xs text-destructive"
+                  >
+                    {switchError}
+                  </p>
+                )}
                 <p className="border-t border-border/70 px-3 py-2 text-[11px] leading-snug text-muted-foreground">
                   Demo only. Each option signs in as that seeded account for
                   real — nothing here bypasses authorization.

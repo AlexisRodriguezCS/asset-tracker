@@ -28,7 +28,8 @@ export function DemoPersonas() {
     });
     if (!res.ok) {
       setBusy(null);
-      setError("That demo account isn't available on this deployment.");
+      const problem = await res.json().catch(() => null);
+      setError(problem?.message ?? "That demo account isn't available here.");
       return;
     }
     // land where that role actually starts: an employee has no dashboard

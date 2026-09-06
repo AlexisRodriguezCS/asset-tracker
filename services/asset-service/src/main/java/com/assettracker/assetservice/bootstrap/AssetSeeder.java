@@ -44,6 +44,8 @@ public class AssetSeeder implements CommandLineRunner {
   private static final String CHARGER = "Charger";
   private static final String CABLE = "Cable";
   private static final String HOTSPOT = "Hotspot";
+  private static final String TV = "TV";
+  private static final String SPEAKER = "Speaker";
 
   private static final Gear MBP14 = new Gear("Apple", "MacBook Pro 14 M3", 249900);
   private static final Gear MBA13 = new Gear("Apple", "MacBook Air 13 M3", 149900);
@@ -65,6 +67,9 @@ public class AssetSeeder implements CommandLineRunner {
   private static final Gear USBC = new Gear("Anker", "USB-C 2m Cable", 1900);
   private static final Gear TBC = new Gear("CalDigit", "Thunderbolt 4 2m Cable", 4900);
   private static final Gear HS = new Gear("Netgear", "Nighthawk M6 5G Hotspot", 59900);
+
+  private static final Gear TV55 = new Gear("Samsung", "BE55C-H 55in 4K", 74900L);
+  private static final Gear SPKR = new Gear("JBL", "EON ONE Compact", 39900L);
 
   private final AssetRepository repository;
   private final AuditService audit;
@@ -200,6 +205,9 @@ public class AssetSeeder implements CommandLineRunner {
     hotspot(out, "ACME", 1, 1L);
     hotspot(out, "ACME", 2, 3L);
     stock(out, "ACME", "HS", HOTSPOT, HS, 2, 3);
+    // AV kit for the event sign-out flow - signed out per event, not issued to a person
+    stock(out, "ACME", "TV", TV, TV55, 4, 1);
+    stock(out, "ACME", "SPK", SPEAKER, SPKR, 3, 1);
     retire(out, "ACME-L-001", CHARGER, CHG96, AssetStatus.LOST);
     retire(out, "ACME-L-002", CABLE, USBC, AssetStatus.RETIRED);
     fix(out, "ACME-L-005", AssetStatus.IN_REPAIR, AssetCondition.FAIR);

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { canOperateAssets } from "@/lib/roles";
 import { currentClientId } from "@/lib/client";
 import { PageHeader } from "@/components/ui/page-header";
 import { ImportWizard } from "@/components/import-wizard";
@@ -12,6 +13,8 @@ export default async function ImportPage() {
     currentClientId(),
   ]);
   if (!session) redirect("/welcome?next=/import");
+  // Everything on this page is a tech action; anyone else would only collect 403s.
+  if (!canOperateAssets(session.role)) redirect("/");
 
   return (
     <div className="mx-auto max-w-3xl animate-fade-in-up space-y-6">

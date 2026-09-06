@@ -39,10 +39,27 @@ export async function POST(req: NextRequest) {
   });
 
   if (!res.ok) {
+    // The gateway rate-limits POST /api/auth/** to protect against credential
+    // stuffing, and switching personas quickly trips it. Reporting that as
+    // "no seeded account" sent people looking for a seeding problem that was
+    // not there, so pass the real reason through.
+    if (res.status === 429) {
+      return NextResponse.json(
+        {
+          code: "RATE_LIMITED",
+          message:
+            "Too many sign-ins in a row. Wait a moment before switching again.",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": res.headers.get("Retry-After") ?? "60" },
+        },
+      );
+    }
     return NextResponse.json(
       {
         code: "DEMO_LOGIN_FAILED",
-        message: `No seeded account ${persona.email}`,
+        message: `Could not sign in as ${persona.email} (gateway said ${res.status}).`,
       },
       { status: 502 },
     );
