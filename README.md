@@ -17,7 +17,7 @@ publishes images.
 
 | Area | |
 |---|---|
-| **Assets** | one filterable list — by type, status, holder, or free-text (tag / serial / model / holder). Each asset carries a condition, deploy + warranty dates, and a lifecycle status (`IN_STOCK · ASSIGNED · IN_REPAIR · BROKEN · PENDING_RECYCLE · RECYCLED · RETIRED · LOST`) with guarded transitions. Add / edit inline; **retire-and-replace** marks a unit gone and opens a pre-filled form for its replacement. |
+| **Assets** | one filterable list — by type, status, holder, or free-text (tag / serial / model / holder). Each asset carries a serial **or** an IMEI (a cellular hotspot or phone is identified by IMEI, and some carry no serial at all; a cable carries neither), a condition, deploy + warranty dates, and a lifecycle status (`IN_STOCK · ASSIGNED · IN_REPAIR · BROKEN · PENDING_RECYCLE · RECYCLED · RETIRED · LOST`) with guarded transitions. Add / edit inline; **retire-and-replace** marks a unit gone and opens a pre-filled form for its replacement. |
 | **Asset types** | a per-client list the techs curate — add a type (rejected if the name is already taken), remove one (blocked while assets use it, or move them to another type first). |
 | **People** | employees of a client; `ACTIVE → OFFBOARDING → DEPARTED`. A desk is optional. |
 | **Desks / rooms / sites** | each carries a QR tag and a building + floor; the console lays desks out as a building → floor map. "What's on this desk" is a query, not stored state. |

@@ -47,6 +47,7 @@ export function AssetForm(props: Props) {
   );
   const [assetTag, setAssetTag] = useState(pf?.assetTag ?? a?.assetTag ?? "");
   const [serialNumber, setSerialNumber] = useState(a?.serialNumber ?? "");
+  const [imei, setImei] = useState(a?.imei ?? "");
   const [make, setMake] = useState(pf?.make ?? a?.make ?? "");
   const [model, setModel] = useState(pf?.model ?? a?.model ?? "");
   const [condition, setCondition] = useState<string>(a?.condition ?? "GOOD");
@@ -85,6 +86,7 @@ export function AssetForm(props: Props) {
       model: trimmed(model),
       condition,
       serialNumber: trimmed(serialNumber),
+      imei: trimmed(imei),
       purchaseDate: trimmed(purchaseDate),
       deployedOn: trimmed(deployedOn),
       warrantyEndsOn: trimmed(warrantyEndsOn),
@@ -175,11 +177,22 @@ export function AssetForm(props: Props) {
             </Field>
           </>
         )}
+        {/*
+          Neither identifier is mandatory. A cable has no serial at all, and a
+          hotspot is identified by its IMEI - which is what a carrier or an
+          insurer will ask for - sometimes without carrying a serial.
+        */}
         <Field label="Serial number">
           <Input
-            required={!edit}
             value={serialNumber}
             onChange={(e) => setSerialNumber(e.target.value)}
+          />
+        </Field>
+        <Field label="IMEI">
+          <Input
+            value={imei}
+            onChange={(e) => setImei(e.target.value)}
+            placeholder="cellular devices only"
           />
         </Field>
         <Field label="Make">

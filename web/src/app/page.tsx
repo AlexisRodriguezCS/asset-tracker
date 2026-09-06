@@ -315,6 +315,12 @@ export default async function AssetsPage({
             <th className="px-4 py-3 font-medium">Tag</th>
             <th className="px-4 py-3 font-medium">Type</th>
             <th className="px-4 py-3 font-medium">Make / model</th>
+            {/*
+              Employees do not get the detail page, so the one identifier they
+              may actually be asked for - by a support desk, a warranty claim or
+              a carrier - has to be on the list.
+            */}
+            {mine && <th className="px-4 py-3 font-medium">Serial / IMEI</th>}
             <th className="px-4 py-3 font-medium">Condition</th>
             <th className="px-4 py-3 font-medium">Status</th>
             {!mine && (
@@ -355,6 +361,22 @@ export default async function AssetsPage({
                   <span className="text-muted-foreground">—</span>
                 )}
               </td>
+              {mine && (
+                <td className="px-4 py-2 font-mono text-xs">
+                  {a.imei ? (
+                    <span title="IMEI">
+                      <span className="mr-1 text-[10px] uppercase text-muted-foreground">
+                        imei
+                      </span>
+                      {a.imei}
+                    </span>
+                  ) : a.serialNumber ? (
+                    a.serialNumber
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </td>
+              )}
               <td className="px-4 py-2">
                 <ConditionBadge condition={a.condition} />
               </td>
@@ -408,7 +430,7 @@ export default async function AssetsPage({
           {assets.length === 0 && (
             <tr>
               <td
-                colSpan={mine ? 6 : 8}
+                colSpan={mine ? 7 : 8}
                 className="px-4 py-12 text-center text-muted-foreground"
               >
                 {mine

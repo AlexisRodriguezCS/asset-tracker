@@ -51,6 +51,7 @@ public class AssetService {
     asset.setWarrantyEndsOn(request.warrantyEndsOn());
     asset.setPurchaseCostCents(request.purchaseCostCents());
     asset.setNotes(request.notes());
+    asset.setImei(request.imei());
     asset.setSupersedesAssetId(resolveSuperseded(request));
     Asset saved = repository.save(asset);
     audit.record(
@@ -189,6 +190,7 @@ public class AssetService {
     setIfPresent(request.notes(), asset::setNotes);
     setIfPresent(request.condition(), asset::setCondition);
     setIfPresent(request.serialNumber(), asset::setSerialNumber);
+    setIfPresent(request.imei(), asset::setImei);
     setIfPresent(request.purchaseDate(), asset::setPurchaseDate);
     setIfPresent(request.deployedOn(), asset::setDeployedOn);
     setIfPresent(request.warrantyEndsOn(), asset::setWarrantyEndsOn);

@@ -35,6 +35,7 @@ export interface Asset {
   make: string | null;
   model: string | null;
   serialNumber: string;
+  imei: string | null;
   assetTag: string;
   status: AssetStatus;
   condition: AssetCondition | null;
@@ -91,6 +92,7 @@ export const IMPORT_FIELDS = [
   "assetTag",
   "type",
   "serialNumber",
+  "imei",
   "make",
   "model",
   "condition",

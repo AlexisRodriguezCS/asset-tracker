@@ -25,6 +25,7 @@ public record ColumnMapping(Map<String, String> fields, List<String> attributeCo
           "assetTag",
           "type",
           "serialNumber",
+          "imei",
           "make",
           "model",
           "condition",

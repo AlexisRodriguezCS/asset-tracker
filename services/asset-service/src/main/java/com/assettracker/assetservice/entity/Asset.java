@@ -40,8 +40,19 @@ public class Asset {
 
   private String model;
 
-  @Column(nullable = false)
+  /**
+   * The manufacturer's serial. Optional, because not everything has one: a cable carries no
+   * identifier at all, and a cellular device is identified by its {@link #imei} instead.
+   */
   private String serialNumber;
+
+  /**
+   * The IMEI of a cellular device - hotspots, phones, tablets on a mobile plan. It is what a
+   * carrier and an insurer ask for, and what identifies the device when it has no serial. Kept as a
+   * separate field rather than overloading serialNumber: a device can have both, and they are not
+   * interchangeable when you are on the phone to a network.
+   */
+  private String imei;
 
   /** Short scan code on a sticker; unique per client. */
   @Column(nullable = false)
@@ -202,6 +213,14 @@ public class Asset {
 
   public void setModel(String model) {
     this.model = model;
+  }
+
+  public String getImei() {
+    return imei;
+  }
+
+  public void setImei(String imei) {
+    this.imei = imei;
   }
 
   public String getSerialNumber() {

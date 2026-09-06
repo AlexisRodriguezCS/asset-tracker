@@ -41,7 +41,8 @@ class AssetServiceTest {
     when(repository.existsActiveWithTag(eq(1L), eq("TAG-1"), eq("Laptop"), any())).thenReturn(true);
     CreateAssetRequest req =
         new CreateAssetRequest(
-            1L, "Laptop", null, null, "SN-1", "TAG-1", null, null, null, null, null, null, null);
+            1L, "Laptop", null, null, "SN-1", null, "TAG-1", null, null, null, null, null, null,
+            null);
     assertThatThrownBy(() -> service.create(req, "tech@acme.example"))
         .isInstanceOf(AssetTagTakenException.class);
   }
@@ -52,8 +53,8 @@ class AssetServiceTest {
     when(repository.save(any(Asset.class))).thenAnswer(inv -> inv.getArgument(0));
     CreateAssetRequest req =
         new CreateAssetRequest(
-            1L, "Cable", "Anker", "USB-C", "SN-2", "TAG-2", null, null, null, null, 1900L, null,
-            null);
+            1L, "Cable", "Anker", "USB-C", "SN-2", null, "TAG-2", null, null, null, null, 1900L,
+            null, null);
 
     Asset created = service.create(req, "tech@acme.example");
 
@@ -71,7 +72,8 @@ class AssetServiceTest {
     when(repository.save(any(Asset.class))).thenAnswer(inv -> inv.getArgument(0));
     CreateAssetRequest req =
         new CreateAssetRequest(
-            1L, "Charger", null, null, "SN-NEW", "TAG-9", null, null, null, null, null, null, 77L);
+            1L, "Charger", null, null, "SN-NEW", null, "TAG-9", null, null, null, null, null, null,
+            77L);
 
     Asset created = service.create(req, "tech@acme.example");
 
@@ -86,7 +88,8 @@ class AssetServiceTest {
     when(repository.findById(77L)).thenReturn(Optional.of(otherClient));
     CreateAssetRequest req =
         new CreateAssetRequest(
-            1L, "Charger", null, null, "SN-NEW", "TAG-9", null, null, null, null, null, null, 77L);
+            1L, "Charger", null, null, "SN-NEW", null, "TAG-9", null, null, null, null, null, null,
+            77L);
 
     assertThatThrownBy(() -> service.create(req, "tech@acme.example"))
         .isInstanceOf(IllegalArgumentException.class);
@@ -100,7 +103,8 @@ class AssetServiceTest {
     when(repository.findById(77L)).thenReturn(Optional.of(differentTag));
     CreateAssetRequest req =
         new CreateAssetRequest(
-            1L, "Charger", null, null, "SN-NEW", "TAG-9", null, null, null, null, null, null, 77L);
+            1L, "Charger", null, null, "SN-NEW", null, "TAG-9", null, null, null, null, null, null,
+            77L);
 
     assertThatThrownBy(() -> service.create(req, "tech@acme.example"))
         .isInstanceOf(IllegalArgumentException.class)
@@ -137,7 +141,15 @@ class AssetServiceTest {
     when(repository.findById(1L)).thenReturn(Optional.of(stored));
     var req =
         new com.assettracker.assetservice.web.dto.UpdateAssetRequest(
-            null, null, null, null, "SN-CORRECTED", java.time.LocalDate.of(2023, 3, 4), null, null);
+            null,
+            null,
+            null,
+            null,
+            "SN-CORRECTED",
+            null,
+            java.time.LocalDate.of(2023, 3, 4),
+            null,
+            null);
 
     Asset updated = service.update(1L, req, "tech@acme.example");
 
@@ -151,7 +163,7 @@ class AssetServiceTest {
     when(repository.findById(1L)).thenReturn(Optional.of(stored));
     var req =
         new com.assettracker.assetservice.web.dto.UpdateAssetRequest(
-            "Dell", null, null, null, null, null, null, null);
+            "Dell", null, null, null, null, null, null, null, null);
 
     Asset updated = service.update(1L, req, "tech@acme.example");
 

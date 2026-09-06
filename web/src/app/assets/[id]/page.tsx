@@ -117,6 +117,7 @@ export default async function AssetDetailPage({
               v={asset.condition ? label(asset.condition) : "—"}
             />
             <Field k="Location" v={disposition(asset.status)} />
+            {asset.imei && <Field k="IMEI" v={asset.imei} />}
             <Field k="Holder" v={holderOf(asset.holderType, asset.holderId)} />
             <Field k="Purchased" v={dateOnly(asset.purchaseDate)} />
             <Field k="Deployed" v={dateOnly(asset.deployedOn)} />

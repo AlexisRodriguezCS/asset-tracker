@@ -115,7 +115,7 @@ actually route rather than merely report healthy, then runs the suite.
   | `tech@acme.example` | TECH | full asset operations, clients 1-3 |
   | `poc@acme.example` | POC | Acme only; approves event requests, does not edit assets |
   | `hr@acme.example` | HR | Acme only; offboarding collection |
-  | `dana.reyes@acme.example` | USER | only the gear assigned to her, plus the event form |
+  | `dana.reyes@acme.example` | USER | only the gear assigned to her, plus the event form. Her list shows each item's serial or IMEI, since she has no detail page |
 
   The USER account is pinned to the first seeded person, which is what makes
   "my assigned assets" resolve. Set `DEMO_LOGINS_ENABLED=true` in `web/.env.local`

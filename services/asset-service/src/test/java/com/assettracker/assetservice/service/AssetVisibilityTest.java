@@ -152,8 +152,8 @@ class AssetVisibilityTest {
             () ->
                 service.create(
                     new CreateAssetRequest(
-                        ACME, "Cable", null, null, "SN-X", "EMP-1", null, null, null, null, null,
-                        null, null),
+                        ACME, "Cable", null, null, "SN-X", null, "EMP-1", null, null, null, null,
+                        null, null, null),
                     "dana.reyes@acme.example"))
         .isInstanceOf(ForbiddenRoleException.class);
 
@@ -161,7 +161,8 @@ class AssetVisibilityTest {
             () ->
                 service.update(
                     9L,
-                    new UpdateAssetRequest(null, null, "edited", null, null, null, null, null),
+                    new UpdateAssetRequest(
+                        null, null, "edited", null, null, null, null, null, null),
                     "dana.reyes@acme.example"))
         .isInstanceOf(ForbiddenRoleException.class);
 
@@ -184,7 +185,7 @@ class AssetVisibilityTest {
         service()
             .update(
                 9L,
-                new UpdateAssetRequest(null, null, "tech note", null, null, null, null, null),
+                new UpdateAssetRequest(null, null, "tech note", null, null, null, null, null, null),
                 "tech@acme.example");
 
     assertThat(updated.getNotes()).isEqualTo("tech note");

@@ -29,6 +29,7 @@ final class MappingGuesser {
             "barcode",
             "tag"));
     SYNONYMS.put("serialNumber", List.of("serialnumber", "serialno", "servicetag", "serial", "sn"));
+    SYNONYMS.put("imei", List.of("imei", "imeinumber", "imeino", "meid", "mobileequipmentid"));
     SYNONYMS.put("type", List.of("assettype", "devicetype", "category", "type", "class", "kind"));
     SYNONYMS.put("make", List.of("manufacturer", "vendor", "brand", "make"));
     SYNONYMS.put("model", List.of("modelnumber", "productname", "model", "device"));
