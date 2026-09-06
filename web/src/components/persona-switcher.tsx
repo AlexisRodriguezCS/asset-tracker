@@ -33,7 +33,7 @@ export function PersonaSwitcher({
     setBusy(null);
     setOpen(false);
     if (res.ok) {
-      router.push("/");
+      router.push(next === "USER" ? "/" : "/dashboard");
       router.refresh();
     }
   }

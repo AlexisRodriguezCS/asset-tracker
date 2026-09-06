@@ -11,7 +11,7 @@ export default async function NewEventRequestPage() {
     getSession(),
     currentClientId(),
   ]);
-  if (!session) redirect("/login?next=/events/new");
+  if (!session) redirect("/welcome?next=/events/new");
 
   return (
     <div className="mx-auto max-w-3xl animate-fade-in-up space-y-6">

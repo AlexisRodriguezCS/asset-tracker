@@ -1,21 +1,21 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Boxes, Mail } from "lucide-react";
+import { Boxes } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { entraConfig } from "@/lib/entra";
 import { Card } from "@/components/ui/card";
+import { DemoPersonas } from "@/components/demo-personas";
+import { demoLoginsEnabled } from "@/lib/demo";
 
 export const dynamic = "force-dynamic";
 
 const ERRORS: Record<string, string> = {
-  not_configured:
-    "Microsoft 365 sign-in isn't set up on this deployment yet. Use email for now.",
+  not_configured: "Microsoft 365 sign-in isn't set up on this deployment yet.",
   state_mismatch: "That sign-in link expired. Please try again.",
   token_exchange_failed: "Microsoft rejected the sign-in. Please try again.",
   no_id_token: "Microsoft didn't return an identity token. Please try again.",
   exchange_failed: "Couldn't complete sign-in with the platform. Try again.",
   MICROSOFT_SIGNIN_NOT_CONFIGURED:
-    "Microsoft 365 sign-in isn't set up on this deployment yet. Use email for now.",
+    "Microsoft 365 sign-in isn't set up on this deployment yet.",
 };
 
 export default async function WelcomePage({
@@ -27,6 +27,7 @@ export default async function WelcomePage({
   if (session) redirect("/dashboard");
 
   const { configured } = entraConfig();
+  const demo = !configured && demoLoginsEnabled();
   const message = sp.error
     ? (ERRORS[sp.error] ?? decodeURIComponent(sp.error))
     : null;
@@ -72,27 +73,26 @@ export default async function WelcomePage({
           Sign in with Microsoft 365
         </a>
 
-        <Link
-          href={`/login${sp.next ? `?next=${encodeURIComponent(sp.next)}` : ""}`}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-border text-sm font-medium transition-colors hover:border-primary/50 hover:bg-accent active:scale-[0.98]"
-        >
-          <Mail className="h-4 w-4" />
-          Sign in with email
-        </Link>
-
-        {!configured && (
-          <p className="text-center text-xs text-muted-foreground">
-            Microsoft sign-in activates once an Entra ID app is configured.
-          </p>
-        )}
+        <p className="text-center text-xs text-muted-foreground">
+          {configured
+            ? "Your work account. Access is managed by your IT administrator."
+            : "Microsoft sign-in activates once an Entra ID app is configured."}
+        </p>
       </Card>
 
-      <p className="mt-4 text-center text-sm text-muted-foreground">
-        Just looking?{" "}
-        <Link href="/" className="font-medium text-primary hover:underline">
-          Browse assets
-        </Link>
-      </p>
+      {demo && (
+        <Card className="mt-4 space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold">Demo access</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Microsoft 365 isn&apos;t configured on this deployment, so these
+              seeded accounts stand in. Each signs in for real as that user —
+              pick one to see what that role sees.
+            </p>
+          </div>
+          <DemoPersonas />
+        </Card>
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   assetAttention,
   assetStats,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/api";
 import { getSession } from "@/lib/session";
 import { currentClientId } from "@/lib/client";
+import { isSelfServiceUser } from "@/lib/roles";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatStrip } from "@/components/ui/stat";
 import { Card } from "@/components/ui/card";
@@ -30,6 +32,10 @@ export default async function DashboardPage() {
     getSession(),
     currentClientId(),
   ]);
+  if (!session) redirect("/welcome?next=/dashboard");
+  // The fleet dashboard is a staff view. An employee is scoped out of every number
+  // on it, so it would render a wall of zeroes that says nothing about their gear.
+  if (isSelfServiceUser(session.role)) redirect("/");
 
   // Counts and previews are aggregated in the database. Desk occupancy still
   // needs rows, but only the ones held by a location - bounded by desk count,

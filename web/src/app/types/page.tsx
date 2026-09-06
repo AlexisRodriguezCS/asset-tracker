@@ -15,7 +15,7 @@ export default async function TypesPage() {
     getSession(),
     currentClientId(),
   ]);
-  if (!session) redirect("/login");
+  if (!session) redirect("/welcome");
 
   const types = await listAssetTypes(clientId);
 

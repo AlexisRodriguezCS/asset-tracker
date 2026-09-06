@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { currentClientId } from "@/lib/client";
 import {
   assetStats,
@@ -9,6 +10,7 @@ import {
   listPeople,
 } from "@/lib/api";
 import { getSession } from "@/lib/session";
+import { canOperateAssets, isSelfServiceUser } from "@/lib/roles";
 import { AssetStatusBadge, ConditionBadge } from "@/components/ui/badge";
 import { StatStrip } from "@/components/ui/stat";
 import { PageHeader, TableCard } from "@/components/ui/page-header";
@@ -54,6 +56,12 @@ export default async function AssetsPage({
     searchParams,
     getSession(),
   ]);
+  // Reads need a token now, so without a session every fetch below 401s and the
+  // page lands on the error boundary. Send them to sign in instead.
+  if (!session) redirect("/welcome?next=/");
+  // An employee sees only their own gear here, so the page says so - the nav
+  // calls the same destination "My assets".
+  const mine = isSelfServiceUser(session.role);
 
   const term = (sp.q ?? "").trim().toLowerCase();
   const pageIndex = Math.max(0, Number(sp.page ?? "0") || 0);
@@ -166,16 +174,20 @@ export default async function AssetsPage({
   return (
     <div className="animate-fade-in-up space-y-6">
       <PageHeader
-        title="Assets"
+        title={mine ? "My assets" : "Assets"}
         subtitle={
           term
             ? `${matchTotal} of ${stats.total} match "${sp.q}"`
-            : outOfWarranty > 0
-              ? `${stats.total} tracked for this client · ${outOfWarranty} out of warranty`
-              : `${stats.total} tracked for this client`
+            : mine
+              ? `${stats.total} assigned to you`
+              : outOfWarranty > 0
+                ? `${stats.total} tracked for this client · ${outOfWarranty} out of warranty`
+                : `${stats.total} tracked for this client`
         }
         action={
-          session ? (
+          // creating and importing assets is a tech action; an employee would
+          // only get a 403 from the buttons
+          canOperateAssets(session.role) ? (
             <div className="flex gap-2">
               <Link href="/import">
                 <Button size="sm" variant="outline">
@@ -186,14 +198,7 @@ export default async function AssetsPage({
                 <Button size="sm">Add asset</Button>
               </Link>
             </div>
-          ) : (
-            <Link
-              href="/login"
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              Sign in to check assets out →
-            </Link>
-          )
+          ) : undefined
         }
       />
 

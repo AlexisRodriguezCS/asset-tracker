@@ -18,7 +18,7 @@ export default async function EventsPage() {
     getSession(),
     currentClientId(),
   ]);
-  if (!session) redirect("/login?next=/events");
+  if (!session) redirect("/welcome?next=/events");
 
   const mine = isSelfServiceUser(session.role);
   const requests = await listEventRequests(clientId).catch(

@@ -17,7 +17,7 @@ export default async function ReportsPage() {
     getSession(),
     currentClientId(),
   ]);
-  if (!session) redirect("/login");
+  if (!session) redirect("/welcome");
 
   const [assets, people, audit] = await Promise.all([
     listAssets({ clientId }),

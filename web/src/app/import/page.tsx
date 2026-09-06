@@ -11,7 +11,7 @@ export default async function ImportPage() {
     getSession(),
     currentClientId(),
   ]);
-  if (!session) redirect("/login?next=/import");
+  if (!session) redirect("/welcome?next=/import");
 
   return (
     <div className="mx-auto max-w-3xl animate-fade-in-up space-y-6">

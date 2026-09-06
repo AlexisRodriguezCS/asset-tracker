@@ -25,7 +25,7 @@ export default async function NewAssetPage({
     currentClientId(),
     searchParams,
   ]);
-  if (!session) redirect("/login");
+  if (!session) redirect("/welcome");
   const types = (await listAssetTypes(clientId).catch(() => [])).map(
     (t) => t.name,
   );
