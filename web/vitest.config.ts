@@ -11,10 +11,18 @@ export default defineConfig({
   },
   resolve: {
     alias: [
-      { find: "@", replacement: fileURLToPath(new URL("./src", import.meta.url)) },
+      {
+        find: "@",
+        replacement: fileURLToPath(new URL("./src", import.meta.url)),
+      },
       // `server-only` exists to fail a build that imports server code into a
       // client bundle. Under vitest there is no such bundle, so it is a no-op.
-      { find: /^server-only$/, replacement: fileURLToPath(new URL("./src/test/server-only-stub.ts", import.meta.url)) },
+      {
+        find: /^server-only$/,
+        replacement: fileURLToPath(
+          new URL("./src/test/server-only-stub.ts", import.meta.url),
+        ),
+      },
     ],
   },
 });
