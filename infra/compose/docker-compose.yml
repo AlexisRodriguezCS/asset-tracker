@@ -48,6 +48,13 @@ x-service-defaults: &service-defaults
   mem_limit: 576m
   environment: &common-env
     <<: *jvm-sizing
+    # Structured logs on demand. The services read this, but it was never passed
+    # into the containers, so the RUNBOOK documented a switch that did nothing.
+    LOG_FORMAT: ${LOG_FORMAT:-}
+    LOG_LEVEL_ROOT: ${LOG_LEVEL_ROOT:-INFO}
+    LOG_LEVEL_WEB: ${LOG_LEVEL_WEB:-INFO}
+    LOG_LEVEL_SQL: ${LOG_LEVEL_SQL:-WARN}
+    LOG_LEVEL_APP: ${LOG_LEVEL_APP:-INFO}
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
     CONFIG_SERVER_URL: http://config-server:8888
     SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888

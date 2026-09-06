@@ -139,6 +139,8 @@ asset is back in stock, and `notification-service` has the `ASSET_CHECKED_OUT` /
 | Controller slice (`@WebMvcTest` + MockMvc) | the REST services |
 | Repository slice (`@DataJpaTest`) | the JPA services with custom queries |
 | End-to-end (REST-Assured through the gateway) | `e2e/`, run for real by CI's `e2e` job |
+| Console unit (Vitest) | `web/src/**/*.test.ts` — roles, session/JWT, tenant cookie, BFF allow-list |
+| Authorization matrix (live gateway) | [`infra/qa/api-matrix.cjs`](infra/qa/api-matrix.cjs) — 43 expectations that the refusals refuse |
 
 `e2e/` self-skips when no stack is reachable, so `./gradlew build` stays green on a
 bare checkout. CI's `e2e` job sets `E2E_REQUIRED=true`, which turns "unreachable"
@@ -151,7 +153,7 @@ into a failure — otherwise a stack that never booted would report green.
 | Job | What it does |
 |---|---|
 | `build` | one Gradle build — compile, unit + slice tests, Testcontainers Postgres ITs, Spotless, Checkstyle, JaCoCo |
-| `web` | `next build` + ESLint + Prettier + `tsc --noEmit` |
+| `web` | `next build` + ESLint + Prettier + `tsc --noEmit` + 100 Vitest unit tests |
 | `secret-scan` | gitleaks over the full history |
 | `images` | on `main`: builds and pushes all ten service images to `ghcr.io/<owner>/asset-tracker-<service>`, tagged by SHA |
 | `e2e` | pulls those exact images, brings the stack up with Compose, waits for the gateway to route, and drives the demo flow through it |

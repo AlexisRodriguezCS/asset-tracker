@@ -16,12 +16,6 @@ spring:
 server:
   port: ${SERVER_PORT:8888}
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
-
 eureka:
   client:
     service-url:
@@ -30,3 +24,15 @@ eureka:
     fetch-registry: true
   instance:
     prefer-ip-address: true
+
+# Kept local, unlike the business services. This server cannot bootstrap its own
+# configuration from itself, so config-repo cannot reach it - and without an
+# explicit actuator mapping its /{application}/{profile} handler answers
+# /actuator/prometheus itself, returning config JSON. Prometheus then drops the
+# target with "unsupported Content-Type application/json", which is a confusing
+# way to find out.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus

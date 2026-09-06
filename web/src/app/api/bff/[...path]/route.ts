@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { isAllowedPath } from "@/lib/bff-allow";
 
 const GATEWAY = process.env.GATEWAY_URL ?? "http://localhost:8080";
 
@@ -10,24 +11,6 @@ const GATEWAY = process.env.GATEWAY_URL ?? "http://localhost:8080";
  * and forwards to the gateway's /api/<path>. Only an allow-list of paths is
  * permitted, and only for a signed-in user.
  */
-const ALLOW: RegExp[] = [
-  /^assignments$/,
-  /^assignments\/return(\?.*)?$/,
-  /^assignments\/transfer$/,
-  /^assignments\/offboard(\?.*)?$/,
-  /^assignments\/event-requests$/,
-  /^assignments\/event-requests\/\d+\/(approve|deny|fulfil)$/,
-  /^assets$/,
-  /^assets\/\d+$/,
-  /^assets\/\d+\/status$/,
-  /^assets\/types$/,
-  /^assets\/types\/\d+(\?.*)?$/,
-  /^people$/,
-  /^people\/\d+\/(offboarding|departed|desk)$/,
-  /^locations$/,
-  /^clients$/,
-];
-
 async function forward(req: NextRequest, path: string[]) {
   const session = await getSession();
   if (!session) {
@@ -35,7 +18,7 @@ async function forward(req: NextRequest, path: string[]) {
   }
 
   const rel = path.join("/") + req.nextUrl.search;
-  if (!ALLOW.some((re) => re.test(rel))) {
+  if (!isAllowedPath(rel)) {
     return NextResponse.json(
       { code: "FORBIDDEN_PATH", path: rel },
       { status: 403 },

@@ -53,6 +53,9 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run format:check
+      # Before the build, so a broken invariant fails in seconds rather than
+      # after a full Next compile.
+      - run: npm test
       - run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"

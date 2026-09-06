@@ -16,3 +16,4 @@ Status / Context / Decision / Consequences.
 | [0009](0009-resilience4j-on-the-orchestrator.md) | Resilience4j retry + circuit breaker on the asset-service call |
 | [0010](0010-event-driven-notifications.md) | Event-driven notifications over RabbitMQ |
 | [0011](0011-kubernetes-deployment-with-kustomize.md) | Kubernetes deployment with Kustomize; config from the platform |
+| [0012](0012-role-based-access-and-scoped-reads.md) | Role-based access; reads scoped to the caller (supersedes 0005) |

@@ -1,4 +1,7 @@
 ---
+# Actuator exposure and log levels are shared - see config-repo/application.yml.
+# Setting them here would silently win over it (an imported config has lower
+# precedence than the file importing it), which is how they got out of sync.
 spring:
   application:
     name: api-gateway
@@ -68,12 +71,6 @@ logging:
   structured:
     format:
       console: ${LOG_FORMAT:}
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,gateway,metrics,prometheus
 
 eureka:
   client:

@@ -1,4 +1,7 @@
 ---
+# Actuator exposure and log levels are shared - see config-repo/application.yml.
+# Setting them here would silently win over it (an imported config has lower
+# precedence than the file importing it), which is how they got out of sync.
 spring:
   data:
     web:
@@ -8,6 +11,8 @@ spring:
         max-page-size: 200
   application:
     name: asset-service
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
   servlet:
     multipart:
       max-file-size: 10MB      # spreadsheet import
@@ -41,12 +46,6 @@ logging:
   structured:
     format:
       console: ${LOG_FORMAT:}
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
 
 eureka:
   client:

@@ -1,6 +1,6 @@
 # 0005 — Public reads, authenticated writes
 
-**Status:** accepted
+**Status:** superseded by [0012](0012-role-based-access-and-scoped-reads.md) — reads stopped being public when ordinary employees became users of the console
 
 ## Context
 

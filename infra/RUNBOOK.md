@@ -142,9 +142,74 @@ curl -s -X POST localhost:8080/api/assignments -H "Authorization: Bearer $TOKEN"
 docker compose -f infra/compose/docker-compose.yml logs | grep "$CID"
 ```
 
-Set `LOG_FORMAT=ecs` in `infra/compose/.env` for newline-delimited JSON logs
-(Spring Boot native — no dependency). Distributed tracing to Zipkin is a
-follow-up; the correlation id and MDC wiring are the groundwork.
+Distributed tracing to Zipkin is a follow-up; the correlation id and MDC wiring
+are the groundwork.
+
+## Logging
+
+Levels come from `config-repo/application.yml` and are overridable per
+environment without a rebuild:
+
+| variable | default | what it covers |
+|---|---|---|
+| `LOG_LEVEL_ROOT` | `INFO` | everything not named below |
+| `LOG_LEVEL_WEB` | `INFO` | `org.springframework.web` — DEBUG logs every dispatch |
+| `LOG_LEVEL_SQL` | `WARN` | `org.hibernate.SQL` |
+| `LOG_LEVEL_APP` | `INFO` | `com.assettracker` |
+
+`org.springframework.web` was on DEBUG for every service, which nobody had
+noticed because the setting was not reaching the services at all (see below).
+
+A running service can be changed without a restart, which is what you want at
+3am on something you cannot redeploy:
+
+```bash
+curl -X POST localhost:8083/actuator/loggers/com.assettracker \
+  -H 'Content-Type: application/json' -d '{"configuredLevel":"DEBUG"}'
+curl -s localhost:8083/actuator/loggers/com.assettracker   # confirm, then set it back
+```
+
+`LOG_FORMAT=ecs` in `infra/compose/.env` switches every service to
+newline-delimited JSON (Spring Boot native, no dependency), which is the shape a
+log shipper wants:
+
+```json
+{"@timestamp":"2026-09-06T19:11:42Z","log":{"level":"INFO","logger":"o.s.w.s.DispatcherServlet"},...}
+```
+
+That switch was documented here long before it worked. The services read
+`${LOG_FORMAT}`, but compose never passed the variable into the containers, so
+setting it did nothing at all.
+
+## The config server actually serves configuration now
+
+Worth reading if you are looking at this as an example of Spring Cloud Config,
+because for most of this project's life it was decorative.
+
+Only `api-gateway` had `spring-cloud-starter-config`. Without that dependency
+`configserver:` is an unknown config-data location, and because the import is
+marked `optional:` it was **skipped in silence** — so `config-repo` drove nothing
+for the other eight services. Every one of them carried its own copy of the
+shared settings, which is why nothing looked wrong.
+
+It surfaced by accident: adding `loggers` to the shared exposure list changed
+nothing, on any service.
+
+Three things were wrong and are now fixed:
+
+1. the seven business services have `spring-cloud-starter-config`;
+2. each declares `spring.config.import` in its own yaml rather than relying on a
+   compose variable — the client fails fast without it, which is what broke every
+   test context the moment the dependency landed;
+3. the duplicated `management.endpoints.web.exposure` blocks are gone, because an
+   imported config has *lower* precedence than the file importing it, so those
+   local copies silently won.
+
+`config-server` and `discovery-server` keep their own settings on purpose: the
+config server cannot bootstrap from itself. Removing its local actuator exposure
+had a memorable failure mode — its `/{application}/{profile}` handler answered
+`/actuator/prometheus` itself, returning config JSON, and Prometheus dropped the
+target with "unsupported Content-Type application/json".
 
 ## Rate limiting
 

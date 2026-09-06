@@ -16,15 +16,23 @@ spring:
 
 logging:
   level:
-    root: INFO
-    org.springframework.web: DEBUG
-    org.hibernate.SQL: WARN
+    root: ${LOG_LEVEL_ROOT:INFO}
+    # DEBUG here logs every dispatch. Useful while chasing a routing problem,
+    # miserable as a permanent default - which is what it was until someone
+    # looked at the volume. Raise it for one service at a time instead, either
+    # with this variable or through the loggers endpoint below, which changes a
+    # level on a running service without a redeploy:
+    #   curl -X POST localhost:8083/actuator/loggers/org.springframework.web \
+    #     -H 'Content-Type: application/json' -d '{"configuredLevel":"DEBUG"}'
+    org.springframework.web: ${LOG_LEVEL_WEB:INFO}
+    org.hibernate.SQL: ${LOG_LEVEL_SQL:WARN}
+    com.assettracker: ${LOG_LEVEL_APP:INFO}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health, info, metrics, prometheus
+        include: health, info, metrics, prometheus, loggers
   endpoint:
     health:
       show-details: always

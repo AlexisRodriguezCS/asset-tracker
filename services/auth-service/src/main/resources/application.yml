@@ -1,7 +1,12 @@
 ---
+# Actuator exposure and log levels are shared - see config-repo/application.yml.
+# Setting them here would silently win over it (an imported config has lower
+# precedence than the file importing it), which is how they got out of sync.
 spring:
   application:
     name: auth-service
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
   flyway:
     enabled: false   # dev runs on H2 + ddl-auto; the 'prod' profile enables Flyway
   datasource:
@@ -45,12 +50,6 @@ logging:
   structured:
     format:
       console: ${LOG_FORMAT:}
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
 
 eureka:
   client:
