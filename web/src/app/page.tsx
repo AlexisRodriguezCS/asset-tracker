@@ -202,103 +202,112 @@ export default async function AssetsPage({
         }
       />
 
-      <StatStrip
-        stats={[
-          {
-            label: "Total",
-            value: stats.total,
-            href: "/",
-            active: !sp.status && !sp.type,
-          },
-          {
-            label: "In storage",
-            value: count("IN_STOCK"),
-            tone: "success",
-            href: link({ status: "IN_STOCK" }),
-            active: sp.status === "IN_STOCK",
-          },
-          {
-            label: "In use",
-            value: count("ASSIGNED"),
-            tone: "primary",
-            href: link({ status: "ASSIGNED" }),
-            active: sp.status === "ASSIGNED",
-          },
-          {
-            label: "Repair",
-            value: count("IN_REPAIR", "BROKEN"),
-            tone: "warn",
-            href: link({ status: "IN_REPAIR" }),
-            active: sp.status === "IN_REPAIR",
-          },
-          {
-            label: "End of life",
-            value: count("PENDING_RECYCLE", "RECYCLED", "RETIRED", "LOST"),
-            tone: "danger",
-            href: link({ status: "RETIRED" }),
-            active: sp.status === "RETIRED",
-          },
-        ]}
-      />
+      {!mine && (
+        <StatStrip
+          stats={[
+            {
+              label: "Total",
+              value: stats.total,
+              href: "/",
+              active: !sp.status && !sp.type,
+            },
+            {
+              label: "In storage",
+              value: count("IN_STOCK"),
+              tone: "success",
+              href: link({ status: "IN_STOCK" }),
+              active: sp.status === "IN_STOCK",
+            },
+            {
+              label: "In use",
+              value: count("ASSIGNED"),
+              tone: "primary",
+              href: link({ status: "ASSIGNED" }),
+              active: sp.status === "ASSIGNED",
+            },
+            {
+              label: "Repair",
+              value: count("IN_REPAIR", "BROKEN"),
+              tone: "warn",
+              href: link({ status: "IN_REPAIR" }),
+              active: sp.status === "IN_REPAIR",
+            },
+            {
+              label: "End of life",
+              value: count("PENDING_RECYCLE", "RECYCLED", "RETIRED", "LOST"),
+              tone: "danger",
+              href: link({ status: "RETIRED" }),
+              active: sp.status === "RETIRED",
+            },
+          ]}
+        />
+      )}
 
-      <div className="space-y-2">
-        <ChipRow heading="Type">
-          <Chip href={link({ ...keepStatus })} active={!sp.type}>
-            All
-          </Chip>
-          {types.map((t) => (
-            <Chip
-              key={t.id}
-              href={link({ type: t.name, ...keepStatus })}
-              active={sp.type === t.name}
-            >
-              {t.name}
+      {/*
+        Someone with a handful of items does not need eleven type chips, nine
+        statuses - most of which describe gear that has left the fleet - and a
+        warranty filter. Staff triaging a catalog do.
+      */}
+      {!mine && (
+        <div className="space-y-2">
+          <ChipRow heading="Type">
+            <Chip href={link({ ...keepStatus })} active={!sp.type}>
+              All
             </Chip>
-          ))}
-          {session && (
-            <Link
-              href="/types"
-              className="ml-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Manage
-            </Link>
-          )}
-        </ChipRow>
-        <ChipRow heading="Status">
-          <Chip href={link({ ...keepType })} active={!sp.status}>
-            All
-          </Chip>
-          {STATUSES.map((s) => (
-            <Chip
-              key={s}
-              href={link({ status: s, ...keepType })}
-              active={sp.status === s}
-            >
-              {label(s)}
+            {types.map((t) => (
+              <Chip
+                key={t.id}
+                href={link({ type: t.name, ...keepStatus })}
+                active={sp.type === t.name}
+              >
+                {t.name}
+              </Chip>
+            ))}
+            {canOperateAssets(session.role) && (
+              <Link
+                href="/types"
+                className="ml-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Manage
+              </Link>
+            )}
+          </ChipRow>
+          <ChipRow heading="Status">
+            <Chip href={link({ ...keepType })} active={!sp.status}>
+              All
             </Chip>
-          ))}
-        </ChipRow>
-        <ChipRow heading="Warranty">
-          <Chip
-            href={link({ warranty: "", ...keepType, ...keepStatus })}
-            active={!sp.warranty}
-          >
-            All
-          </Chip>
-          <Chip
-            href={link({ warranty: "expired", ...keepType, ...keepStatus })}
-            active={sp.warranty === "expired"}
-          >
-            Expired
-          </Chip>
-          <Chip
-            href={link({ warranty: "soon", ...keepType, ...keepStatus })}
-            active={sp.warranty === "soon"}
-          >
-            Expiring soon
-          </Chip>
-        </ChipRow>
-      </div>
+            {STATUSES.map((s) => (
+              <Chip
+                key={s}
+                href={link({ status: s, ...keepType })}
+                active={sp.status === s}
+              >
+                {label(s)}
+              </Chip>
+            ))}
+          </ChipRow>
+          <ChipRow heading="Warranty">
+            <Chip
+              href={link({ warranty: "", ...keepType, ...keepStatus })}
+              active={!sp.warranty}
+            >
+              All
+            </Chip>
+            <Chip
+              href={link({ warranty: "expired", ...keepType, ...keepStatus })}
+              active={sp.warranty === "expired"}
+            >
+              Expired
+            </Chip>
+            <Chip
+              href={link({ warranty: "soon", ...keepType, ...keepStatus })}
+              active={sp.warranty === "soon"}
+            >
+              Expiring soon
+            </Chip>
+          </ChipRow>
+        </div>
+      )}
 
       <TableCard>
         <thead className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -308,8 +317,12 @@ export default async function AssetsPage({
             <th className="px-4 py-3 font-medium">Make / model</th>
             <th className="px-4 py-3 font-medium">Condition</th>
             <th className="px-4 py-3 font-medium">Status</th>
-            <th className="px-4 py-3 font-medium">Location</th>
-            <th className="px-4 py-3 font-medium">Holder</th>
+            {!mine && (
+              <>
+                <th className="px-4 py-3 font-medium">Location</th>
+                <th className="px-4 py-3 font-medium">Holder</th>
+              </>
+            )}
             <th className="px-4 py-3 font-medium">Warranty</th>
           </tr>
         </thead>
@@ -336,30 +349,34 @@ export default async function AssetsPage({
               <td className="px-4 py-2">
                 <AssetStatusBadge status={a.status} />
               </td>
-              <td className="px-4 py-2 text-muted-foreground">
-                {disposition(a.status)}
-              </td>
-              <td className="px-4 py-2">
-                {a.holderType === "PERSON" && a.holderId != null ? (
-                  <Link
-                    href={`/people/${a.holderId}`}
-                    className="text-primary hover:underline"
-                  >
-                    {holderLabel(a)}
-                  </Link>
-                ) : a.holderType === "LOCATION" && a.holderId != null ? (
-                  <Link
-                    href={`/desks#desk-${a.holderId}`}
-                    className="text-primary hover:underline"
-                  >
-                    {holderLabel(a)}
-                  </Link>
-                ) : (
-                  <span className="text-muted-foreground">
-                    {holderLabel(a)}
-                  </span>
-                )}
-              </td>
+              {!mine && (
+                <>
+                  <td className="px-4 py-2 text-muted-foreground">
+                    {disposition(a.status)}
+                  </td>
+                  <td className="px-4 py-2">
+                    {a.holderType === "PERSON" && a.holderId != null ? (
+                      <Link
+                        href={`/people/${a.holderId}`}
+                        className="text-primary hover:underline"
+                      >
+                        {holderLabel(a)}
+                      </Link>
+                    ) : a.holderType === "LOCATION" && a.holderId != null ? (
+                      <Link
+                        href={`/desks#desk-${a.holderId}`}
+                        className="text-primary hover:underline"
+                      >
+                        {holderLabel(a)}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        {holderLabel(a)}
+                      </span>
+                    )}
+                  </td>
+                </>
+              )}
               <td className="px-4 py-2 text-muted-foreground">
                 {a.warrantyEndsOn ? (
                   <span
@@ -379,10 +396,12 @@ export default async function AssetsPage({
           {assets.length === 0 && (
             <tr>
               <td
-                colSpan={8}
+                colSpan={mine ? 6 : 8}
                 className="px-4 py-12 text-center text-muted-foreground"
               >
-                No assets match this filter.
+                {mine
+                  ? "Nothing is assigned to you right now."
+                  : "No assets match this filter."}
               </td>
             </tr>
           )}
