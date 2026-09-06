@@ -153,7 +153,7 @@ into a failure — otherwise a stack that never booted would report green.
 | Job | What it does |
 |---|---|
 | `build` | one Gradle build — compile, unit + slice tests, Testcontainers Postgres ITs, Spotless, Checkstyle, JaCoCo |
-| `web` | `next build` + ESLint + Prettier + `tsc --noEmit` + 100 Vitest unit tests |
+| `web` | `next build` + ESLint (flat config, warnings fail) + Prettier + `tsc --noEmit` + 100 Vitest unit tests |
 | `secret-scan` | gitleaks over the full history |
 | `images` | on `main`: builds and pushes all ten service images to `ghcr.io/<owner>/asset-tracker-<service>`, tagged by SHA |
 | `e2e` | pulls those exact images, brings the stack up with Compose, waits for the gateway to route, and drives the demo flow through it |
