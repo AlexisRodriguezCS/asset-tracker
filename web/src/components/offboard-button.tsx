@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import type { OffboardingResult } from "@/lib/types";
 
 /** "Collect all assets" for an offboarding employee. Requires a signed-in user. */
 export function OffboardButton({
@@ -40,12 +41,20 @@ export function OffboardButton({
     );
     setBusy(false);
     if (res.ok) {
-      const b = await res.json();
-      setResult(
-        `Collected ${b.returned.length}${
-          b.failed.length ? `, ${b.failed.length} still out` : ""
-        }.`,
-      );
+      const b: OffboardingResult = await res.json();
+      // Three outcomes, worded by what the reader has to do about each: chase a
+      // person, or fix a record. They used to be reported as one number, so an
+      // asset already back on the shelf read as still being with the employee.
+      const parts = [`Collected ${b.returned.length}`];
+      if (b.failed.length) {
+        parts.push(`${b.failed.length} still out`);
+      }
+      if (b.unrecorded?.length) {
+        parts.push(
+          `${b.unrecorded.length} back in stock but not recorded — tell IT`,
+        );
+      }
+      setResult(`${parts.join(", ")}.`);
       router.refresh();
     } else {
       setResult("Offboarding failed.");

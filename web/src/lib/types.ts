@@ -144,8 +144,12 @@ export interface Assignment {
 
 export interface OffboardingResult {
   personId: number;
+  /** Back in stock, and the assignment is closed. */
   returned: number[];
+  /** The return itself did not happen - the person still has it. */
   failed: number[];
+  /** Back in stock, but the assignment did not close. Nobody to chase; a record to fix. */
+  unrecorded: number[];
 }
 
 export interface AuditEvent {

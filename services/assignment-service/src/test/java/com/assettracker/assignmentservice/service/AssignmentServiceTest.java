@@ -159,6 +159,27 @@ class AssignmentServiceTest {
     verify(publisher).publish(eq(1L), eq("OFFBOARDING_COLLECTED"), anyString());
   }
 
+  /**
+   * The distinction the three buckets exist for: asset-service took the laptop back, and only the
+   * local close failed. Reporting that as "still out" is what sent someone after a laptop already
+   * on the shelf.
+   */
+  @Test
+  void anAssetBackInStockIsNotReportedAsStillOut() {
+    when(assetClient.assetsHeldByPerson(1L, 7L)).thenReturn(List.of(40L, 41L));
+    // lenient, or strict stubs turns the close of asset 40 into a PotentialStubbingProblem -
+    // which this method catches and would file under "unrecorded", hiding the real assertion
+    lenient().doThrow(new RuntimeException("deadlock")).when(store).close(eq(41L), anyString());
+
+    OffboardingResult result = service.offboardPerson(1L, 7L, "hr@acme.example");
+
+    assertThat(result.returned()).containsExactly(40L);
+    assertThat(result.unrecorded()).containsExactly(41L);
+    assertThat(result.failed()).isEmpty();
+    // it did go back - the sweep must not undo that, or retry it as if it had not
+    verify(assetClient).returnToStock(eq(41L), anyString());
+  }
+
   @Test
   void getByIdDelegatesToTheStore() {
     Assignment a = new Assignment(1L, 40L, HolderType.PERSON, 7L, "x", null);

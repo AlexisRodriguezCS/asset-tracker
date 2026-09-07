@@ -166,7 +166,8 @@ public class AssignmentService {
 
   /**
    * Collect every asset a departing person holds. Best-effort per asset - one stuck return does not
-   * abort the rest; the result lists what came back and what did not.
+   * abort the rest; the result says what came back, what did not, and what came back without being
+   * recorded.
    */
   public OffboardingResult offboardPerson(Long clientId, Long personId, String actor) {
     CallerContext.requireCollector();
@@ -174,14 +175,7 @@ public class AssignmentService {
     List<Long> assetIds = assetClient.assetsHeldByPerson(clientId, personId);
     OffboardingResult result = new OffboardingResult(personId);
     for (Long assetId : assetIds) {
-      try {
-        assetClient.returnToStock(assetId, actor);
-        store.close(assetId, actor);
-        result.returned().add(assetId);
-      } catch (RuntimeException ex) {
-        log.warn("offboarding: asset {} did not return: {}", assetId, ex.getMessage());
-        result.failed().add(assetId);
-      }
+      collect(assetId, actor, result);
     }
     offboardingRuns.increment();
     assetsCollected.increment(result.returned().size());
@@ -192,16 +186,58 @@ public class AssignmentService {
             + result.returned().size()
             + " collected, "
             + result.failed().size()
-            + " outstanding";
+            + " outstanding"
+            + (result.unrecorded().isEmpty()
+                ? ""
+                : ", " + result.unrecorded().size() + " collected but not recorded");
     audit.record(
         clientId,
         actor,
         "OFFBOARDING_RUN",
         personId,
         summary,
-        AuditDetail.of("returned", result.returned(), "failed", result.failed()));
+        AuditDetail.of(
+            "returned",
+            result.returned(),
+            "failed",
+            result.failed(),
+            "unrecorded",
+            result.unrecorded()));
     notifications.publish(clientId, "OFFBOARDING_COLLECTED", summary);
     return result;
+  }
+
+  /**
+   * One asset's half of an offboarding sweep, in the order the two systems actually change.
+   *
+   * <p>The return is a call to asset-service and the close is a local write, and they used to sit
+   * in one try block - so a close that failed after a successful return reported the asset as still
+   * out. It was on the shelf. HR chased the employee anyway.
+   *
+   * <p>They are separated here because the two failures mean opposite things: before the return,
+   * nothing has moved and the asset really is with the person; after it, the laptop is back and
+   * only the paperwork is wrong. The second is logged at error - it is an inconsistency someone has
+   * to repair, not a person to go and find.
+   */
+  private void collect(Long assetId, String actor, OffboardingResult result) {
+    try {
+      assetClient.returnToStock(assetId, actor);
+    } catch (RuntimeException ex) {
+      log.warn("offboarding: asset {} did not return: {}", assetId, ex.getMessage());
+      result.failed().add(assetId);
+      return;
+    }
+
+    try {
+      store.close(assetId, actor);
+      result.returned().add(assetId);
+    } catch (RuntimeException ex) {
+      log.error(
+          "offboarding: asset {} is back in stock but its assignment did not close: {}",
+          assetId,
+          ex.getMessage());
+      result.unrecorded().add(assetId);
+    }
   }
 
   public Assignment getById(Long id) {
