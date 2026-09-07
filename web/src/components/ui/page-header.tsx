@@ -22,7 +22,17 @@ export function PageHeader({
   );
 }
 
-/** A shared table shell: rounded card, sticky-ish header, zebra hover. */
+/**
+ * A shared table shell: rounded card, horizontal scroll on narrow screens,
+ * hover highlight per row.
+ *
+ * The header is deliberately **not** sticky, though this comment claimed it was
+ * for a while. Making it stick would mean dropping `overflow-x-auto`, because
+ * setting either overflow axis makes the other a scroll container too, and a
+ * sticky header then resolves against a box that cannot scroll - so it simply
+ * never sticks. Keeping the horizontal scroll is worth more than a fixed header
+ * on a table that is already paginated to 50 rows.
+ */
 export function TableCard({ children }: { children: React.ReactNode }) {
   return (
     <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-card/70 shadow-card backdrop-blur">
