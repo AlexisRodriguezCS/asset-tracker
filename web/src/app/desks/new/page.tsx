@@ -6,6 +6,7 @@ import { DeskForm } from "@/components/desk-form";
 import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Add a location" };
 
 export default async function NewDeskPage() {
   const [session, clientId] = await Promise.all([

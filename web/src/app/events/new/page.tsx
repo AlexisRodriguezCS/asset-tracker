@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EventRequestForm } from "@/components/event-request-form";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Event sign-out" };
 
 export default async function NewEventRequestPage() {
   const [session, clientId] = await Promise.all([

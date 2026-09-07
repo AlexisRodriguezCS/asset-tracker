@@ -7,6 +7,7 @@ import { PersonForm } from "@/components/person-form";
 import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Add a person" };
 
 export default async function NewPersonPage() {
   const [session, clientId] = await Promise.all([

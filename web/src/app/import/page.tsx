@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { ImportWizard } from "@/components/import-wizard";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Import" };
 
 export default async function ImportPage() {
   const [session, clientId] = await Promise.all([

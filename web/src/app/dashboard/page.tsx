@@ -19,6 +19,7 @@ import { AuditFeed } from "@/components/audit-feed";
 import type { Asset, AssetStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Dashboard" };
 
 // Which statuses count as still-in-the-fleet used to be duplicated here; it now
 // lives once in the backend (AssetStatus.IN_SERVICE), which is what decides the

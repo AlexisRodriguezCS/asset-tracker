@@ -13,6 +13,7 @@ import { canOperateAssets, isSelfServiceUser } from "@/lib/roles";
 import type { EventRequest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Events" };
 
 export default async function EventsPage() {
   const [session, clientId] = await Promise.all([

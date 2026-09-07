@@ -7,6 +7,7 @@ import { DemoPersonas } from "@/components/demo-personas";
 import { demoLoginsEnabled } from "@/lib/demo";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Sign in" };
 
 const ERRORS: Record<string, string> = {
   not_configured: "Microsoft 365 sign-in isn't set up on this deployment yet.",
@@ -41,7 +42,7 @@ export default async function WelcomePage({
         Track every device, from stockroom to desk.
       </h1>
       <p className="mt-2 text-muted-foreground">
-        asset-tracker is the console for IT: who holds which laptop, what&apos;s
+        Asset Tracker is the console for IT: who holds which laptop, what&apos;s
         on each desk, warranty and repair status, and a full audit trail —
         across all your client organizations.
       </p>

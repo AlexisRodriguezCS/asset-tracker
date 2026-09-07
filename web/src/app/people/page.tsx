@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { StatStrip } from "@/components/ui/stat";
 import { PageHeader, TableCard } from "@/components/ui/page-header";
 
+export const metadata = { title: "People" };
+
 export default async function PeoplePage() {
   const session = await getSession();
   if (!session) redirect("/welcome?next=/people");

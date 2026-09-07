@@ -9,6 +9,8 @@ import { AssetForm } from "@/components/asset-form";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 
+export const metadata = { title: "Add an asset" };
+
 export default async function NewAssetPage({
   searchParams,
 }: {

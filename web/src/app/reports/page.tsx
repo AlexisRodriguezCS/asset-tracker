@@ -13,6 +13,7 @@ const WARRANTY_SOON_DAYS = 60;
 const TOP_ROWS = 10;
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Reports" };
 
 /** The audit actions this page names, in the order it lists them. */
 const LIFECYCLE: [string, string][] = [

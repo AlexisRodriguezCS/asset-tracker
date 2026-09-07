@@ -10,6 +10,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import type { Asset, Location } from "@/lib/types";
 
+export const metadata = { title: "Desks" };
+
 export default async function DesksPage({
   searchParams,
 }: {

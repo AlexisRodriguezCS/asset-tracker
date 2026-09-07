@@ -20,9 +20,16 @@ const display = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "asset-tracker",
+  /*
+   * A template, so a tab reads "Assets · Asset Tracker" rather than the product
+   * name twenty times over. Pages set only their own half.
+   */
+  title: {
+    default: "Asset Tracker",
+    template: "%s · Asset Tracker",
+  },
   description:
-    "IT asset tracking console — assets, people, desks, assignments.",
+    "Track which person or desk holds which laptop, charger and cable — across every client organisation.",
 };
 
 export default async function RootLayout({
@@ -65,7 +72,7 @@ export default async function RootLayout({
         </main>
         <footer className="border-t border-border/60">
           <div className="mx-auto max-w-7xl px-4 py-6 text-xs text-muted-foreground">
-            asset-tracker · Next.js console · talks to the API gateway over a
+            Asset Tracker · Next.js console · talks to the API gateway over a
             server-side BFF, JWT in an httpOnly cookie.
           </div>
         </footer>

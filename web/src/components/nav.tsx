@@ -107,8 +107,14 @@ export function Nav({
           <span className="bg-gradient-primary grid h-7 w-7 place-items-center rounded-md text-primary-foreground">
             <Boxes className="h-4 w-4" />
           </span>
-          <span className="hidden sm:inline">
-            asset<span className="text-muted-foreground">tracker</span>
+          {/*
+            "Asset Tracker", not "assettracker". The two-tone split is a real
+            wordmark device and stays; what made it read as a repo slug was the
+            lowercase run-together. Capitals and a space are the whole fix.
+          */}
+          <span className="hidden whitespace-nowrap sm:inline">
+            Asset
+            <span className="font-normal text-muted-foreground"> Tracker</span>
           </span>
         </Link>
 

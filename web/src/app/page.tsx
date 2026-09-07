@@ -19,6 +19,13 @@ import { Button } from "@/components/ui/button";
 import { dateOnly, disposition, isPast, label, withinDays } from "@/lib/format";
 import type { Asset, AssetStatus } from "@/lib/types";
 
+/*
+ * Spelled out, not "Assets". A title template only applies to segments *below*
+ * the layout that declares it, and this page shares the root segment - so it
+ * would render a bare "Assets" while every other tab said "... · Asset Tracker".
+ */
+export const metadata = { title: "Assets · Asset Tracker" };
+
 /** Warranty counts as "expiring soon" this many days before it ends. */
 const WARRANTY_SOON_DAYS = 60;
 

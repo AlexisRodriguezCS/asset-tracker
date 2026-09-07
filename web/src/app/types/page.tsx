@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { TypeManager } from "@/components/type-manager";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Asset types" };
 
 /*
  * Same shell as every other top-level page. This was capped at max-w-2xl with a
