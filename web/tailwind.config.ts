@@ -26,6 +26,7 @@ export default {
         accent: "hsl(var(--accent))",
         destructive: "hsl(var(--destructive))",
         success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
       },
       borderRadius: {
         lg: "var(--radius)",

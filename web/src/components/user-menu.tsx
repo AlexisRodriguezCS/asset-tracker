@@ -63,7 +63,7 @@ export function UserMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label="Account"
-        className="flex h-9 items-center gap-1.5 rounded-md px-1.5 text-sm transition-colors hover:bg-muted"
+        className="touch-target flex h-9 items-center gap-1.5 rounded-md px-1.5 text-sm transition-colors hover:bg-muted"
       >
         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold uppercase text-primary">
           {email.slice(0, 1)}

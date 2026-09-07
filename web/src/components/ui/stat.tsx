@@ -12,8 +12,8 @@ type Stat = {
 const TONE_RING: Record<NonNullable<Stat["tone"]>, string> = {
   default: "",
   primary: "text-primary",
-  success: "text-[hsl(var(--success))]",
-  warn: "text-amber-500 dark:text-amber-400",
+  success: "text-success",
+  warn: "text-warning",
   danger: "text-destructive",
 };
 

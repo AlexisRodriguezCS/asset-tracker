@@ -138,7 +138,7 @@ export function TypeManager({
               </div>
 
               {confirming && (
-                <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+                <div className="mt-3 rounded-md border border-warning/30 bg-warning/5 p-3">
                   <p className="text-sm">
                     Deleting <span className="font-medium">{t.name}</span>{" "}
                     affects {total} asset{total === 1 ? "" : "s"}:

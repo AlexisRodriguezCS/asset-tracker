@@ -17,6 +17,7 @@
   --accent: 265 48% 95%;
   --destructive: 0 72% 51%;
   --success: 152 60% 36%;
+  --warning: 32 95% 44%;
   --ring: 265 56% 40%;
   --radius: 1rem;
 }
@@ -36,6 +37,7 @@
     --accent: 266 38% 20%;
     --destructive: 0 70% 62%;
     --success: 152 58% 48%;
+    --warning: 43 96% 56%;
     --ring: 266 72% 70%;
   }
 }
@@ -115,8 +117,38 @@ body::before {
   );
 }
 
+/*
+ * Extends a control's hit area to the 44x44 minimum without changing how big it
+ * looks. The nav's icon buttons are 36px inside a 56px bar and deliberately so;
+ * scaling them up to satisfy a touch target would resize a nav that was tuned to
+ * fit at 1100px. The pointer gets the bigger box, the eye gets the same one.
+ */
+.touch-target {
+  position: relative;
+}
+
+.touch-target::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 2.75rem;
+  width: 2.75rem;
+  transform: translate(-50%, -50%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   body::before {
+    animation: none;
+  }
+
+  /*
+   * Every page enters with .animate-fade-in-up, and silencing only the
+   * background drift left the actual content still sliding in for someone who
+   * asked for less motion. The content still appears - it just arrives rather
+   * than travels.
+   */
+  .animate-fade-in-up {
     animation: none;
   }
 }

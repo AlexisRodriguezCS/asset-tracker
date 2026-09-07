@@ -210,7 +210,7 @@ export default async function DashboardPage() {
 type Row = { key: number; href: string; left: string; right: string };
 
 const TONE_TEXT = {
-  warn: "text-amber-500 dark:text-amber-400",
+  warn: "text-warning",
   danger: "text-destructive",
 } as const;
 

@@ -218,7 +218,7 @@ export function EventRequestForm({
 
         <p
           className={
-            stale ? "text-xs text-amber-500" : "text-xs text-muted-foreground"
+            stale ? "text-xs text-warning" : "text-xs text-muted-foreground"
           }
         >
           {stale
