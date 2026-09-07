@@ -70,6 +70,17 @@ These are all real, and each one has already wasted time.
 - **Coverage floors in `gradle/quality.gradle` are a ratchet.** Raise one when
   its service climbs past it; **never lower one to make a red build green.**
 
+## Design
+
+[web/DESIGN.md](web/DESIGN.md) is the console's design system: tokens, the
+component set, motion, and the rules. Two that get broken most:
+
+- **Use the token, never the raw Tailwind palette.** There are no raw palette
+  colours left in `web/src`; `amber` and `emerald` used to sit beside the
+  tokens that meant the same thing and disagree with them about the shade.
+- **Colour marks the exception.** If a colour lands on most rows it is
+  decoration, and it costs you the ability to highlight anything.
+
 ## Testing layers
 
 | layer | where | what only it can catch |

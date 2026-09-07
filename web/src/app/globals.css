@@ -4,7 +4,6 @@
 
 :root {
   --background: 0 0% 100%;
-  --surface: 220 33% 98%;
   --foreground: 222 47% 11%;
   --card: 0 0% 100%;
   --muted: 214 32% 95%;
@@ -25,7 +24,6 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --background: 224 47% 5%;
-    --surface: 224 44% 9%;
     --foreground: 213 31% 95%;
     --card: 224 44% 10%;
     --muted: 220 33% 15%;
