@@ -46,9 +46,9 @@ export default {
         md: "calc(var(--radius) - 0.125rem)",
       },
       boxShadow: {
+        card: "0 1px 0 hsl(0 0% 100% / 0.04) inset, 0 1px 2px hsl(224 60% 3% / 0.3)",
         /* Per theme in globals.css - see the note there. */
         lift: "var(--shadow-lift)",
-        card: "0 1px 0 hsl(0 0% 100% / 0.04) inset, 0 1px 2px hsl(224 60% 3% / 0.3)",
       },
       /*
        * 180ms and 4px, down from 400ms and 8px.
