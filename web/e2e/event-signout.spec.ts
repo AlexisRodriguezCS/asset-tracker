@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { poolFor, RUN, statePath, uniqueEventDate } from "./support";
+import { pickDay, poolFor, RUN, statePath, uniqueEventDate } from "./support";
 
 /**
  * The event sign-out flow, clicked the whole way through: an employee asks, a
@@ -94,7 +94,7 @@ test.describe.serial("an event from request to hand-out", () => {
       ).toBeVisible();
 
       await page.getByLabel(/Event name/i).fill(EVENT);
-      await page.getByLabel("Date", { exact: false }).fill(date);
+      await pickDay(page, date);
 
       const tvRow = page.locator("li").filter({ hasText: "TV" }).first();
       await expect(tvRow).toContainText("2 of 2 free");
@@ -127,7 +127,7 @@ test.describe.serial("an event from request to hand-out", () => {
   test("the same day now offers no TVs to anybody", async ({ browser }) => {
     await as(browser, "USER", async (page) => {
       await page.goto("/events/new");
-      await page.getByLabel("Date", { exact: false }).fill(date);
+      await pickDay(page, date);
 
       const tvRow = page.locator("li").filter({ hasText: "TV" }).first();
       await expect(tvRow).toContainText("all 2 booked that day");
@@ -137,7 +137,7 @@ test.describe.serial("an event from request to hand-out", () => {
       await expect(tvRow.getByLabel("How many TV")).toBeDisabled();
 
       // the next day is untouched - the hold is per-day, not global
-      await page.getByLabel("Date", { exact: false }).fill(uniqueEventDate(1));
+      await pickDay(page, uniqueEventDate(1));
       await expect(tvRow).toContainText("2 of 2 free");
     });
   });

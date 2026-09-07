@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 /**
  * Shared helpers for the browser suite.
@@ -59,4 +59,31 @@ export async function poolFor(
   );
   const items = (await res.json()) as { itemType: string; available: number }[];
   return Object.fromEntries(items.map((i) => [i.itemType, i.available]));
+}
+
+/**
+ * Picks the event day, and makes sure the page was awake when it did.
+ *
+ * Filling a React form the instant its HTML lands types into markup that is
+ * not yet wired up: the value sits in the DOM, no state changes, no pool is
+ * fetched, and the row goes on showing the *undated* numbers the server
+ * rendered - which for a free day read exactly like a checked answer. That is
+ * how this cost an afternoon: the test failed two runs after passing two, with
+ * a trace containing no API call at all.
+ *
+ * So the fill is proved rather than assumed - it is not done until the request
+ * for that day has actually gone out. The retry clears the field first, because
+ * re-typing the same value changes no state and would fire nothing.
+ */
+export async function pickDay(page: Page, day: string): Promise<void> {
+  const field = page.getByLabel("Date", { exact: false });
+  await expect(async () => {
+    const answered = page.waitForResponse(
+      (r) => r.url().includes("event-equipment") && r.url().includes(day),
+      { timeout: 5_000 },
+    );
+    await field.fill("");
+    await field.fill(day);
+    await answered;
+  }).toPass({ timeout: 30_000 });
 }
