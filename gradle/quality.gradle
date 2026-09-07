@@ -98,7 +98,7 @@ tasks.named('jacocoTestReport') {
 // and it is the only thing that makes a number like this worthless.
 def coverageFloors = [
     'asset-service'       : 0.52,
-    'assignment-service'  : 0.41,
+    'assignment-service'  : 0.45,
     'api-gateway'         : 0.35,
     'people-service'      : 0.30,
     'client-service'      : 0.28,

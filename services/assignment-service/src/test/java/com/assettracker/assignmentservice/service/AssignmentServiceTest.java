@@ -2,6 +2,7 @@ package com.assettracker.assignmentservice.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -15,11 +16,14 @@ import com.assettracker.assignmentservice.audit.AuditService;
 import com.assettracker.assignmentservice.client.AssetClient;
 import com.assettracker.assignmentservice.entity.Assignment;
 import com.assettracker.assignmentservice.entity.HolderType;
+import com.assettracker.assignmentservice.idempotency.IdempotencyRecord;
+import com.assettracker.assignmentservice.idempotency.IdempotencyService;
 import com.assettracker.assignmentservice.messaging.NotificationPublisher;
 import com.assettracker.assignmentservice.web.dto.CheckOutRequest;
 import com.assettracker.assignmentservice.web.dto.OffboardingResult;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -33,6 +37,7 @@ class AssignmentServiceTest {
   @Mock AssetClient assetClient;
   @Mock NotificationPublisher publisher;
   @Mock AssignmentTransactions store;
+  @Mock IdempotencyService idempotency;
   @Mock AuditService audit;
   @Spy SimpleMeterRegistry meters = new SimpleMeterRegistry();
   @InjectMocks AssignmentService service;
@@ -52,6 +57,62 @@ class AssignmentServiceTest {
     assertThat(result).isSameAs(saved);
     verify(assetClient).assign(eq(40L), eq("PERSON"), eq(7L), anyString());
     verify(publisher).publish(eq(1L), eq("ASSET_CHECKED_OUT"), anyString());
+  }
+
+  /**
+   * The point of the whole mechanism: the second delivery of a retried request must not check the
+   * asset out again. asset-service would refuse it with 409 anyway, and the caller could not tell
+   * that apart from a real conflict with somebody else - so they would be left not knowing whether
+   * their own request had worked.
+   */
+  @Test
+  void aRetryUnderTheSameKeyReplaysInsteadOfCheckingOutTwice() {
+    IdempotencyRecord done = org.mockito.Mockito.mock(IdempotencyRecord.class);
+    when(done.getAssignmentId()).thenReturn(99L);
+    Assignment original =
+        new Assignment(1L, 40L, HolderType.PERSON, 7L, "tech@acme.example", "onboarding");
+    when(idempotency.claim(eq(1L), eq("key-1"), anyString())).thenReturn(Optional.of(done));
+    when(store.getById(99L)).thenReturn(original);
+
+    Assignment replayed = service.checkOut(checkOut, "tech@acme.example", "key-1");
+
+    assertThat(replayed).isSameAs(original);
+    // nothing moved, and nobody was told anything happened
+    verifyNoInteractions(assetClient);
+    verifyNoInteractions(publisher);
+    verify(store, never()).open(any(), any(), any(), any(), anyString(), any());
+  }
+
+  @Test
+  void theFirstCallUnderAKeyDoesTheWorkAndRecordsTheAnswer() {
+    Assignment saved =
+        new Assignment(1L, 40L, HolderType.PERSON, 7L, "tech@acme.example", "onboarding");
+    when(idempotency.claim(eq(1L), eq("key-1"), anyString())).thenReturn(Optional.empty());
+    when(store.open(1L, 40L, HolderType.PERSON, 7L, "tech@acme.example", "onboarding"))
+        .thenReturn(saved);
+
+    service.checkOut(checkOut, "tech@acme.example", "key-1");
+
+    verify(assetClient).assign(eq(40L), eq("PERSON"), eq(7L), anyString());
+    verify(idempotency).complete(eq(1L), eq("key-1"), any());
+  }
+
+  /**
+   * A claim that outlives its failed attempt would wedge the key: every later retry would be told
+   * the work is in progress, and the request could never be made to succeed.
+   */
+  @Test
+  void aFailedCheckOutReleasesItsKey() {
+    when(idempotency.claim(eq(1L), eq("key-1"), anyString())).thenReturn(Optional.empty());
+    doThrow(new AssetUnavailableException(40L))
+        .when(assetClient)
+        .assign(eq(40L), anyString(), eq(7L), anyString());
+
+    assertThatThrownBy(() -> service.checkOut(checkOut, "tech@acme.example", "key-1"))
+        .isInstanceOf(AssetUnavailableException.class);
+
+    verify(idempotency).release(1L, "key-1");
+    verify(idempotency, never()).complete(any(), anyString(), any());
   }
 
   @Test

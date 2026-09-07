@@ -38,8 +38,9 @@ public class AssignmentController {
   @ResponseStatus(HttpStatus.CREATED)
   public AssignmentResponse checkOut(
       @Valid @RequestBody CheckOutRequest request,
-      @RequestHeader(value = "X-User-Id", defaultValue = "system") String actor) {
-    return AssignmentResponse.from(service.checkOut(request, actor));
+      @RequestHeader(value = "X-User-Id", defaultValue = "system") String actor,
+      @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+    return AssignmentResponse.from(service.checkOut(request, actor, idempotencyKey));
   }
 
   @PostMapping("/return")

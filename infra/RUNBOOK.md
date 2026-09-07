@@ -284,6 +284,39 @@ Lowering a pool below what is already booked is allowed and floors availability
 at zero. Gear gets written off, and next Tuesday's agreed bookings should not
 evaporate with it.
 
+## Idempotent check-out
+
+`POST /api/assignments` accepts an optional `Idempotency-Key` header. With one,
+a retry of the same request replays the original assignment instead of doing the
+work again; without one nothing changes.
+
+It exists because check-out is deliberately **not** one transaction - it calls
+asset-service over HTTP, writes history, then publishes an event. A client that
+retries after a timeout sends the same intent twice, and the second attempt is
+refused with `409 ASSET_UNAVAILABLE`, which is indistinguishable from a real
+conflict with somebody else. The caller is left not knowing whether their own
+request succeeded.
+
+The key is **claimed before the work, not recorded after it**. Two retries
+arriving together both try to insert into `idempotency_keys`; the unique index
+on `(client_id, idem_key)` lets exactly one through and the loser is told the
+work is in flight. A record written after success would leave that window open.
+
+| situation | response |
+|---|---|
+| first call | `201`, the new assignment |
+| retry, same key and body | `201`, **the same assignment** |
+| same key, different body | `409 IDEMPOTENCY_CONFLICT` |
+| retry while the first is still running | `409`, "retry shortly" |
+| no key, genuine duplicate | `409 ASSET_UNAVAILABLE`, as before |
+
+A failed attempt **releases** its key, so a transient downstream error does not
+wedge the request forever - which would be a worse failure than the duplicate
+the key exists to prevent.
+
+Not yet applied to transfer or offboarding; both have the same shape and the
+same argument. `assettracker.checkouts.replayed` counts the replays.
+
 ## Startup convergence
 
 A container reporting healthy does **not** mean it can call its neighbours. Reads

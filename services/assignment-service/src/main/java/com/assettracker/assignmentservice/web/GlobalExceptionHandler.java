@@ -4,6 +4,7 @@ import com.assettracker.assignmentservice.events.EventEquipmentNotFoundException
 import com.assettracker.assignmentservice.events.EventEquipmentUnavailableException;
 import com.assettracker.assignmentservice.events.EventRequestNotFoundException;
 import com.assettracker.assignmentservice.events.EventRequestStateException;
+import com.assettracker.assignmentservice.idempotency.IdempotencyConflictException;
 import com.assettracker.assignmentservice.service.AssetNotMovableException;
 import com.assettracker.assignmentservice.service.AssetServiceUnavailableException;
 import com.assettracker.assignmentservice.service.AssetUnavailableException;
@@ -52,6 +53,15 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(EventRequestNotFoundException.class)
   public ResponseEntity<ApiError> handleEventRequestNotFound(EventRequestNotFoundException ex) {
     return build(HttpStatus.NOT_FOUND, "EVENT_REQUEST_NOT_FOUND", ex.getMessage());
+  }
+
+  /**
+   * A key reused for a different request, or one whose first attempt is still running. Both are
+   * 409: the request is well formed, and the caller's own retry is what has to change.
+   */
+  @ExceptionHandler(IdempotencyConflictException.class)
+  public ResponseEntity<ApiError> handleIdempotency(IdempotencyConflictException ex) {
+    return build(HttpStatus.CONFLICT, "IDEMPOTENCY_CONFLICT", ex.getMessage());
   }
 
   @ExceptionHandler(EventEquipmentNotFoundException.class)

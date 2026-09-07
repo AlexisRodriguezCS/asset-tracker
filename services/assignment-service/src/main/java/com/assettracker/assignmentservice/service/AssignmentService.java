@@ -4,6 +4,8 @@ import com.assettracker.assignmentservice.audit.AuditDetail;
 import com.assettracker.assignmentservice.audit.AuditService;
 import com.assettracker.assignmentservice.client.AssetClient;
 import com.assettracker.assignmentservice.entity.Assignment;
+import com.assettracker.assignmentservice.idempotency.IdempotencyRecord;
+import com.assettracker.assignmentservice.idempotency.IdempotencyService;
 import com.assettracker.assignmentservice.messaging.NotificationPublisher;
 import com.assettracker.assignmentservice.web.CallerContext;
 import com.assettracker.assignmentservice.web.TenantContext;
@@ -13,6 +15,7 @@ import com.assettracker.assignmentservice.web.dto.TransferRequest;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -30,24 +33,29 @@ public class AssignmentService {
   private final AssetClient assetClient;
   private final NotificationPublisher notifications;
   private final AssignmentTransactions store;
+  private final IdempotencyService idempotency;
   private final AuditService audit;
   private final Counter checkouts;
   private final Counter offboardingRuns;
   private final Counter assetsCollected;
+  private final Counter replayedCheckouts;
 
   public AssignmentService(
       AssetClient assetClient,
       NotificationPublisher notifications,
       AssignmentTransactions store,
+      IdempotencyService idempotency,
       AuditService audit,
       MeterRegistry meters) {
     this.assetClient = assetClient;
     this.notifications = notifications;
     this.store = store;
+    this.idempotency = idempotency;
     this.audit = audit;
     this.checkouts = meters.counter("assettracker.checkouts");
     this.offboardingRuns = meters.counter("assettracker.offboarding.runs");
     this.assetsCollected = meters.counter("assettracker.offboarding.assets.collected");
+    this.replayedCheckouts = meters.counter("assettracker.checkouts.replayed");
   }
 
   /**
@@ -57,8 +65,56 @@ public class AssignmentService {
    * @throws AssetNotMovableException asset-service returned 422 (retired / lost)
    */
   public Assignment checkOut(CheckOutRequest request, String actor) {
+    return checkOut(request, actor, null);
+  }
+
+  /**
+   * Check out an asset, optionally under an idempotency key.
+   *
+   * <p>With a key, a retry of the same request replays the original assignment instead of doing the
+   * work twice. Without one the behaviour is exactly as before, so every existing caller -
+   * including the event sign-out fulfilment path - is unaffected.
+   *
+   * @param idempotencyKey from the {@code Idempotency-Key} header, or null
+   */
+  public Assignment checkOut(CheckOutRequest request, String actor, String idempotencyKey) {
     CallerContext.requireAssetOperator();
     TenantContext.requireAllowed(request.clientId());
+
+    if (idempotencyKey == null || idempotencyKey.isBlank()) {
+      return performCheckOut(request, actor);
+    }
+
+    String key = idempotencyKey.trim();
+    String fingerprint =
+        IdempotencyService.hash(
+            request.clientId(),
+            request.assetId(),
+            request.holderType(),
+            request.holderId(),
+            request.note());
+
+    Optional<IdempotencyRecord> alreadyDone =
+        idempotency.claim(request.clientId(), key, fingerprint);
+    if (alreadyDone.isPresent()) {
+      replayedCheckouts.increment();
+      log.info("replaying check-out for Idempotency-Key {}", key);
+      return store.getById(alreadyDone.get().getAssignmentId());
+    }
+
+    try {
+      Assignment assignment = performCheckOut(request, actor);
+      idempotency.complete(request.clientId(), key, assignment.getId());
+      return assignment;
+    } catch (RuntimeException failed) {
+      // the claim must not outlive the attempt, or every later retry is told
+      // "already in progress" and the request is stuck for good
+      idempotency.release(request.clientId(), key);
+      throw failed;
+    }
+  }
+
+  private Assignment performCheckOut(CheckOutRequest request, String actor) {
     assetClient.assign(request.assetId(), request.holderType().name(), request.holderId(), actor);
 
     Assignment assignment =
