@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { isSelfServiceUser } from "@/lib/roles";
+import { canOperateAssets, isSelfServiceUser } from "@/lib/roles";
 import { currentClientId } from "@/lib/client";
 import { listPeople, listLocations } from "@/lib/api";
 import { PersonStatusBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { StatStrip } from "@/components/ui/stat";
 import { PageHeader, TableCard } from "@/components/ui/page-header";
 
@@ -29,6 +30,13 @@ export default async function PeoplePage() {
       <PageHeader
         title="People"
         subtitle="Click a name to see what they hold or run offboarding"
+        action={
+          canOperateAssets(session.role) ? (
+            <Link href="/people/new">
+              <Button size="sm">Add person</Button>
+            </Link>
+          ) : null
+        }
       />
 
       <StatStrip

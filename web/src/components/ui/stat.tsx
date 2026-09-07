@@ -9,9 +9,18 @@ type Stat = {
   active?: boolean;
 };
 
+/*
+ * "primary" is deliberately not the brand purple.
+ *
+ * A stat strip runs across the top of five pages, so toning one figure with the
+ * accent put brand colour in the data region of the whole product - the last
+ * place it was still acting as a theme rather than an accent. The tone survives
+ * because callers use it to mean "this is the headline number", and it earns
+ * that with weight instead of hue.
+ */
 const TONE_RING: Record<NonNullable<Stat["tone"]>, string> = {
   default: "",
-  primary: "text-primary",
+  primary: "text-foreground",
   success: "text-success",
   warn: "text-warning",
   danger: "text-destructive",

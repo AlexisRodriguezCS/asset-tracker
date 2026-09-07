@@ -2,11 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { MapPin } from "lucide-react";
 import { getSession } from "@/lib/session";
-import { isSelfServiceUser } from "@/lib/roles";
+import { canOperateAssets, isSelfServiceUser } from "@/lib/roles";
 import { currentClientId } from "@/lib/client";
 import { listLocations, listAssets } from "@/lib/api";
 import { StatStrip } from "@/components/ui/stat";
 import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@/components/ui/button";
 import type { Asset, Location } from "@/lib/types";
 
 export default async function DesksPage({
@@ -70,6 +71,13 @@ export default async function DesksPage({
       <PageHeader
         title="Desks"
         subtitle="Every desk and what's on it, laid out by building and floor — the view a QR scan at the desk would open"
+        action={
+          canOperateAssets(session.role) ? (
+            <Link href="/desks/new">
+              <Button size="sm">Add location</Button>
+            </Link>
+          ) : null
+        }
       />
 
       <StatStrip

@@ -1,6 +1,4 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { canOperateAssets } from "@/lib/roles";
 import { currentClientId } from "@/lib/client";
@@ -11,6 +9,11 @@ import { TypeManager } from "@/components/type-manager";
 
 export const dynamic = "force-dynamic";
 
+/*
+ * Same shell as every other top-level page. This was capped at max-w-2xl with a
+ * back-link to Assets, which made a nav destination look like a sub-page and
+ * left half the window empty beside it.
+ */
 export default async function TypesPage() {
   const [session, clientId] = await Promise.all([
     getSession(),
@@ -46,20 +49,12 @@ export default async function TypesPage() {
   const usageTotals = Object.fromEntries(rows.map((r) => [r.type, r.total]));
 
   return (
-    <div className="max-w-2xl animate-fade-in-up">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ChevronLeft className="h-4 w-4" /> Assets
-      </Link>
-      <div className="mt-4">
-        <PageHeader
-          title="Asset types"
-          subtitle="The kinds of thing this client tracks. Add your own; a type can't be removed while assets still use it unless you move them first."
-        />
-      </div>
-      <Card className="mt-6">
+    <div className="animate-fade-in-up space-y-6">
+      <PageHeader
+        title="Asset types"
+        subtitle="The kinds of thing this client tracks. Add your own; a type can't be removed while assets still use it unless you move them first."
+      />
+      <Card>
         <TypeManager
           clientId={clientId}
           types={types}

@@ -138,3 +138,73 @@ test.describe("a POC", () => {
     await expect(page).not.toHaveURL(/\/types$/);
   });
 });
+
+/**
+ * Adding people and locations.
+ *
+ * These check who is *offered* the action and who is bounced off the page, not
+ * that a record is created. Neither people-service nor location-service has a
+ * delete endpoint, so a test that created one would leave it behind on every
+ * run - the tenant would gain an employee per CI build, and this suite would be
+ * breaking the repeatability rule it is built on. The create path is covered by
+ * `infra/qa/api-matrix.cjs`, which already owns a tenant it may dirty.
+ */
+test.describe("a tech adding records", () => {
+  test.use({ storageState: statePath("TECH") });
+
+  test("both list pages offer the action", async ({ page }) => {
+    await page.goto("/people");
+    await expect(page.getByRole("link", { name: "Add person" })).toBeVisible();
+
+    await page.goto("/desks");
+    await expect(
+      page.getByRole("link", { name: "Add location" }),
+    ).toBeVisible();
+  });
+
+  test("the person form asks for what the API requires", async ({ page }) => {
+    await page.goto("/people/new");
+
+    await expect(
+      page.getByRole("heading", { name: "Add a person" }),
+    ).toBeVisible();
+    await expect(page.getByLabel(/Full name/i)).toBeVisible();
+    await expect(page.getByLabel("Email", { exact: false })).toBeVisible();
+    // a desk is optional, and the picker says so rather than sitting blank
+    await expect(page.getByLabel("Desk", { exact: false })).toContainText(
+      "No desk yet",
+    );
+  });
+
+  test("the location form defaults to a desk and demands a QR tag", async ({
+    page,
+  }) => {
+    await page.goto("/desks/new");
+
+    await expect(
+      page.getByRole("heading", { name: "Add a location" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Kind", { exact: false })).toHaveValue("DESK");
+    await expect(page.getByLabel(/QR tag/i)).toHaveAttribute("required", "");
+  });
+});
+
+/** Collecting gear back in is HR's job; creating records is not. */
+test.describe("HR adding records", () => {
+  test.use({ storageState: statePath("HR") });
+
+  test("the action is not offered", async ({ page }) => {
+    await page.goto("/people");
+    await expect(page.getByRole("link", { name: "Add person" })).toHaveCount(0);
+  });
+
+  test("typing /people/new redirects away", async ({ page }) => {
+    await page.goto("/people/new");
+    await expect(page).not.toHaveURL(/\/people\/new$/);
+  });
+
+  test("typing /desks/new redirects away", async ({ page }) => {
+    await page.goto("/desks/new");
+    await expect(page).not.toHaveURL(/\/desks\/new$/);
+  });
+});
