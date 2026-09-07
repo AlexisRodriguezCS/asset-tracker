@@ -32,19 +32,26 @@
    */
   --radius: 0.4375rem;
   /*
-   * Elevation is a per-theme value, not one shadow used twice.
+   * Elevation, to the rules in .claude/skills rather than to taste:
    *
-   * On paper-white a soft black shadow is the whole effect. In dark mode it
-   * is almost nothing - a 30%-black shadow over a #1a1a1a ground moves those
-   * pixels by about four levels, which is why the menu read as flat however
-   * the shadow was tuned. So dark gets a much deeper shadow *and* leans on
-   * the two things that actually separate surfaces there: a lighter card and
-   * a border stepped up from the one used on flat panels.
+   * - ultra-diffuse and low opacity, never a stock `shadow-lg`
+   *   (taste-minimalist)
+   * - tinted to the hue of the ground it falls on, not pure black
+   *   (taste-redesign) - so warm here, matching these warm neutrals
+   * - a real offset and a soft blur; a zero-offset coloured halo is
+   *   decoration, which is exactly what the old purple glow was
+   *   (impeccable/craft-floor)
+   * - and spent only where elevation carries hierarchy (taste-redesign):
+   *   a menu floating over content earns it, the flat cards do not.
+   *
+   * Dark cannot lean on the shadow - a soft shadow over a #1a1a1a ground is
+   * nearly invisible - so there the surface step and this stronger edge do
+   * the separating, with the shadow only softening the boundary.
    */
   --border-strong: 45 6% 84%;
   --shadow-lift:
-    0 1px 2px hsl(45 10% 12% / 0.08), 0 8px 20px -6px hsl(45 10% 12% / 0.12),
-    0 22px 44px -14px hsl(45 10% 12% / 0.16);
+    0 2px 8px -2px hsl(45 12% 18% / 0.05),
+    0 12px 28px -8px hsl(45 12% 18% / 0.07);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -74,10 +81,8 @@
     --warning: 43 96% 56%;
     --ring: 266 72% 70%;
     --border-strong: 0 0% 27%;
-    /* No inset highlight: on a menu it draws a bright hairline along the top
-       edge and nowhere else, which reads as a stray light rather than depth. */
     --shadow-lift:
-      0 2px 6px hsl(0 0% 0% / 0.44), 0 14px 32px -6px hsl(0 0% 0% / 0.56);
+      0 2px 8px -2px hsl(0 0% 0% / 0.3), 0 16px 32px -10px hsl(0 0% 0% / 0.38);
   }
 }
 
