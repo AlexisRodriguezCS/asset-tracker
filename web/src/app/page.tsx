@@ -312,30 +312,30 @@ export default async function AssetsPage({
       <TableCard>
         <thead className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
-            <th className="px-4 py-3 font-medium">Tag</th>
-            <th className="px-4 py-3 font-medium">Type</th>
-            <th className="px-4 py-3 font-medium">Make / model</th>
+            <th className="px-4 py-2.5 font-medium">Tag</th>
+            <th className="px-4 py-2.5 font-medium">Type</th>
+            <th className="px-4 py-2.5 font-medium">Make / model</th>
             {/*
               Employees do not get the detail page, so the one identifier they
               may actually be asked for - by a support desk, a warranty claim or
               a carrier - has to be on the list.
             */}
-            {mine && <th className="px-4 py-3 font-medium">Serial / IMEI</th>}
-            <th className="px-4 py-3 font-medium">Condition</th>
-            <th className="px-4 py-3 font-medium">Status</th>
+            {mine && <th className="px-4 py-2.5 font-medium">Serial / IMEI</th>}
+            <th className="px-4 py-2.5 font-medium">Condition</th>
+            <th className="px-4 py-2.5 font-medium">Status</th>
             {!mine && (
               <>
-                <th className="px-4 py-3 font-medium">Location</th>
-                <th className="px-4 py-3 font-medium">Holder</th>
+                <th className="px-4 py-2.5 font-medium">Location</th>
+                <th className="px-4 py-2.5 font-medium">Holder</th>
               </>
             )}
-            <th className="px-4 py-3 font-medium">Warranty</th>
+            <th className="px-4 py-2.5 font-medium">Warranty</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/70">
           {assets.map((a) => (
             <tr key={a.id} className="transition-colors hover:bg-accent/40">
-              <td className="px-4 py-2">
+              <td className="px-4 py-1.5">
                 {/*
                   The detail page is a technician's view - custody history,
                   activity log, purchase and deploy dates. An employee's list
@@ -349,14 +349,14 @@ export default async function AssetsPage({
                 ) : (
                   <Link
                     href={`/assets/${a.id}`}
-                    className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-primary hover:bg-accent"
+                    className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground hover:bg-accent hover:text-primary"
                   >
                     {a.assetTag}
                   </Link>
                 )}
               </td>
-              <td className="px-4 py-2">{a.type}</td>
-              <td className="px-4 py-2">
+              <td className="px-4 py-1.5">{a.type}</td>
+              <td className="px-4 py-1.5">
                 {[a.make, a.model].filter(Boolean).join(" ") || (
                   <span className="text-muted-foreground">—</span>
                 )}
@@ -377,10 +377,10 @@ export default async function AssetsPage({
                   )}
                 </td>
               )}
-              <td className="px-4 py-2">
+              <td className="px-4 py-1.5">
                 <ConditionBadge condition={a.condition} />
               </td>
-              <td className="px-4 py-2">
+              <td className="px-4 py-1.5">
                 <AssetStatusBadge status={a.status} />
               </td>
               {!mine && (
@@ -388,7 +388,7 @@ export default async function AssetsPage({
                   <td className="px-4 py-2 text-muted-foreground">
                     {disposition(a.status)}
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-1.5">
                     {a.holderType === "PERSON" && a.holderId != null ? (
                       <Link
                         href={`/people/${a.holderId}`}

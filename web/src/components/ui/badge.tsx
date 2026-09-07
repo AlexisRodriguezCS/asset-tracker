@@ -3,12 +3,31 @@ import { label } from "@/lib/format";
 
 type Tone = "neutral" | "success" | "danger" | "info" | "warn";
 
-const TONES: Record<Tone, string> = {
-  neutral: "bg-muted text-muted-foreground ring-border",
-  success: "bg-success/10 text-success ring-success/20",
-  danger: "bg-destructive/10 text-destructive ring-destructive/20",
-  warn: "bg-warning/10 text-warning ring-warning/20",
-  info: "bg-accent text-primary ring-primary/20",
+/*
+ * A state is a dot and a word.
+ *
+ * These used to be filled pills with a ring. In a table that put a lozenge of
+ * colour in every status cell of every row, which outweighed the asset tag - the
+ * thing you are actually looking for - and turned a scannable column into a
+ * stack of buttons. The dot carries the same information in a fraction of the
+ * ink, and the text stays legible because it is text rather than a label inside
+ * a chip. Outside a table the same component reads as a status line, which is
+ * what it is.
+ */
+const DOTS: Record<Tone, string> = {
+  neutral: "bg-muted-foreground",
+  success: "bg-success",
+  danger: "bg-destructive",
+  warn: "bg-warning",
+  info: "bg-primary",
+};
+
+const LABELS: Record<Tone, string> = {
+  neutral: "text-muted-foreground",
+  success: "text-foreground",
+  danger: "text-destructive",
+  warn: "text-warning",
+  info: "text-foreground",
 };
 
 export function Badge({
@@ -23,11 +42,15 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium tracking-wide ring-1 ring-inset",
-        TONES[tone],
+        "inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium",
+        LABELS[tone],
         className,
       )}
     >
+      <span
+        aria-hidden="true"
+        className={cn("h-1.5 w-1.5 shrink-0 rounded-full", DOTS[tone])}
+      />
       {children}
     </span>
   );
@@ -35,7 +58,7 @@ export function Badge({
 
 const ASSET_TONE: Record<string, Tone> = {
   IN_STOCK: "success",
-  ASSIGNED: "info",
+  ASSIGNED: "neutral",
   IN_REPAIR: "warn",
   BROKEN: "danger",
   PENDING_RECYCLE: "warn",

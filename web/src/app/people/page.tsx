@@ -48,17 +48,17 @@ export default async function PeoplePage() {
       <TableCard>
         <thead className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
-            <th className="px-4 py-3 font-medium">Name</th>
-            <th className="px-4 py-3 font-medium">Email</th>
-            <th className="px-4 py-3 font-medium">Department</th>
-            <th className="px-4 py-3 font-medium">Desk</th>
-            <th className="px-4 py-3 font-medium">Status</th>
+            <th className="px-4 py-2.5 font-medium">Name</th>
+            <th className="px-4 py-2.5 font-medium">Email</th>
+            <th className="px-4 py-2.5 font-medium">Department</th>
+            <th className="px-4 py-2.5 font-medium">Desk</th>
+            <th className="px-4 py-2.5 font-medium">Status</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/70">
           {people.map((p) => (
             <tr key={p.id} className="transition-colors hover:bg-accent/40">
-              <td className="px-4 py-2">
+              <td className="px-4 py-1.5">
                 <Link
                   href={`/people/${p.id}`}
                   className="font-medium text-primary hover:underline"
@@ -67,7 +67,7 @@ export default async function PeoplePage() {
                 </Link>
               </td>
               <td className="px-4 py-2 text-muted-foreground">{p.email}</td>
-              <td className="px-4 py-2">
+              <td className="px-4 py-1.5">
                 {p.department ?? (
                   <span className="text-muted-foreground">—</span>
                 )}
@@ -75,7 +75,7 @@ export default async function PeoplePage() {
               <td className="px-4 py-2 text-muted-foreground">
                 {p.deskId ? (deskLabel.get(p.deskId) ?? `#${p.deskId}`) : "—"}
               </td>
-              <td className="px-4 py-2">
+              <td className="px-4 py-1.5">
                 <PersonStatusBadge status={p.status} />
               </td>
             </tr>

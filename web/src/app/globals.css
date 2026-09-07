@@ -18,21 +18,36 @@
   --success: 152 60% 36%;
   --warning: 32 95% 44%;
   --ring: 265 56% 40%;
-  --radius: 1rem;
+  /*
+   * 7px, not 16px. This is an instrument, and a 16px radius on every tile, card
+   * and table shell reads as a consumer app - it was the loudest thing about the
+   * old chrome. Controls sit 2px tighter still.
+   */
+  --radius: 0.4375rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: 224 47% 5%;
-    --foreground: 213 31% 95%;
-    --card: 224 44% 10%;
-    --muted: 220 33% 15%;
-    --muted-foreground: 215 20% 62%;
-    --border: 220 30% 18%;
+    /*
+      Near-black and nearly neutral, with only a whisper of cool.
+
+      The surfaces carry no brand hue on purpose. Tinting them purple to match
+      the accent made every pixel purple - ground, cards, borders and text all
+      sitting in the same narrow band - and an accent cannot stand out against a
+      background that is already the accent. Purple is now spent in exactly two
+      places: the brand mark and gradient, and --accent for hover and selection.
+      Everything a surface is made of stays grey.
+    */
+    --background: 240 10% 3%;
+    --foreground: 240 10% 96%;
+    --card: 240 8% 7%;
+    --muted: 240 7% 13%;
+    --muted-foreground: 235 8% 63%;
+    --border: 240 8% 17%;
     --primary: 266 72% 70%;
     --primary-2: 274 66% 74%;
     --primary-foreground: 266 60% 10%;
-    --accent: 266 38% 20%;
+    --accent: 266 38% 18%;
     --destructive: 0 70% 62%;
     --success: 152 58% 48%;
     --warning: 43 96% 56%;
@@ -66,26 +81,38 @@ h2,
 }
 
 /* animated mesh backdrop - large soft radials, no hard edges */
-body::before {
+.ambient-wash::before {
   content: "";
   position: fixed;
   inset: -40%;
   z-index: -1;
+  /*
+   * Landing page only, via .ambient-wash - this used to be on `body`.
+   *
+   * Three lavender radials over every page read as depth on the old blue-grey
+   * ground. On a near-black neutral one they became the page's dominant hue: a
+   * light purple laid over the whole console, tinting tables and cards no matter
+   * what the tokens underneath said. Brand colour belongs on the brand mark, the
+   * primary action and the active nav item - not in the ground beneath data.
+   *
+   * The landing page is the one surface where atmosphere is the job, so it keeps
+   * it, at roughly half the old strength and pushed to the corners.
+   */
   background:
     radial-gradient(
-      60rem 60rem at 20% 0%,
-      hsl(var(--primary) / 0.1),
-      transparent 70%
+      50rem 50rem at 8% -8%,
+      hsl(var(--primary) / 0.05),
+      transparent 68%
     ),
     radial-gradient(
-      70rem 70rem at 95% 10%,
-      hsl(var(--primary-2) / 0.09),
-      transparent 70%
+      55rem 55rem at 104% 4%,
+      hsl(var(--primary-2) / 0.04),
+      transparent 68%
     ),
     radial-gradient(
-      55rem 55rem at 60% 110%,
-      hsl(var(--primary) / 0.06),
-      transparent 70%
+      45rem 45rem at 70% 118%,
+      hsl(var(--primary) / 0.025),
+      transparent 68%
     );
   animation: drift 28s ease-in-out infinite alternate;
 }
@@ -136,7 +163,7 @@ body::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body::before {
+  .ambient-wash::before {
     animation: none;
   }
 

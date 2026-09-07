@@ -29,8 +29,7 @@ export default {
       },
       borderRadius: {
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 0.35rem)",
-        sm: "calc(var(--radius) - 0.55rem)",
+        md: "calc(var(--radius) - 0.125rem)",
       },
       boxShadow: {
         card: "0 1px 0 hsl(0 0% 100% / 0.04) inset, 0 1px 2px hsl(224 60% 3% / 0.3)",

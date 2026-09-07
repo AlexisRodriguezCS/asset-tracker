@@ -1,12 +1,21 @@
 import { cn } from "@/lib/cn";
 import type { EventRequestStatus } from "@/lib/types";
 
-const STYLES: Record<EventRequestStatus, string> = {
-  SUBMITTED: "border-warning/30 bg-warning/10 text-warning",
-  APPROVED: "border-primary/30 bg-primary/10 text-primary",
-  DENIED: "border-destructive/30 bg-destructive/10 text-destructive",
-  FULFILLED: "border-success/30 bg-success/10 text-success",
-  CLOSED: "border-border bg-muted text-muted-foreground",
+/* Dot and word, matching Badge - the two systems have drifted apart once already. */
+const DOTS: Record<EventRequestStatus, string> = {
+  SUBMITTED: "bg-warning",
+  APPROVED: "bg-primary",
+  DENIED: "bg-destructive",
+  FULFILLED: "bg-success",
+  CLOSED: "bg-muted-foreground",
+};
+
+const LABEL_TONE: Record<EventRequestStatus, string> = {
+  SUBMITTED: "text-warning",
+  APPROVED: "text-foreground",
+  DENIED: "text-destructive",
+  FULFILLED: "text-foreground",
+  CLOSED: "text-muted-foreground",
 };
 
 const LABELS: Record<EventRequestStatus, string> = {
@@ -21,10 +30,14 @@ export function EventStatusBadge({ status }: { status: EventRequestStatus }) {
   return (
     <span
       className={cn(
-        "shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium",
-        STYLES[status],
+        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-medium",
+        LABEL_TONE[status],
       )}
     >
+      <span
+        aria-hidden="true"
+        className={cn("h-1.5 w-1.5 shrink-0 rounded-full", DOTS[status])}
+      />
       {LABELS[status]}
     </span>
   );

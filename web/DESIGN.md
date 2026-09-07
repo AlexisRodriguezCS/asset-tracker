@@ -25,16 +25,16 @@ raw Tailwind palette colours anywhere in `src/`.
 
 | token                | light         | dark          | means                          |
 | -------------------- | ------------- | ------------- | ------------------------------ |
-| `background`         | `0 0% 100%`   | `224 47% 5%`  | the page                       |
-| `card`               | `0 0% 100%`   | `224 44% 10%` | any raised surface             |
-| `foreground`         | `222 47% 11%` | `213 31% 95%` | primary text                   |
-| `muted`              | `214 32% 95%` | `220 33% 15%` | recessed fill                  |
-| `muted-foreground`   | `215 16% 42%` | `215 20% 62%` | secondary text                 |
-| `border`             | `214 32% 89%` | `220 30% 18%` | every border, globally         |
+| `background`         | `0 0% 100%`   | `240 10% 3%`  | the page                       |
+| `card`               | `0 0% 100%`   | `240 8% 7%`   | any raised surface             |
+| `foreground`         | `222 47% 11%` | `240 10% 96%` | primary text                   |
+| `muted`              | `214 32% 95%` | `240 7% 13%`  | recessed fill                  |
+| `muted-foreground`   | `215 16% 42%` | `235 8% 63%`  | secondary text                 |
+| `border`             | `214 32% 89%` | `240 8% 17%`  | every border, globally         |
 | `primary`            | `265 56% 32%` | `266 72% 70%` | brand, actions, links          |
 | `primary-2`          | `272 48% 48%` | `274 66% 74%` | gradient partner only          |
 | `primary-foreground` | `0 0% 100%`   | `266 60% 10%` | text on primary                |
-| `accent`             | `265 48% 95%` | `266 38% 20%` | hover / selected tint          |
+| `accent`             | `265 48% 95%` | `266 38% 18%` | hover / selected tint          |
 | `destructive`        | `0 72% 51%`   | `0 70% 62%`   | broken, lost, denied, delete   |
 | `success`            | `152 60% 36%` | `152 58% 48%` | in stock, approved, handed out |
 | `warning`            | `32 95% 44%`  | `43 96% 56%`  | in repair, awaiting a decision |
@@ -45,6 +45,31 @@ rather than reusing it — the brand purple is far too dark on a near-black page
 
 `--border` is applied globally (`* { border-color: hsl(var(--border)) }`), so a
 bare `border` class is already the right colour. Do not restate it.
+
+### The brand is an accent, not a theme
+
+**Surfaces are neutral.** Ground, cards, borders and muted fills carry no brand
+hue — they are near-black greys with a whisper of cool, and the light theme is
+their inverse. Purple is spent in four places and nowhere else: the brand mark
+and its gradient, the primary action, the active nav item, and `--accent` for
+hover and selection.
+
+This was learned by breaking it. Tinting the surfaces purple to "match" the
+accent made every pixel purple — ground, cards, borders and text all in one
+narrow band — and an accent cannot stand out against a background that is
+already the accent. Two things did most of the damage:
+
+- **the ambient wash.** Three lavender radials over `body` read as depth on the
+  old blue-grey ground; over a neutral near-black one they became the page's
+  dominant hue, tinting every table through the glass. It is now
+  `.ambient-wash`, used by the landing page alone, where atmosphere is the job.
+- **purple doing data work.** The asset tag was `text-primary`, so the catalog
+  drew fifty brand-coloured items in one column, and `ASSIGNED` was toned
+  `info`, putting a purple dot on a third of every list. Both are neutral now.
+
+A useful corollary: **a column that is entirely links does not need link
+colour.** It distinguishes nothing there and only paints the column. Colour a
+link that sits inside a sentence; leave the column alone.
 
 ### Colour has to earn its place
 
@@ -70,9 +95,10 @@ Two utilities, both `100deg` from `primary` to `primary-2`:
 - `.bg-gradient-primary` — primary buttons and the brand mark. Nine uses.
 - `.text-gradient` — reserved for display headings.
 
-`body::before` carries three fixed radial washes of `primary` / `primary-2` at
-6–10% opacity, drifting over 28s. It is the only ambient decoration in the
-product and sits at `z-index: -1`. Do not add a second one.
+`.ambient-wash` carries three faint radial washes of `primary` / `primary-2`,
+pushed to the corners, drifting over 28s. **The landing page uses it; no other
+surface does.** It sat on `body` once and tinted the entire console. Do not put
+it back there, and do not add a second one.
 
 ## Typography
 
@@ -92,8 +118,10 @@ somewhere else.
 
 ## Shape, depth, spacing
 
-- `--radius: 1rem`. `rounded-lg` is the radius; `rounded-md` is
-  `calc(radius - 0.35rem)` for controls; `rounded-full` for pills and avatars.
+- `--radius: 0.4375rem` (7px). `rounded-lg` is the radius; `rounded-md` is
+  `calc(radius - 0.125rem)` = 5px for controls; `rounded-full` for avatars and
+  status dots. It was 16px, which put a consumer-app roundness on every tile and
+  table shell — the loudest thing about the old chrome.
 - `shadow-card` on resting surfaces. `shadow-lift` exists for one raised case.
   There is no third elevation — depth is carried by `border` and `bg-card`, not
   by stacked shadows.
@@ -105,14 +133,14 @@ somewhere else.
 
 Use these before writing new markup. All in `src/components/ui`.
 
-| component    | what it is                                                                      |
-| ------------ | ------------------------------------------------------------------------------- |
-| `Card`       | `rounded-lg border bg-card p-6 shadow-card` — the default surface               |
-| `Button`     | `primary` (gradient) / `outline` / `ghost`; `sm` 32px, `md` 40px, `lg` 44px     |
-| `Badge`      | pill with `ring-1 ring-inset`; tones `neutral` `success` `warn` `danger` `info` |
-| `StatStrip`  | the 2/3/5-up summary numbers at the top of a page                               |
-| `TableCard`  | the table shell: rounded card, `overflow-x-auto`, hover per row                 |
-| `PageHeader` | title, subtitle, optional right-hand action                                     |
+| component    | what it is                                                                  |
+| ------------ | --------------------------------------------------------------------------- |
+| `Card`       | `rounded-lg border bg-card p-6 shadow-card` — the default surface           |
+| `Button`     | `primary` (gradient) / `outline` / `ghost`; `sm` 32px, `md` 40px, `lg` 44px |
+| `Badge`      | a **dot and a word**; tones `neutral` `success` `warn` `danger` `info`      |
+| `StatStrip`  | the 2/3/5-up summary numbers at the top of a page                           |
+| `TableCard`  | the table shell: rounded card, `overflow-x-auto`, hover per row             |
+| `PageHeader` | title, subtitle, optional right-hand action                                 |
 
 `AssetStatusBadge`, `PersonStatusBadge`, `ConditionBadge` and `EventStatusBadge`
 map domain states to tones. **Add a state to those maps rather than styling a
@@ -167,7 +195,8 @@ held still they read as a layout that failed rather than one on its way.
 - Don't introduce a raw Tailwind palette colour. There are none left; add a
   token.
 - Don't give the default state a colour.
-- Don't add a second ambient background effect.
+- Don't put the ambient wash on anything but the landing page.
+- Don't give a surface token a brand hue — greys stay grey.
 - Don't add a third elevation.
 - Don't style a status inline instead of adding it to the tone map.
 - Don't animate without covering `prefers-reduced-motion`.

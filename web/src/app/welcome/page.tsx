@@ -33,7 +33,7 @@ export default async function WelcomePage({
     : null;
 
   return (
-    <div className="mx-auto max-w-xl animate-fade-in-up py-10">
+    <div className="ambient-wash mx-auto max-w-xl animate-fade-in-up py-10">
       <span className="bg-gradient-primary inline-grid h-11 w-11 place-items-center rounded-xl text-primary-foreground">
         <Boxes className="h-6 w-6" />
       </span>
