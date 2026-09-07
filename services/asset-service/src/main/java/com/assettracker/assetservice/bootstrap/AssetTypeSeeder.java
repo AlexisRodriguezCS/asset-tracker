@@ -30,6 +30,7 @@ public class AssetTypeSeeder implements CommandLineRunner {
     // AV kit that gets signed out for events rather than issued to a person
     "TV",
     "Speaker",
+    "Mic",
     "Peripheral",
     "Other"
   };

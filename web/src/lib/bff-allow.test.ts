@@ -18,6 +18,9 @@ describe("paths the console actually uses", () => {
     "assignments/event-requests/12/approve",
     "assignments/event-requests/12/deny",
     "assignments/event-requests/12/fulfil",
+    "assignments/event-equipment",
+    "assignments/event-equipment?clientId=1&date=2026-10-03",
+    "assignments/event-equipment/7",
     "assets",
     "assets/42",
     "assets/42/status",
@@ -51,6 +54,8 @@ describe("refuses anything not on the list", () => {
     "clients/1",
     "assignments/event-requests/12",
     "assignments/event-requests/12/close",
+    "assignments/event-equipment/7/delete",
+    "assignments/event-equipment/abc",
   ])("refuses %s", (path) => expect(isAllowedPath(path)).toBe(false));
 });
 

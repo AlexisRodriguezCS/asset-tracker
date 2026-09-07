@@ -17,6 +17,8 @@ export const ALLOW: RegExp[] = [
   /^assignments\/offboard(\?.*)?$/,
   /^assignments\/event-requests$/,
   /^assignments\/event-requests\/\d+\/(approve|deny|fulfil)$/,
+  /^assignments\/event-equipment(\?.*)?$/,
+  /^assignments\/event-equipment\/\d+$/,
   /^assets$/,
   /^assets\/\d+$/,
   /^assets\/\d+\/status$/,

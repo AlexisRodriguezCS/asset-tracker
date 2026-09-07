@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { currentClientId } from "@/lib/client";
-import { listAssetTypes } from "@/lib/api";
+import { eventEquipment } from "@/lib/api";
 import { PageHeader } from "@/components/ui/page-header";
 import { EventRequestForm } from "@/components/event-request-form";
 
@@ -14,10 +14,11 @@ export default async function NewEventRequestPage() {
   ]);
   if (!session) redirect("/welcome?next=/events/new");
 
-  // Offer what this client actually tracks. The list used to be hardcoded, so it
-  // could advertise gear the client has no type for - a request nobody could ever
-  // fulfil, because the tech's picker would find nothing of that type.
-  const types = await listAssetTypes(clientId).catch(() => []);
+  // The menu is the client's event equipment pool, not its asset catalogue. Those
+  // are different questions: the catalogue is every type they track, the pool is
+  // what they lend at events and how many. Offering the catalogue advertised gear
+  // nobody had any of, and gave no way to say "we own two TVs".
+  const items = await eventEquipment(clientId).catch(() => []);
 
   return (
     <div className="mx-auto max-w-3xl animate-fade-in-up space-y-6">
@@ -25,7 +26,7 @@ export default async function NewEventRequestPage() {
         title="Event sign-out"
         subtitle="Ask for gear for an event — a tech or your POC reviews it before anything leaves the stockroom"
       />
-      <EventRequestForm clientId={clientId} types={types.map((t) => t.name)} />
+      <EventRequestForm clientId={clientId} initialItems={items} />
     </div>
   );
 }

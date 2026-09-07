@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CalendarDays, Plus } from "lucide-react";
-import { listEventRequests } from "@/lib/api";
+import { eventEquipment, listEventRequests } from "@/lib/api";
 import { getSession } from "@/lib/session";
 import { currentClientId } from "@/lib/client";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EventStatusBadge } from "@/components/event-status-badge";
-import { isSelfServiceUser } from "@/lib/roles";
+import { EventEquipmentManager } from "@/components/event-equipment-manager";
+import { canOperateAssets, isSelfServiceUser } from "@/lib/roles";
 import type { EventRequest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -21,9 +22,11 @@ export default async function EventsPage() {
   if (!session) redirect("/welcome?next=/events");
 
   const mine = isSelfServiceUser(session.role);
-  const requests = await listEventRequests(clientId).catch(
-    () => [] as EventRequest[],
-  );
+  const operator = canOperateAssets(session.role);
+  const [requests, equipment] = await Promise.all([
+    listEventRequests(clientId).catch(() => [] as EventRequest[]),
+    operator ? eventEquipment(clientId).catch(() => []) : Promise.resolve([]),
+  ]);
 
   const awaiting = requests.filter((r) => r.status === "SUBMITTED");
 
@@ -45,6 +48,10 @@ export default async function EventsPage() {
           </Link>
         }
       />
+
+      {operator && (
+        <EventEquipmentManager clientId={clientId} items={equipment} />
+      )}
 
       {requests.length === 0 ? (
         <Card className="p-10 text-center">

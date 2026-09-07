@@ -37,6 +37,10 @@ class EventRequestServiceTest {
 
   @Mock EventRequestRepository requests;
   @Mock AssignmentService assignments;
+
+  /** Availability has its own test against a real database; here it simply does not object. */
+  @Mock EventEquipmentService equipment;
+
   @Mock AuditService audit;
 
   @InjectMocks EventRequestService service;

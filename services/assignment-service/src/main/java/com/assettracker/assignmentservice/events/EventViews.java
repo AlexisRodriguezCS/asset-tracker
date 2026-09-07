@@ -26,6 +26,17 @@ public final class EventViews {
 
   public record LineRequest(@NotBlank String itemType, @Min(1) int quantity, String notes) {}
 
+  /** What the equipment editor posts: how many of one thing this client owns. */
+  public record EquipmentRequest(
+      @NotNull Long clientId, @NotBlank String itemType, @Min(0) int quantity) {}
+
+  /**
+   * One line of the sign-out menu: what the client owns, what is already spoken for that day, and
+   * what is therefore left. All three are sent rather than just the remainder, because "0 left" and
+   * "they do not have any" need different words in front of a requester.
+   */
+  public record Availability(Long id, String itemType, int owned, long committed, long available) {}
+
   /** Approve / deny body. */
   public record DecisionRequest(String note) {}
 

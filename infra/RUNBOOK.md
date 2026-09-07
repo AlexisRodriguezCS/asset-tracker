@@ -257,6 +257,33 @@ and the offboarding sweep already collects it.
 separate on purpose: "we said yes" and "the TVs left the stockroom" are
 different facts, and only the second moves custody.
 
+### The equipment pool
+
+What a client lends is its own list, not its asset catalogue: `GET/POST
+/api/assignments/event-equipment` (tech or admin to change it, anyone signed in
+to read it). The catalogue is every type they track; the pool is what goes out to
+events and how many. Offering the catalogue advertised gear nobody owned any of,
+and gave no way to say "we have two TVs".
+
+Availability is per **day** and is a subtraction, not a counter:
+
+    free(item, day) = owned - sum(quantity on that day's requests that still hold it)
+
+`SUBMITTED`, `APPROVED` and `FULFILLED` hold gear; `DENIED` and `CLOSED` do not.
+A request holds from the moment it is raised rather than from approval, because
+two people asking for the same two TVs on the same day collide at request time,
+not at approval time. Computing it rather than storing it means nothing has to be
+decremented on request or put back on denial - there is no counter to drift.
+
+The form caps its steppers at what is free, and the server checks again on
+submit and answers `409 EVENT_EQUIPMENT_UNAVAILABLE` naming every line that does
+not fit. The second check is the real one: anything the form knows is already out
+of date by the time it is sent.
+
+Lowering a pool below what is already booked is allowed and floors availability
+at zero. Gear gets written off, and next Tuesday's agreed bookings should not
+evaporate with it.
+
 ## Startup convergence
 
 A container reporting healthy does **not** mean it can call its neighbours. Reads

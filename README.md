@@ -27,6 +27,7 @@ publishes images.
 | **Tenancy** | every record belongs to a `clientId`; the JWT carries the set a user may act on. |
 | **Roles** | `ADMIN` · `TECH` (full asset operations) · `POC` (a customer's point of contact — approves for their own organisation) · `HR` (offboarding) · `USER` (an employee: only their own gear). Nothing is readable without a token, and a `USER`'s queries are forced onto their own person record server-side. |
 | **Event sign-out** | an employee requests gear for an event by name, date and quantity — "1 loaner laptop, 2 TVs" — a POC or tech approves it, and a tech hands it out by naming the real units, which check out through the normal custody path. |
+| **Event equipment** | a per-client pool a tech curates — "Acme lends 1 laptop, 1 charger, 2 TVs, 2 speakers, 1 mic". It is the sign-out form's menu, and requests are booked against it **per day**: two TVs taken for the 3rd leaves none for anyone else that day, and the second ask is refused. Availability is recomputed from the requests rather than kept as a running total, so denying or closing one hands its gear straight back. |
 
 **A tag identifies a slot, not a unit** ([ADR 0007](docs/decisions/0007-tags-identify-slots-not-units.md)):
 uniqueness is per `(client, tag, type)` and only among in-service statuses, so a
@@ -140,7 +141,7 @@ asset is back in stock, and `notification-service` has the `ASSET_CHECKED_OUT` /
 | Repository slice (`@DataJpaTest`) | the JPA services with custom queries |
 | End-to-end (REST-Assured through the gateway) | `e2e/`, run for real by CI's `e2e` job |
 | Console unit (Vitest) | `web/src/**/*.test.ts` — roles, session/JWT, tenant cookie, BFF allow-list |
-| Authorization matrix (live gateway) | [`infra/qa/api-matrix.cjs`](infra/qa/api-matrix.cjs) — 43 expectations that the refusals refuse |
+| Authorization matrix (live gateway) | [`infra/qa/api-matrix.cjs`](infra/qa/api-matrix.cjs) — 53 expectations that the refusals refuse |
 
 `e2e/` self-skips when no stack is reachable, so `./gradlew build` stays green on a
 bare checkout. CI's `e2e` job sets `E2E_REQUIRED=true`, which turns "unreachable"

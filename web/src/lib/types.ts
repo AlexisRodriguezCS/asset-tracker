@@ -280,3 +280,18 @@ export interface AssetReport {
     holdings: Holdings;
   };
 }
+
+/**
+ * One line of the event sign-out menu: what the client owns for events, what is
+ * already spoken for on the chosen day, and what is therefore left.
+ *
+ * All three travel rather than just the remainder — "none left today" and "they
+ * do not own any" are different sentences to put in front of a requester.
+ */
+export interface EventEquipmentItem {
+  id: number;
+  itemType: string;
+  owned: number;
+  committed: number;
+  available: number;
+}

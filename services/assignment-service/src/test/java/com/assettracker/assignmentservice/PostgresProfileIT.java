@@ -39,10 +39,18 @@ class PostgresProfileIT {
 
   @Autowired Flyway flyway;
 
+  /**
+   * Every migration on the classpath actually ran. Counted against what Flyway found rather than a
+   * literal, which used to be 3 and broke the moment a fourth was added - a test that has to be
+   * edited whenever the thing it guards changes teaches people to edit it without looking.
+   */
   @Test
   void everyVersionedMigrationApplied() {
+    long onDisk = Arrays.stream(flyway.info().all()).filter(m -> m.getVersion() != null).count();
     long applied =
         Arrays.stream(flyway.info().applied()).filter(m -> m.getVersion() != null).count();
-    assertThat(applied).isEqualTo(3);
+
+    assertThat(onDisk).isPositive();
+    assertThat(applied).isEqualTo(onDisk);
   }
 }

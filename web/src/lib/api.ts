@@ -10,6 +10,7 @@ import type {
   AssetAttention,
   AssetReport,
   AssetStats,
+  EventEquipmentItem,
   EventRequest,
   PagedAssets,
   Person,
@@ -208,5 +209,15 @@ export const typeUsage = (clientId: number, types: string[]) =>
 export const assetReport = (clientId: number, warrantySoonDays?: number) =>
   gateway<AssetReport>(
     `/api/assets/reports${qs({ clientId, warrantySoonDays })}`,
+    { auth: true },
+  );
+
+/**
+ * The client's event equipment pool. With a date, `available` is what is left
+ * that day; without one it is just the pool, which is what the editor wants.
+ */
+export const eventEquipment = (clientId: number, date?: string) =>
+  gateway<EventEquipmentItem[]>(
+    `/api/assignments/event-equipment${qs({ clientId, date })}`,
     { auth: true },
   );

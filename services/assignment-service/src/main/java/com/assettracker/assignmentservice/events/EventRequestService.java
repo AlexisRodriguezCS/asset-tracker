@@ -28,18 +28,31 @@ public class EventRequestService {
 
   private final EventRequestRepository requests;
   private final AssignmentService assignments;
+  private final EventEquipmentService equipment;
   private final AuditService audit;
 
   public EventRequestService(
-      EventRequestRepository requests, AssignmentService assignments, AuditService audit) {
+      EventRequestRepository requests,
+      AssignmentService assignments,
+      EventEquipmentService equipment,
+      AuditService audit) {
     this.requests = requests;
     this.assignments = assignments;
+    this.equipment = equipment;
     this.audit = audit;
   }
 
+  /**
+   * Raises a request, if the gear is free that day.
+   *
+   * <p>The availability check is here rather than in the form. A form can only ever show what was
+   * free when it was drawn - by the time it is submitted someone else may have taken the last TV -
+   * and a check that lives in the browser is not a check at all.
+   */
   @Transactional
   public EventRequest create(CreateRequest body, String actor, Long personId) {
     TenantContext.requireAllowed(body.clientId());
+    equipment.requireAvailable(body.clientId(), body.eventDate(), body.lines());
     EventRequest request =
         new EventRequest(
             body.clientId(),

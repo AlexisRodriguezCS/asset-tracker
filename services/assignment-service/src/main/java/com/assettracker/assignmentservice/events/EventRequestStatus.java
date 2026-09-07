@@ -31,4 +31,15 @@ public enum EventRequestStatus {
   public boolean canBeFulfilled() {
     return this == APPROVED;
   }
+
+  /**
+   * The statuses that still hold gear against a day pool.
+   *
+   * <p>A request holds from the moment it is raised rather than from approval: two people asking
+   * for the same two TVs on the same day is the collision worth preventing, and it happens at
+   * request time, not at approval time. DENIED never held any; CLOSED means it came back.
+   */
+  public static java.util.List<EventRequestStatus> holdingStock() {
+    return java.util.List.of(SUBMITTED, APPROVED, FULFILLED);
+  }
 }

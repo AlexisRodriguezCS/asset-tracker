@@ -1,5 +1,7 @@
 package com.assettracker.assignmentservice.web;
 
+import com.assettracker.assignmentservice.events.EventEquipmentNotFoundException;
+import com.assettracker.assignmentservice.events.EventEquipmentUnavailableException;
 import com.assettracker.assignmentservice.events.EventRequestNotFoundException;
 import com.assettracker.assignmentservice.events.EventRequestStateException;
 import com.assettracker.assignmentservice.service.AssetNotMovableException;
@@ -50,6 +52,20 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(EventRequestNotFoundException.class)
   public ResponseEntity<ApiError> handleEventRequestNotFound(EventRequestNotFoundException ex) {
     return build(HttpStatus.NOT_FOUND, "EVENT_REQUEST_NOT_FOUND", ex.getMessage());
+  }
+
+  @ExceptionHandler(EventEquipmentNotFoundException.class)
+  public ResponseEntity<ApiError> handleEquipmentNotFound(EventEquipmentNotFoundException ex) {
+    return build(HttpStatus.NOT_FOUND, "EVENT_EQUIPMENT_NOT_FOUND", ex.getMessage());
+  }
+
+  /**
+   * 409 rather than 400: the request is well formed, and would have been fine on another date or
+   * before someone else booked the same gear.
+   */
+  @ExceptionHandler(EventEquipmentUnavailableException.class)
+  public ResponseEntity<ApiError> handleUnavailableGear(EventEquipmentUnavailableException ex) {
+    return build(HttpStatus.CONFLICT, "EVENT_EQUIPMENT_UNAVAILABLE", ex.getMessage());
   }
 
   @ExceptionHandler(EventRequestStateException.class)
