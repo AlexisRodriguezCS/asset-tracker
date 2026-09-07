@@ -216,9 +216,64 @@ jobs:
           E2E_REQUIRED: "true"
         run: ./gradlew :e2e:test --no-daemon --console=plain
 
+      # The browser suite needs the console as well as the platform. It is the
+      # only suite that exercises what a person actually touches - the other
+      # three all stop at an HTTP boundary - so it runs against a production
+      # build of the console, not `next dev`.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build and start the console
+        working-directory: web
+        env:
+          GATEWAY_URL: http://localhost:8080
+          APP_URL: http://localhost:3000
+          SESSION_COOKIE: att_session
+          # the browser suite signs in as each seeded persona
+          DEMO_LOGINS_ENABLED: "true"
+          DEMO_PASSWORD: "Passw0rd!"
+        run: |
+          npm ci
+          npm run build
+          # detached with its output redirected: a background job still
+          # attached to the step's stdout can keep the step from finishing
+          nohup npm start > /tmp/console.log 2>&1 &
+          for i in $(seq 1 40); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/welcome || echo 000)
+            [ "$code" = "200" ] && { echo "console up after ${i} attempts"; exit 0; }
+            sleep 3
+          done
+          echo "::error::the console never came up"
+          exit 1
+
+      - name: Run the browser suite
+        working-directory: web
+        env:
+          GATEWAY_URL: http://localhost:8080
+          APP_URL: http://localhost:3000
+          DEMO_LOGINS_ENABLED: "true"
+          DEMO_PASSWORD: "Passw0rd!"
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:ui
+
+      - name: Upload the browser report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: web/playwright-report/
+          if-no-files-found: ignore
+
       - name: Stack logs (on failure)
         if: failure()
         run: |
+          echo "--- console ---"
+          tail -100 /tmp/console.log || true
           docker compose -f infra/compose/docker-compose.yml \
                          -f infra/compose/docker-compose.ci.yml ps
           docker compose -f infra/compose/docker-compose.yml \

@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/session";
+import { isSelfServiceUser } from "@/lib/roles";
 import { currentClientId } from "@/lib/client";
 import { listPeople, listLocations } from "@/lib/api";
 import { PersonStatusBadge } from "@/components/ui/badge";
@@ -6,6 +9,12 @@ import { StatStrip } from "@/components/ui/stat";
 import { PageHeader, TableCard } from "@/components/ui/page-header";
 
 export default async function PeoplePage() {
+  const session = await getSession();
+  if (!session) redirect("/welcome?next=/people");
+  // staff-only, like every other page that shows the whole tenant: an employee
+  // gets their own gear and the sign-out form, and nothing that lists colleagues
+  if (isSelfServiceUser(session.role)) redirect("/");
+
   const clientId = await currentClientId();
   const [people, desks] = await Promise.all([
     listPeople(clientId),

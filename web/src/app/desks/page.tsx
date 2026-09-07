@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { MapPin } from "lucide-react";
+import { getSession } from "@/lib/session";
+import { isSelfServiceUser } from "@/lib/roles";
 import { currentClientId } from "@/lib/client";
 import { listLocations, listAssets } from "@/lib/api";
 import { StatStrip } from "@/components/ui/stat";
@@ -11,6 +14,12 @@ export default async function DesksPage({
 }: {
   searchParams: Promise<{ building?: string; floor?: string }>;
 }) {
+  const session = await getSession();
+  if (!session) redirect("/welcome?next=/desks");
+  // staff-only, like every other page that shows the whole tenant: an employee
+  // gets their own gear and the sign-out form, and nothing that lists colleagues
+  if (isSelfServiceUser(session.role)) redirect("/");
+
   const [clientId, sp] = await Promise.all([currentClientId(), searchParams]);
   const [allDesks, assigned] = await Promise.all([
     listLocations(clientId, "DESK"),

@@ -12,7 +12,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:ui": "playwright test",
+    "test:ui:headed": "playwright test --headed"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "1.1.23",
@@ -26,6 +28,7 @@
     "tailwind-merge": "2.6.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "22.20.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
