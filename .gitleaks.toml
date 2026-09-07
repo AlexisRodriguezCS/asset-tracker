@@ -1,0 +1,23 @@
+# gitleaks configuration.
+#
+# Extends the shipped rules rather than replacing them, so every default
+# detector still runs; this file only records the one place a default fires on
+# something that is not a secret.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "private-key"
+description = "Private key"
+regex = '''(?i)-----BEGIN[ A-Z0-9_-]{0,100}PRIVATE KEY( BLOCK)?-----'''
+
+  # SigningKeyProviderTest proves that a PKCS#8 PEM is parsed and that two
+  # instances given the same key accept each other's tokens. To do that it has
+  # to contain the PEM header, and it generates a throwaway RSA key at runtime
+  # to wrap in it - no key material is committed, and nothing here is a key any
+  # deployment has ever used.
+  #
+  # Scoped to that one file rather than to tests generally: a real key pasted
+  # into any other test should still stop the build.
+  [rules.allowlist]
+  paths = ['''services/auth-service/src/test/java/com/assettracker/authservice/config/SigningKeyProviderTest\.java''']

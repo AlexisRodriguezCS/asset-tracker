@@ -75,6 +75,7 @@ jobs:
         run: >
           docker run --rm -v "${{ github.workspace }}:/repo"
           ghcr.io/gitleaks/gitleaks:v8.30.1 detect --source=/repo --redact --verbose
+          --config=/repo/.gitleaks.toml
 
   images:
     if: ${{ github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'develop') }}
