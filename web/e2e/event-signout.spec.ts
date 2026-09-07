@@ -17,6 +17,7 @@ import { poolFor, RUN, statePath, uniqueEventDate } from "./support";
  */
 
 const EVENT = `Playwright Fair ${RUN}`;
+const ITEM_NOTE = "One needs an HDMI adapter";
 
 /** Runs `body` in a fresh browser context signed in as `role`. */
 async function as(
@@ -102,6 +103,12 @@ test.describe.serial("an event from request to hand-out", () => {
       await tvRow.getByRole("button", { name: "One more TV" }).click();
       await expect(tvRow.getByLabel("How many TV")).toHaveValue("2");
 
+      // the per-item note only appears once something is picked, and it is the
+      // only way a requester can say "one of them needs an adapter"
+      const note = tvRow.getByLabel("Note about the TV");
+      await expect(note).toBeVisible();
+      await note.fill(ITEM_NOTE);
+
       // a third is not on offer, because the client only owns two
       await expect(
         tvRow.getByRole("button", { name: "One more TV" }),
@@ -146,6 +153,11 @@ test.describe.serial("an event from request to hand-out", () => {
       await page.getByRole("link").filter({ hasText: EVENT }).first().click();
       await page.waitForURL(/\/events\/\d+$/);
       await expect(page.getByRole("heading", { name: EVENT })).toBeVisible();
+
+      // the note the requester typed against the line, carried through the API
+      // and rendered here - a path that existed on both ends but was dead in
+      // the middle, because the form used to post null
+      await expect(page.getByText(ITEM_NOTE)).toBeVisible();
 
       // approving is a POC's job; moving custody is not
       await expect(

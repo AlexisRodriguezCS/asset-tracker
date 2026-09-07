@@ -34,6 +34,12 @@ export function EventRequestForm({
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
   const [counts, setCounts] = useState<Counts>({});
+  /*
+   * A note per line - "one TV needs an HDMI adapter", "the mic is for a panel".
+   * The API has always accepted these and the request detail page has always
+   * rendered them; the form simply sent null, so the whole path was dead code.
+   */
+  const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,7 +152,7 @@ export function EventRequestForm({
           .map((i) => ({
             itemType: i.itemType,
             quantity: countOf(i.itemType),
-            notes: null,
+            notes: itemNotes[i.itemType]?.trim() || null,
           })),
       }),
     });
@@ -193,7 +199,7 @@ export function EventRequestForm({
               className={INPUT}
             />
           </Field>
-          <Field label="Anything else">
+          <Field label="Notes">
             <input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -239,55 +245,73 @@ export function EventRequestForm({
               const free = item.available;
               const picked = countOf(item.itemType);
               return (
-                <li
-                  key={item.itemType}
-                  className="flex items-center justify-between gap-4 py-3"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{item.itemType}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {item.owned === 0
-                        ? "none owned"
-                        : free === 0
-                          ? `all ${item.owned} booked${eventDate ? " that day" : ""}`
-                          : `${free} of ${item.owned} free`}
-                    </p>
+                <li key={item.itemType} className="py-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{item.itemType}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {item.owned === 0
+                          ? "none owned"
+                          : free === 0
+                            ? `all ${item.owned} booked${eventDate ? " that day" : ""}`
+                            : `${free} of ${item.owned} free`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={picked === 0}
+                        aria-label={`One fewer ${item.itemType}`}
+                        onClick={() => bump(item.itemType, -1)}
+                      >
+                        −
+                      </Button>
+                      <input
+                        aria-label={`How many ${item.itemType}`}
+                        inputMode="numeric"
+                        value={picked}
+                        disabled={free === 0}
+                        onChange={(e) =>
+                          setCount(
+                            item.itemType,
+                            Number(e.target.value.replace(/\D/g, "")) || 0,
+                          )
+                        }
+                        className="h-8 w-12 rounded-md border border-border bg-background text-center text-sm tabular-nums outline-none focus-visible:border-primary disabled:opacity-50"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={picked >= free}
+                        aria-label={`One more ${item.itemType}`}
+                        onClick={() => bump(item.itemType, 1)}
+                      >
+                        +
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={picked === 0}
-                      aria-label={`One fewer ${item.itemType}`}
-                      onClick={() => bump(item.itemType, -1)}
-                    >
-                      −
-                    </Button>
+                  {/*
+                    Only once something is picked. Shown for every item at rest
+                    it would be five empty boxes competing with the counters,
+                    which is how an optional field ends up looking required.
+                  */}
+                  {picked > 0 && (
                     <input
-                      aria-label={`How many ${item.itemType}`}
-                      inputMode="numeric"
-                      value={picked}
-                      disabled={free === 0}
+                      aria-label={`Note about the ${item.itemType}`}
+                      value={itemNotes[item.itemType] ?? ""}
                       onChange={(e) =>
-                        setCount(
-                          item.itemType,
-                          Number(e.target.value.replace(/\D/g, "")) || 0,
-                        )
+                        setItemNotes((n) => ({
+                          ...n,
+                          [item.itemType]: e.target.value,
+                        }))
                       }
-                      className="h-8 w-12 rounded-md border border-border bg-background text-center text-sm tabular-nums outline-none focus-visible:border-primary disabled:opacity-50"
+                      placeholder={`Anything about the ${item.itemType.toLowerCase()}? (optional)`}
+                      className="mt-2.5 h-8 w-full rounded-md border border-border bg-background px-3 text-xs outline-none focus-visible:border-primary"
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={picked >= free}
-                      aria-label={`One more ${item.itemType}`}
-                      onClick={() => bump(item.itemType, 1)}
-                    >
-                      +
-                    </Button>
-                  </div>
+                  )}
                 </li>
               );
             })}
