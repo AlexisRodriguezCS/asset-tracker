@@ -53,16 +53,18 @@ public class AssignmentController {
   @PostMapping("/transfer")
   public AssignmentResponse transfer(
       @Valid @RequestBody TransferRequest request,
-      @RequestHeader(value = "X-User-Id", defaultValue = "system") String actor) {
-    return AssignmentResponse.from(service.transfer(request, actor));
+      @RequestHeader(value = "X-User-Id", defaultValue = "system") String actor,
+      @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+    return AssignmentResponse.from(service.transfer(request, actor, idempotencyKey));
   }
 
   @PostMapping("/offboard")
   public OffboardingResult offboard(
       @RequestParam Long clientId,
       @RequestParam Long personId,
-      @RequestHeader(value = "X-User-Id", defaultValue = "system") String actor) {
-    return service.offboardPerson(clientId, personId, actor);
+      @RequestHeader(value = "X-User-Id", defaultValue = "system") String actor,
+      @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+    return service.offboardPerson(clientId, personId, actor, idempotencyKey);
   }
 
   @GetMapping("/{id}")

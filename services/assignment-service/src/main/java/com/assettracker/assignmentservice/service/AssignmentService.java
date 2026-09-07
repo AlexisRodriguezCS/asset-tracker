@@ -12,6 +12,8 @@ import com.assettracker.assignmentservice.web.TenantContext;
 import com.assettracker.assignmentservice.web.dto.CheckOutRequest;
 import com.assettracker.assignmentservice.web.dto.OffboardingResult;
 import com.assettracker.assignmentservice.web.dto.TransferRequest;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
@@ -29,6 +31,7 @@ import org.springframework.stereotype.Service;
 public class AssignmentService {
 
   private static final Logger log = LoggerFactory.getLogger(AssignmentService.class);
+  private static final ObjectMapper JSON = new ObjectMapper();
 
   private final AssetClient assetClient;
   private final NotificationPublisher notifications;
@@ -39,6 +42,8 @@ public class AssignmentService {
   private final Counter offboardingRuns;
   private final Counter assetsCollected;
   private final Counter replayedCheckouts;
+  private final Counter replayedTransfers;
+  private final Counter replayedOffboardings;
 
   public AssignmentService(
       AssetClient assetClient,
@@ -56,6 +61,8 @@ public class AssignmentService {
     this.offboardingRuns = meters.counter("assettracker.offboarding.runs");
     this.assetsCollected = meters.counter("assettracker.offboarding.assets.collected");
     this.replayedCheckouts = meters.counter("assettracker.checkouts.replayed");
+    this.replayedTransfers = meters.counter("assettracker.transfers.replayed");
+    this.replayedOffboardings = meters.counter("assettracker.offboarding.replayed");
   }
 
   /**
@@ -151,9 +158,55 @@ public class AssignmentService {
 
   /** Return from the current holder, then check out to a new one. */
   public Assignment transfer(TransferRequest request, String actor) {
+    return transfer(request, actor, null);
+  }
+
+  /**
+   * Transfer an asset, optionally under an idempotency key.
+   *
+   * <p>It needs one more than check-out does, not less: a transfer is a return followed by a
+   * check-out, so a retry that arrives after the return has landed finds the asset in stock and
+   * moves it again - or fails half way and leaves it in the stockroom, which is not where either
+   * holder expects it. With a key the second delivery replays the first answer.
+   */
+  public Assignment transfer(TransferRequest request, String actor, String idempotencyKey) {
     CallerContext.requireAssetOperator();
     TenantContext.requireAllowed(request.clientId());
+
+    if (idempotencyKey == null || idempotencyKey.isBlank()) {
+      return performTransfer(request, actor);
+    }
+
+    String key = idempotencyKey.trim();
+    String fingerprint =
+        IdempotencyService.hash(
+            request.clientId(),
+            request.assetId(),
+            request.holderType(),
+            request.holderId(),
+            request.note());
+
+    Optional<IdempotencyRecord> alreadyDone =
+        idempotency.claim(request.clientId(), key, fingerprint);
+    if (alreadyDone.isPresent()) {
+      replayedTransfers.increment();
+      log.info("replaying transfer for Idempotency-Key {}", key);
+      return store.getById(alreadyDone.get().getAssignmentId());
+    }
+
+    try {
+      Assignment moved = performTransfer(request, actor);
+      idempotency.complete(request.clientId(), key, moved.getId());
+      return moved;
+    } catch (RuntimeException failed) {
+      idempotency.release(request.clientId(), key);
+      throw failed;
+    }
+  }
+
+  private Assignment performTransfer(TransferRequest request, String actor) {
     checkIn(request.assetId(), actor);
+    // no key on the inner check-out: the outer one already covers the whole move
     return checkOut(
         new CheckOutRequest(
             request.clientId(),
@@ -170,8 +223,46 @@ public class AssignmentService {
    * recorded.
    */
   public OffboardingResult offboardPerson(Long clientId, Long personId, String actor) {
+    return offboardPerson(clientId, personId, actor, null);
+  }
+
+  /**
+   * Run an offboarding sweep, optionally under an idempotency key.
+   *
+   * <p>The stored answer is replayed rather than recomputed, which matters more here than for a
+   * check-out: a repeated sweep finds the assets already back and would honestly report "0
+   * collected", which is not what the first call said and not what the caller retrying a timeout is
+   * asking for.
+   */
+  public OffboardingResult offboardPerson(
+      Long clientId, Long personId, String actor, String idempotencyKey) {
     CallerContext.requireCollector();
     TenantContext.requireAllowed(clientId);
+
+    if (idempotencyKey == null || idempotencyKey.isBlank()) {
+      return sweep(clientId, personId, actor);
+    }
+
+    String key = idempotencyKey.trim();
+    Optional<IdempotencyRecord> alreadyDone =
+        idempotency.claim(clientId, key, IdempotencyService.hash(clientId, personId));
+    if (alreadyDone.isPresent()) {
+      replayedOffboardings.increment();
+      log.info("replaying offboarding for Idempotency-Key {}", key);
+      return readResult(alreadyDone.get().getResultJson());
+    }
+
+    try {
+      OffboardingResult result = sweep(clientId, personId, actor);
+      idempotency.completeWith(clientId, key, writeResult(result));
+      return result;
+    } catch (RuntimeException failed) {
+      idempotency.release(clientId, key);
+      throw failed;
+    }
+  }
+
+  private OffboardingResult sweep(Long clientId, Long personId, String actor) {
     List<Long> assetIds = assetClient.assetsHeldByPerson(clientId, personId);
     OffboardingResult result = new OffboardingResult(personId);
     for (Long assetId : assetIds) {
@@ -219,6 +310,28 @@ public class AssignmentService {
    * only the paperwork is wrong. The second is logged at error - it is an inconsistency someone has
    * to repair, not a person to go and find.
    */
+  /**
+   * The sweep result as JSON, for replay.
+   *
+   * <p>A private mapper rather than an injected one so the service stays constructible without a
+   * Spring context - the same choice {@code AuditDetail} makes for the same reason.
+   */
+  private static String writeResult(OffboardingResult result) {
+    try {
+      return JSON.writeValueAsString(result);
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException("offboarding result could not be stored for replay", e);
+    }
+  }
+
+  private static OffboardingResult readResult(String json) {
+    try {
+      return JSON.readValue(json, OffboardingResult.class);
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException("stored offboarding result could not be replayed", e);
+    }
+  }
+
   private void collect(Long assetId, String actor, OffboardingResult result) {
     try {
       assetClient.returnToStock(assetId, actor);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import type { OffboardingResult } from "@/lib/types";
@@ -19,6 +19,14 @@ export function OffboardButton({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  /**
+   * One key per attempt at this sweep, held until it succeeds.
+   *
+   * A sweep is a series of calls to two services, so a click that times out may well have
+   * collected half the gear. Clicking again with the same key replays the first answer instead of
+   * sweeping a second time; a fresh key would be a fresh sweep, which is the bug this avoids.
+   */
+  const attemptKey = useRef<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
   if (!signedIn) {
@@ -35,9 +43,10 @@ export function OffboardButton({
   async function run() {
     setBusy(true);
     setResult(null);
+    attemptKey.current ??= crypto.randomUUID();
     const res = await fetch(
       `/api/bff/assignments/offboard?clientId=${clientId}&personId=${personId}`,
-      { method: "POST" },
+      { method: "POST", headers: { "Idempotency-Key": attemptKey.current } },
     );
     setBusy(false);
     if (res.ok) {
@@ -55,6 +64,7 @@ export function OffboardButton({
         );
       }
       setResult(`${parts.join(", ")}.`);
+      attemptKey.current = null;
       router.refresh();
     } else {
       setResult("Offboarding failed.");

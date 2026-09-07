@@ -3,6 +3,7 @@ package com.assettracker.assignmentservice.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -21,11 +22,13 @@ import com.assettracker.assignmentservice.idempotency.IdempotencyService;
 import com.assettracker.assignmentservice.messaging.NotificationPublisher;
 import com.assettracker.assignmentservice.web.dto.CheckOutRequest;
 import com.assettracker.assignmentservice.web.dto.OffboardingResult;
+import com.assettracker.assignmentservice.web.dto.TransferRequest;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -178,6 +181,60 @@ class AssignmentServiceTest {
     assertThat(result.failed()).isEmpty();
     // it did go back - the sweep must not undo that, or retry it as if it had not
     verify(assetClient).returnToStock(eq(41L), anyString());
+  }
+
+  /**
+   * A transfer is a return followed by a check-out, so a retry that lands after the return has
+   * already happened would move the asset a second time. Under a key it replays instead.
+   */
+  @Test
+  void aRetriedTransferReplaysRatherThanMovingTheAssetAgain() {
+    IdempotencyRecord done = org.mockito.Mockito.mock(IdempotencyRecord.class);
+    when(done.getAssignmentId()).thenReturn(99L);
+    when(idempotency.claim(eq(1L), eq("key-t"), anyString())).thenReturn(Optional.of(done));
+    Assignment replayed = new Assignment(1L, 40L, HolderType.PERSON, 8L, "x", null);
+    when(store.getById(99L)).thenReturn(replayed);
+
+    Assignment result =
+        service.transfer(
+            new TransferRequest(1L, 40L, HolderType.PERSON, 8L, "moving desks"),
+            "tech@acme.example",
+            "key-t");
+
+    assertThat(result).isSameAs(replayed);
+    verifyNoInteractions(assetClient);
+    verify(store, never()).close(anyLong(), anyString());
+  }
+
+  /**
+   * Offboarding replays its stored answer rather than sweeping again. Recomputing would find the
+   * assets already back and report "0 collected" - true, but not the answer being retried for.
+   */
+  @Test
+  void aRetriedOffboardingReplaysTheStoredResult() {
+    IdempotencyRecord done = org.mockito.Mockito.mock(IdempotencyRecord.class);
+    when(done.getResultJson())
+        .thenReturn("{\"personId\":7,\"returned\":[40,42],\"failed\":[41],\"unrecorded\":[]}");
+    when(idempotency.claim(eq(1L), eq("key-o"), anyString())).thenReturn(Optional.of(done));
+
+    OffboardingResult result = service.offboardPerson(1L, 7L, "hr@acme.example", "key-o");
+
+    assertThat(result.returned()).containsExactly(40L, 42L);
+    assertThat(result.failed()).containsExactly(41L);
+    verifyNoInteractions(assetClient);
+  }
+
+  /** A first call stores its answer under the key, which is what a later retry replays. */
+  @Test
+  void aFirstOffboardingRecordsItsAnswerForReplay() {
+    when(idempotency.claim(eq(1L), eq("key-o"), anyString())).thenReturn(Optional.empty());
+    when(assetClient.assetsHeldByPerson(1L, 7L)).thenReturn(List.of(40L));
+
+    service.offboardPerson(1L, 7L, "hr@acme.example", "key-o");
+
+    ArgumentCaptor<String> stored = ArgumentCaptor.forClass(String.class);
+    verify(idempotency).completeWith(eq(1L), eq("key-o"), stored.capture());
+    assertThat(stored.getValue()).contains("\"returned\":[40]");
   }
 
   @Test

@@ -32,6 +32,15 @@ async function forward(req: NextRequest, path: string[]) {
       Accept: "application/json",
     },
   };
+
+  // Forwarded, not generated here: the key has to be the *client's*, and stable
+  // across its retries. A key minted per proxy hop would be new on every attempt,
+  // which is the one thing that makes the mechanism useless.
+  const idempotencyKey = req.headers.get("Idempotency-Key");
+  if (idempotencyKey) {
+    (init.headers as Record<string, string>)["Idempotency-Key"] =
+      idempotencyKey;
+  }
   if (req.method !== "GET" && req.method !== "HEAD") {
     const text = await req.text();
     if (text) {

@@ -26,7 +26,7 @@ public class IdempotencyRecord {
   public enum State {
     /** Reserved; the work is running now. */
     IN_PROGRESS,
-    /** The work finished, and {@code assignmentId} is the answer to replay. */
+    /** The work finished; {@code assignmentId} or {@code resultJson} is the answer to replay. */
     COMPLETED
   }
 
@@ -49,6 +49,14 @@ public class IdempotencyRecord {
 
   private Long assignmentId;
 
+  /**
+   * The serialised response, for operations whose answer is not a single assignment - an
+   * offboarding sweep returns three lists of asset ids. Null for a check-out or transfer, which
+   * replay through {@link #assignmentId}.
+   */
+  @Column(columnDefinition = "TEXT")
+  private String resultJson;
+
   @Column(nullable = false, updatable = false)
   private Instant createdAt = Instant.now();
 
@@ -64,6 +72,13 @@ public class IdempotencyRecord {
 
   public void complete(Long assignmentId) {
     this.assignmentId = assignmentId;
+    this.status = State.COMPLETED;
+    this.completedAt = Instant.now();
+  }
+
+  /** Completes with a serialised response, for work whose answer is not an assignment. */
+  public void completeWith(String resultJson) {
+    this.resultJson = resultJson;
     this.status = State.COMPLETED;
     this.completedAt = Instant.now();
   }
@@ -94,6 +109,10 @@ public class IdempotencyRecord {
 
   public State getStatus() {
     return status;
+  }
+
+  public String getResultJson() {
+    return resultJson;
   }
 
   public Long getAssignmentId() {
