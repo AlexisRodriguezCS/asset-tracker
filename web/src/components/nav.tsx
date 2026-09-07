@@ -164,7 +164,7 @@ export function Nav({
       </div>
 
       {menuOpen && (
-        <div className="border-t border-border/60 bg-background md:hidden">
+        <div className="origin-top animate-pop-in border-t border-border/60 bg-background md:hidden">
           <nav className="mx-auto flex max-w-7xl flex-col gap-0.5 px-4 py-3 text-sm">
             {links.map((l) => {
               const Icon = l.icon;

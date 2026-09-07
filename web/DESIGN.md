@@ -25,16 +25,16 @@ raw Tailwind palette colours anywhere in `src/`.
 
 | token                | light         | dark          | means                          |
 | -------------------- | ------------- | ------------- | ------------------------------ |
-| `background`         | `0 0% 100%`   | `240 10% 3%`  | the page                       |
-| `card`               | `0 0% 100%`   | `240 8% 7%`   | any raised surface             |
-| `foreground`         | `222 47% 11%` | `240 10% 96%` | primary text                   |
-| `muted`              | `214 32% 95%` | `240 7% 13%`  | recessed fill                  |
-| `muted-foreground`   | `215 16% 42%` | `235 8% 63%`  | secondary text                 |
-| `border`             | `214 32% 89%` | `240 8% 17%`  | every border, globally         |
+| `background`         | `0 0% 100%`   | `0 0% 10%`    | the page                       |
+| `card`               | `0 0% 100%`   | `0 0% 13%`    | any raised surface             |
+| `foreground`         | `45 8% 20%`   | `0 0% 83%`    | primary text                   |
+| `muted`              | `45 20% 96%`  | `0 0% 15%`    | recessed fill                  |
+| `muted-foreground`   | `45 2% 46%`   | `0 0% 61%`    | secondary text                 |
+| `border`             | `60 4% 91%`   | `0 0% 18%`    | every border, globally         |
 | `primary`            | `265 56% 32%` | `266 72% 70%` | brand, actions, links          |
 | `primary-2`          | `272 48% 48%` | `274 66% 74%` | gradient partner only          |
 | `primary-foreground` | `0 0% 100%`   | `266 60% 10%` | text on primary                |
-| `accent`             | `265 48% 95%` | `266 38% 18%` | hover / selected tint          |
+| `accent`             | `254 62% 96%` | `255 28% 20%` | hover / selected tint          |
 | `destructive`        | `0 72% 51%`   | `0 70% 62%`   | broken, lost, denied, delete   |
 | `success`            | `152 60% 36%` | `152 58% 48%` | in stock, approved, handed out |
 | `warning`            | `32 95% 44%`  | `43 96% 56%`  | in repair, awaiting a decision |
@@ -48,9 +48,11 @@ bare `border` class is already the right colour. Do not restate it.
 
 ### The brand is an accent, not a theme
 
-**Surfaces are neutral.** Ground, cards, borders and muted fills carry no brand
-hue — they are near-black greys with a whisper of cool, and the light theme is
-their inverse. Purple is spent in four places and nowhere else: the brand mark
+**Surfaces are neutral, and warm in light.** Light greys carry a yellow bias
+after Notion, and the ink is `#37352f` rather than black — that pair is most of
+why reading there is comfortable for an hour. Dark is a true neutral charcoal at
+`#191919`, not a near-black: a near-black ground forces hairlines lighter to
+stay visible, which makes them louder than the rows they separate. Purple is spent in four places and nowhere else: the brand mark
 and its gradient, the primary action, the active nav item, and `--accent` for
 hover and selection.
 
@@ -154,14 +156,22 @@ scroll, so it never sticks. The table is paginated to 50 rows instead.
 
 ## Motion
 
-- `animate-fade-in-up` — 0.4s, `cubic-bezier(0.22, 1, 0.36, 1)`, on the root
-  element of every page. One entrance per navigation, nothing staggered.
+- `animate-fade-in-up` — **180ms**, 4px of travel, `cubic-bezier(0.22, 1, 0.36, 1)`,
+  on the root of every page. It was 400ms and 8px, which broke two rules at once:
+  the sub-300ms budget for UI, and the guidance that something seen dozens of
+  times a day gets reduced motion or none. The curve is a strong ease-out and is
+  correct for an entrance — only the duration was wrong.
+- `animate-pop-in` — 150ms, `scale(0.96) → 1`. Menus and dropdowns only, and
+  always with a `transform-origin` on the trigger they hang from: a panel that
+  scales from its own centre reads as arriving from nowhere. Never animate from
+  `scale(0)`.
 - Interactive feedback is 150ms: `transition-colors`, `active:scale-[0.98]` on
   buttons, `hover:brightness-110` on primary.
-- `prefers-reduced-motion: reduce` disables both the background drift **and**
-  the page entrance. Anything animated you add must be covered there too —
-  silencing decoration while the content still moves is not honouring the
-  setting.
+- `prefers-reduced-motion: reduce` is **gentler, not off**. Movement is dropped
+  and the opacity fade is kept, because the fade carries no motion and still
+  helps a new page register as new. Setting `animation: none` threw the fade
+  away too, which is over-correcting. Anything animated you add must be covered
+  there — and covered this way.
 
 ## Focus and hit targets
 

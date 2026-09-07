@@ -3,17 +3,24 @@
 @tailwind utilities;
 
 :root {
+  /*
+   * Warm neutrals, after Notion. Two things carry that system and both are here:
+   * the greys are warm rather than blue-grey, and the ink is #37352f rather than
+   * black - a page you can read for an hour instead of one that buzzes.
+   * The accent stays BUILD purple; Notion's own violet is a close cousin of it,
+   * so adopting theirs would have cost the brand and bought nothing.
+   */
   --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
+  --foreground: 45 8% 20%;
   --card: 0 0% 100%;
-  --muted: 214 32% 95%;
-  --muted-foreground: 215 16% 42%;
-  --border: 214 32% 89%;
+  --muted: 45 20% 96%;
+  --muted-foreground: 45 2% 46%;
+  --border: 60 4% 91%;
   /* BUILD Chicago brand purple (#4b2480) plus a lighter partner for gradients */
   --primary: 265 56% 32%;
   --primary-2: 272 48% 48%;
   --primary-foreground: 0 0% 100%;
-  --accent: 265 48% 95%;
+  --accent: 254 62% 96%;
   --destructive: 0 72% 51%;
   --success: 152 60% 36%;
   --warning: 32 95% 44%;
@@ -29,25 +36,25 @@
 @media (prefers-color-scheme: dark) {
   :root {
     /*
-      Near-black and nearly neutral, with only a whisper of cool.
+      Notion's dark: a true neutral charcoal at #191919, not a near-black.
 
-      The surfaces carry no brand hue on purpose. Tinting them purple to match
-      the accent made every pixel purple - ground, cards, borders and text all
-      sitting in the same narrow band - and an accent cannot stand out against a
-      background that is already the accent. Purple is now spent in exactly two
-      places: the brand mark and gradient, and --accent for hover and selection.
-      Everything a surface is made of stays grey.
+      The surfaces still carry no brand hue - tinting them purple to match the
+      accent made every pixel purple, and an accent cannot stand out against a
+      ground that is already the accent. What changed is the depth. A near-black
+      ground forces hairlines lighter to stay visible, which makes them louder
+      than the rows they separate; lifting the ground lets the border sit at 18%
+      and disappear until you look for it. Easier over a long shift, too.
     */
-    --background: 240 10% 3%;
-    --foreground: 240 10% 96%;
-    --card: 240 8% 7%;
-    --muted: 240 7% 13%;
-    --muted-foreground: 235 8% 63%;
-    --border: 240 8% 17%;
+    --background: 0 0% 10%;
+    --foreground: 0 0% 83%;
+    --card: 0 0% 13%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 61%;
+    --border: 0 0% 18%;
     --primary: 266 72% 70%;
     --primary-2: 274 66% 74%;
     --primary-foreground: 266 60% 10%;
-    --accent: 266 38% 18%;
+    --accent: 255 28% 20%;
     --destructive: 0 70% 62%;
     --success: 152 58% 48%;
     --warning: 43 96% 56%;
@@ -168,12 +175,20 @@ h2,
   }
 
   /*
-   * Every page enters with .animate-fade-in-up, and silencing only the
-   * background drift left the actual content still sliding in for someone who
-   * asked for less motion. The content still appears - it just arrives rather
-   * than travels.
+   * Gentler, not gone.
+   *
+   * This used to set `animation: none`, which threw away the fade along with
+   * the movement. The setting asks for less motion, not for no transition at
+   * all - so the travel is dropped and the opacity fade is kept, which is the
+   * part that carries no motion and does help a new page register as new.
    */
-  .animate-fade-in-up {
-    animation: none;
+  .animate-fade-in-up,
+  .animate-fade-in {
+    animation: fade-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* a menu still needs to appear; it just stops growing to get there */
+  .animate-pop-in {
+    animation: fade-in 0.12s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }

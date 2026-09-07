@@ -35,14 +35,38 @@ export default {
         card: "0 1px 0 hsl(0 0% 100% / 0.04) inset, 0 1px 2px hsl(224 60% 3% / 0.3)",
         lift: "0 1px 0 hsl(0 0% 100% / 0.06) inset, 0 16px 40px -16px hsl(266 55% 38% / 0.35)",
       },
+      /*
+       * 180ms and 4px, down from 400ms and 8px.
+       *
+       * This fires on every page navigation across twenty pages. A technician
+       * moving Assets -> Dashboard -> People does it dozens of times a day, and
+       * at that frequency the standard is "reduced motion or none" - 400ms is
+       * neither, and it also broke the sub-300ms budget for any UI animation.
+       * What was left was 400ms of content sliding before it settled, every
+       * time, on a screen someone is trying to read quickly.
+       *
+       * The curve is unchanged: cubic-bezier(0.22,1,0.36,1) is a strong
+       * ease-out, which is exactly right for something entering.
+       */
       keyframes: {
         "fade-in-up": {
-          from: { opacity: "0", transform: "translateY(8px)" },
+          from: { opacity: "0", transform: "translateY(4px)" },
           to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "pop-in": {
+          from: { opacity: "0", transform: "scale(0.96)" },
+          to: { opacity: "1", transform: "scale(1)" },
         },
       },
       animation: {
-        "fade-in-up": "fade-in-up 0.4s cubic-bezier(0.22,1,0.36,1) both",
+        "fade-in-up": "fade-in-up 0.18s cubic-bezier(0.22,1,0.36,1) both",
+        "fade-in": "fade-in 0.18s cubic-bezier(0.22,1,0.36,1) both",
+        // menus and dropdowns: grows from its trigger, never from scale(0)
+        "pop-in": "pop-in 0.15s cubic-bezier(0.22,1,0.36,1) both",
       },
     },
   },
