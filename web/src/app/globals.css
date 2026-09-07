@@ -31,6 +31,20 @@
    * old chrome. Controls sit 2px tighter still.
    */
   --radius: 0.4375rem;
+  /*
+   * Elevation is a per-theme value, not one shadow used twice.
+   *
+   * On paper-white a soft black shadow is the whole effect. In dark mode it
+   * is almost nothing - a 30%-black shadow over a #1a1a1a ground moves those
+   * pixels by about four levels, which is why the menu read as flat however
+   * the shadow was tuned. So dark gets a much deeper shadow *and* leans on
+   * the two things that actually separate surfaces there: a lighter card and
+   * a border stepped up from the one used on flat panels.
+   */
+  --border-strong: 45 6% 84%;
+  --shadow-lift:
+    0 1px 2px hsl(45 10% 12% / 0.08), 0 8px 20px -6px hsl(45 10% 12% / 0.12),
+    0 22px 44px -14px hsl(45 10% 12% / 0.16);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -59,11 +73,35 @@
     --success: 152 58% 48%;
     --warning: 43 96% 56%;
     --ring: 266 72% 70%;
+    --border-strong: 0 0% 27%;
+    /* No inset highlight: on a menu it draws a bright hairline along the top
+       edge and nowhere else, which reads as a stray light rather than depth. */
+    --shadow-lift:
+      0 2px 6px hsl(0 0% 0% / 0.44), 0 14px 32px -6px hsl(0 0% 0% / 0.56);
   }
 }
 
 * {
   border-color: hsl(var(--border));
+}
+
+@layer components {
+  /*
+   * One shell width for the console: header, page and footer all sit on it, so
+   * the wordmark, the first column of a table and the footnote share a left
+   * edge. It lives here as a single class rather than as `max-w-7xl` copied
+   * into four files, which is how they drift apart.
+   *
+   * 88rem, up from 7xl (80rem). On a 1440-wide laptop the old width left a
+   * 160px margin the console was not using, while inside the bar the search
+   * field - last in line after seven labelled links - was squeezed to about
+   * 130px, narrow enough to clip its own placeholder. A wider shell is also
+   * simply right for the content: this is a table tool, and the tables were
+   * the thing paying for the margin.
+   */
+  .shell {
+    @apply mx-auto w-full max-w-[88rem] px-4 sm:px-6;
+  }
 }
 
 html {

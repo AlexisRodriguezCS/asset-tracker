@@ -67,11 +67,9 @@ export default async function RootLayout({
             demo={demoLoginsEnabled()}
           />
         )}
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8">
-          {children}
-        </main>
+        <main className="shell flex-1 py-8">{children}</main>
         <footer className="border-t border-border/60">
-          <div className="mx-auto max-w-7xl px-4 py-6 text-xs text-muted-foreground">
+          <div className="shell py-6 text-xs text-muted-foreground">
             Asset Tracker · Next.js console · talks to the API gateway over a
             server-side BFF, JWT in an httpOnly cookie.
           </div>

@@ -46,7 +46,7 @@ const OPERATOR_EXTRAS = [{ href: "/types", label: "Types", icon: Shapes }];
  *
  * Widths, narrow to wide: a hamburger holds the links until there is room for
  * them; the search field appears at `md`, the tenant picker at `sm`, and icons
- * gain labels only at `xl` - seven labelled links plus a search box do not fit
+ * gain labels only at the `nav` breakpoint - seven labelled links plus a search box do not fit
  * at 1100px, and the thing that gets squeezed is the search. Everything
  * account-related lives in one menu, because a row of email + role chip +
  * "Sign out" is what made this wrap in the first place.
@@ -89,7 +89,7 @@ export function Nav({
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 sm:gap-3">
+      <div className="shell flex h-14 items-center gap-2 sm:gap-3">
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
@@ -128,7 +128,7 @@ export function Nav({
         {!employee && (
           <form
             onSubmit={search}
-            className="relative hidden min-w-0 flex-1 md:block"
+            className="relative hidden min-w-0 flex-1 md:block lg:max-w-sm"
           >
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -151,14 +151,14 @@ export function Nav({
                 href={l.href}
                 title={l.label}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2 py-1.5 transition-colors xl:px-3",
+                  "flex items-center gap-1.5 rounded-md px-2 py-1.5 transition-colors nav:px-3",
                   isActive(l.href)
                     ? "bg-accent text-primary"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span className="hidden xl:inline">{l.label}</span>
+                <span className="hidden nav:inline">{l.label}</span>
               </Link>
             );
           })}
@@ -171,7 +171,7 @@ export function Nav({
 
       {menuOpen && (
         <div className="origin-top animate-pop-in border-t border-border/60 bg-background md:hidden">
-          <nav className="mx-auto flex max-w-7xl flex-col gap-0.5 px-4 py-3 text-sm">
+          <nav className="shell flex flex-col gap-0.5 py-3 text-sm">
             {links.map((l) => {
               const Icon = l.icon;
               return (

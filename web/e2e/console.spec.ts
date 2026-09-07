@@ -22,8 +22,12 @@ test.describe("as a tech", () => {
     await expect(
       page.getByRole("heading", { name: "Dashboard" }),
     ).toBeVisible();
+    // scoped to the page, not the whole document: unscoped, this matched the
+    // nav's own "Assets" label first, so it passed on the chrome being drawn
+    // rather than on the stat tile it is here to check - and started failing
+    // the moment the nav stopped drawing labels at this width.
     await expect(
-      page.getByText("Assets", { exact: true }).first(),
+      page.getByRole("main").getByText("Assets", { exact: true }),
     ).toBeVisible();
     await expect(page.getByText(/Needs attention/i)).toBeVisible();
     // the buckets come from one purpose-built endpoint; an empty panel here

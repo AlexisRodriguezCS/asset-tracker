@@ -4,12 +4,26 @@ export default {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      /*
+       * A breakpoint named for the thing it decides: the width at which the
+       * nav can afford words next to its icons.
+       *
+       * It used to be xl. Seven labelled links cost ~670px, and with the
+       * wordmark, tenant picker and account menu around them the row needs
+       * ~1415px before the search field is left with a usable width - so at
+       * xl (1280) labels appeared *by taking the search box's space*, down to
+       * about 130px, narrow enough to clip its own placeholder. Below this the
+       * links are icons with tooltips and the search is roomy; above it,
+       * everything fits at once.
+       */
+      screens: { nav: "1440px" },
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
         display: ["var(--font-display)", "var(--font-sans)", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
+        "border-strong": "hsl(var(--border-strong))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: "hsl(var(--card))",
@@ -33,14 +47,8 @@ export default {
       },
       boxShadow: {
         card: "0 1px 0 hsl(0 0% 100% / 0.04) inset, 0 1px 2px hsl(224 60% 3% / 0.3)",
-        /*
-         * Two neutral layers: a tight one that draws the panel edge itself,
-         * and a wide one for the distance off the page. What this replaced
-         * was a single brand-purple glow at -16px spread - an accent doing a
-         * job that belongs to shadow, and inset so far it never reached the
-         * edges that are what make a panel look lifted at all.
-         */
-        lift: "0 1px 0 hsl(0 0% 100% / 0.05) inset, 0 2px 6px -1px hsl(224 45% 4% / 0.16), 0 18px 36px -12px hsl(224 45% 4% / 0.34)",
+        /* Defined per theme in globals.css - see the note there. */
+        lift: "var(--shadow-lift)",
       },
       /*
        * 180ms and 4px, down from 400ms and 8px.
