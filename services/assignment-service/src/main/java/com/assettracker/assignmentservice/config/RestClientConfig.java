@@ -24,6 +24,7 @@ public class RestClientConfig {
             .withReadTimeout(READ_TIMEOUT);
     return RestClient.builder()
         .requestFactory(ClientHttpRequestFactoryBuilder.detect().build(settings))
-        .requestInterceptor(new CorrelationIdPropagator());
+        .requestInterceptor(new CorrelationIdPropagator())
+        .requestInterceptor(new BearerTokenPropagator());
   }
 }

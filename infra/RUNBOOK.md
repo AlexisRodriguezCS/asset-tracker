@@ -382,6 +382,14 @@ or signing through Key Vault / KMS so the private key never leaves the HSM.
   contain `${VAR}` references with obviously-non-production dev fallbacks.
 - The gateway validates the JWT and forwards `X-User-Id` / `X-User-Role` /
   `X-Client-Ids` downstream, overriding anything the client sent.
+- **Every service validates that token again** against auth-service's JWK set, and
+  takes the role and tenant ids from the claims rather than from those headers. The
+  headers remain for logging and the audit trail. Before this, anything that could
+  reach a service port could read a tenant by asserting a role in a header — or by
+  sending none at all, since a missing role was read as a trusted internal call.
+  Internal calls now carry the caller's own token, so asset-service applies the same
+  scoping to a call from assignment-service that it would to a direct one, and the
+  audit trail keeps the person's name rather than the service's.
 - `gitleaks` runs in CI.
 
 ## "Sign in with Microsoft 365" (optional)
@@ -426,8 +434,6 @@ mapping — swap it for one when the tenant's groups are known.
 
 ## Deferred — the next lessons
 
-- Per-service tenant enforcement from the forwarded `X-Client-Ids`; verify a
-  signed principal inside the mesh instead of trusting the gateway's headers.
 - Sign via KMS/HSM rather than handing the service the private key, so the key
   never leaves the store, and add key rotation with an overlap window (publish two
   JWKS entries, sign with the newer). Loading the key from a secret - the step that

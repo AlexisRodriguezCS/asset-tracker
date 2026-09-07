@@ -17,12 +17,17 @@ public final class CallerContext {
 
   private CallerContext() {}
 
-  static void set(String role, Long personId) {
+  /**
+   * Sets the caller for the current thread. Public because the two things that legitimately
+   * establish a caller live outside this package: the request filter, and a test exercising a
+   * service directly - which now has to say who it is, since an absent role no longer passes.
+   */
+  public static void set(String role, Long personId) {
     ROLE.set(role);
     PERSON_ID.set(personId);
   }
 
-  static void clear() {
+  public static void clear() {
     ROLE.remove();
     PERSON_ID.remove();
   }
@@ -46,13 +51,20 @@ public final class CallerContext {
   private static final java.util.Set<String> COLLECTORS = java.util.Set.of("ADMIN", "TECH", "HR");
 
   /**
-   * A null role means the request never passed the gateway - a direct call inside the network, or
-   * one service calling another. Those are already authorized at the edge they came through;
-   * verifying a signed principal inside the mesh is the RUNBOOK's "deferred" item.
+   * A role that is absent denies, rather than waving the caller through.
+   *
+   * <p>It used to mean "a call that did not come via the gateway" and was allowed: service to
+   * service, or anything already inside the network. That made the weakest way in the easiest -
+   * send no identity header at all and every role gate opened. The network boundary was doing the
+   * authorizing, which is an assumption about the deployment rather than a control in the code.
+   *
+   * <p>The role now comes from a token this service verified (see {@code TenantFilter}), and an
+   * internal call carries the caller's own token, so there is no legitimate request left that
+   * arrives without one.
    */
   private static boolean isOneOf(java.util.Set<String> allowed) {
     String role = ROLE.get();
-    return role == null || allowed.contains(role);
+    return role != null && allowed.contains(role);
   }
 
   /** Creating or changing assets, people and locations: tech or admin. */

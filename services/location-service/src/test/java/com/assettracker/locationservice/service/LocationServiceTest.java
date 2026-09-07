@@ -9,8 +9,11 @@ import com.assettracker.locationservice.audit.AuditService;
 import com.assettracker.locationservice.entity.Location;
 import com.assettracker.locationservice.entity.LocationKind;
 import com.assettracker.locationservice.repository.LocationRepository;
+import com.assettracker.locationservice.web.CallerContext;
 import com.assettracker.locationservice.web.dto.CreateLocationRequest;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,6 +22,18 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class LocationServiceTest {
+
+  // Exercised directly, with no request to carry a token, so the caller is stated here. An absent
+  // role is a denial now rather than an assumed internal call.
+  @BeforeEach
+  void signIn() {
+    CallerContext.set("ADMIN", null);
+  }
+
+  @AfterEach
+  void signOut() {
+    CallerContext.clear();
+  }
 
   @Mock LocationRepository repository;
   @Mock AuditService audit;

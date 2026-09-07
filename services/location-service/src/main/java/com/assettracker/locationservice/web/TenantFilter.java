@@ -5,45 +5,42 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
 /**
- * Loads {@link TenantContext} from the gateway's {@code X-Client-Ids} header. Present (even empty)
- * means the request was authenticated and is tenant-scoped; absent means a public read or a
- * service-to-service call, which is left unscoped.
+ * Loads {@link TenantContext} and {@link CallerContext} from the claims of the token this service
+ * verified.
+ *
+ * <p>It used to read them from the {@code X-Client-Ids} / {@code X-User-Role} headers the gateway
+ * forwards, which meant the answer to "who is this and what may they see" was whatever the caller
+ * wrote in a header. Anything able to reach this port could read a whole tenant by asserting a role
+ * - or, because a missing role was taken for a trusted internal call, by sending nothing at all.
+ *
+ * <p>The headers are still forwarded and still useful for logs and the audit trail. They are no
+ * longer what authorization is decided on.
+ *
+ * <p>No {@code @Order}: this must run after Spring Security has validated the token and populated
+ * the context, and the default order for a component filter does exactly that. An early order here
+ * would silently see no authentication and scope every request to nothing.
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class TenantFilter implements Filter {
-
-  public static final String HEADER = "X-Client-Ids";
-  public static final String ROLE_HEADER = "X-User-Role";
-  public static final String PERSON_HEADER = "X-Person-Id";
 
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
-    HttpServletRequest http = (HttpServletRequest) request;
-    String header = http.getHeader(HEADER);
-    if (header != null) {
-      Set<Long> ids =
-          header.isBlank()
-              ? Set.of()
-              : Arrays.stream(header.split(","))
-                  .map(String::trim)
-                  .filter(s -> !s.isEmpty())
-                  .map(Long::valueOf)
-                  .collect(Collectors.toUnmodifiableSet());
-      TenantContext.set(ids);
+    Jwt token = currentToken();
+    if (token != null) {
+      TenantContext.set(clientIds(token));
+      CallerContext.set(token.getClaimAsString("role"), personId(token));
     }
-    CallerContext.set(http.getHeader(ROLE_HEADER), parseId(http.getHeader(PERSON_HEADER)));
     try {
       chain.doFilter(request, response);
     } finally {
@@ -52,12 +49,37 @@ public class TenantFilter implements Filter {
     }
   }
 
-  private static Long parseId(String raw) {
-    if (raw == null || raw.isBlank()) {
+  private static Jwt currentToken() {
+    return SecurityContextHolder.getContext().getAuthentication()
+            instanceof JwtAuthenticationToken authenticated
+        ? authenticated.getToken()
+        : null;
+  }
+
+  /**
+   * An authenticated caller with no {@code clientIds} claim is scoped to nothing, not everything.
+   */
+  private static Set<Long> clientIds(Jwt token) {
+    // read as a raw claim: the token carries numbers, and asking for them as strings goes
+    // through a converter that need not agree with the JSON it was given
+    if (!(token.getClaim("clientIds") instanceof List<?> values)) {
+      return Set.of();
+    }
+    return values.stream()
+        .map(String::valueOf)
+        .map(String::trim)
+        .filter(value -> !value.isEmpty())
+        .map(Long::valueOf)
+        .collect(Collectors.toUnmodifiableSet());
+  }
+
+  private static Long personId(Jwt token) {
+    Object claim = token.getClaim("personId");
+    if (claim == null) {
       return null;
     }
     try {
-      return Long.valueOf(raw.trim());
+      return Long.valueOf(String.valueOf(claim).trim());
     } catch (NumberFormatException notANumber) {
       return null;
     }

@@ -13,9 +13,12 @@ import com.assettracker.peopleservice.client.AssetClient;
 import com.assettracker.peopleservice.entity.Person;
 import com.assettracker.peopleservice.entity.PersonStatus;
 import com.assettracker.peopleservice.repository.PersonRepository;
+import com.assettracker.peopleservice.web.CallerContext;
 import com.assettracker.peopleservice.web.dto.CreatePersonRequest;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,6 +27,18 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class PersonServiceTest {
+
+  // Exercised directly, with no request to carry a token, so the caller is stated here. An absent
+  // role is a denial now rather than an assumed internal call.
+  @BeforeEach
+  void signIn() {
+    CallerContext.set("ADMIN", null);
+  }
+
+  @AfterEach
+  void signOut() {
+    CallerContext.clear();
+  }
 
   @Mock PersonRepository repository;
   @Mock AuditService audit;

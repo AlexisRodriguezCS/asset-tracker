@@ -43,3 +43,14 @@ eureka:
       defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
   instance:
     prefer-ip-address: true
+
+# The caller's token is validated here, not just at the gateway. Same names the
+# gateway uses, so one JWKS URI and one issuer are set for the whole stack.
+security:
+  jwt:
+    # Fetched lazily and cached, so this service starts whether or not auth-service
+    # is up yet.
+    jwk-set-uri: ${JWT_JWKS_URI:http://localhost:8081/.well-known/jwks.json}
+    # Checked as well as the signature: without it a token from any JWK set this
+    # service happens to trust would pass.
+    issuer: ${JWT_ISSUER:asset-tracker-auth}

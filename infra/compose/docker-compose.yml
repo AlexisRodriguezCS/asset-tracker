@@ -58,6 +58,10 @@ x-service-defaults: &service-defaults
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
     CONFIG_SERVER_URL: http://config-server:8888
     SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+    # Every service validates the caller's token now, so every service needs the
+    # key set and the issuer - not just the gateway.
+    JWT_JWKS_URI: ${JWT_JWKS_URI:-http://auth-service:8081/.well-known/jwks.json}
+    JWT_ISSUER: ${JWT_ISSUER:-asset-tracker-auth}
   depends_on:
     discovery-server:
       condition: service_healthy
@@ -169,7 +173,14 @@ services:
       # gateway, so this is here to exercise the shared path the cluster uses.
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_HEALTH_CHECK: ${REDIS_HEALTH_CHECK:-true}
+    # Spelled out because an explicit depends_on replaces the one merged in from
+    # *service-defaults rather than adding to it - listing only redis here would
+    # quietly drop the wait for discovery and config.
     depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:

@@ -20,12 +20,15 @@ import com.assettracker.assignmentservice.entity.HolderType;
 import com.assettracker.assignmentservice.idempotency.IdempotencyRecord;
 import com.assettracker.assignmentservice.idempotency.IdempotencyService;
 import com.assettracker.assignmentservice.messaging.NotificationPublisher;
+import com.assettracker.assignmentservice.web.CallerContext;
 import com.assettracker.assignmentservice.web.dto.CheckOutRequest;
 import com.assettracker.assignmentservice.web.dto.OffboardingResult;
 import com.assettracker.assignmentservice.web.dto.TransferRequest;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -36,6 +39,18 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AssignmentServiceTest {
+
+  // Exercised directly, with no request to carry a token, so the caller is stated here. An absent
+  // role is a denial now rather than an assumed internal call.
+  @BeforeEach
+  void signIn() {
+    CallerContext.set("ADMIN", null);
+  }
+
+  @AfterEach
+  void signOut() {
+    CallerContext.clear();
+  }
 
   @Mock AssetClient assetClient;
   @Mock NotificationPublisher publisher;

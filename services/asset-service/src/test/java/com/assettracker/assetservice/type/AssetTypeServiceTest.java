@@ -15,8 +15,11 @@ import com.assettracker.assetservice.entity.Asset;
 import com.assettracker.assetservice.entity.AssetType;
 import com.assettracker.assetservice.repository.AssetRepository;
 import com.assettracker.assetservice.service.AssetNotFoundException;
+import com.assettracker.assetservice.web.CallerContext;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,6 +28,18 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AssetTypeServiceTest {
+
+  // These exercise the service directly, with no request to carry a token, so the caller has to
+  // be stated. An absent role is a denial now rather than an assumed internal call.
+  @BeforeEach
+  void signIn() {
+    CallerContext.set("ADMIN", null);
+  }
+
+  @AfterEach
+  void signOut() {
+    CallerContext.clear();
+  }
 
   @Mock AssetTypeRepository types;
   @Mock AssetRepository assets;
