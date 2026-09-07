@@ -6,7 +6,6 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import java.math.BigInteger;
 import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
@@ -24,16 +23,14 @@ import org.springframework.stereotype.Service;
 /**
  * Issues and verifies RS256 JSON Web Tokens.
  *
- * <p>An RSA-2048 key pair is generated at startup. Tokens are signed with the private key; the
- * public key is published as a one-entry JWK Set (see {@code JwksController}) that the gateway
- * fetches to validate tokens - no shared secret crosses the mesh. Tokens do not survive an
- * auth-service restart, which is fine for this deployment; a persisted / KMS-backed key is the
- * production step (see infra/RUNBOOK.md).
+ * <p>Tokens are signed with an RSA private key supplied by {@code SigningKeyProvider}; the public
+ * half is published as a one-entry JWK Set (see {@code JwksController}) that the gateway fetches to
+ * validate tokens - no shared secret crosses the mesh. Where that key comes from, and what it costs
+ * to let it be generated per instance, is documented there.
  */
 @Service
 public class JwtService {
 
-  private static final int KEY_SIZE = 2048;
   private static final int KID_LENGTH = 16;
 
   private final KeyPair keyPair;
@@ -42,9 +39,10 @@ public class JwtService {
   private final String issuer;
 
   public JwtService(
+      KeyPair keyPair,
       @Value("${security.jwt.expiration-ms}") long expirationMs,
       @Value("${security.jwt.issuer}") String issuer) {
-    this.keyPair = generateRsaKeyPair();
+    this.keyPair = keyPair;
     this.keyId = keyId(keyPair.getPublic());
     this.expirationMs = expirationMs;
     this.issuer = issuer;
@@ -110,16 +108,6 @@ public class JwtService {
       bytes = Arrays.copyOfRange(bytes, 1, bytes.length);
     }
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-  }
-
-  private static KeyPair generateRsaKeyPair() {
-    try {
-      KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
-      generator.initialize(KEY_SIZE);
-      return generator.generateKeyPair();
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException("RSA key generation unavailable", e);
-    }
   }
 
   private static String keyId(PublicKey key) {

@@ -31,8 +31,15 @@ server:
 
 security:
   jwt:
-    # RS256. The signing key pair is generated at startup; the public half is
-    # served at /.well-known/jwks.json for the gateway to fetch. No shared secret.
+    # RS256. The public half is served at /.well-known/jwks.json for the gateway
+    # to fetch, so no shared secret crosses the mesh.
+    #
+    # Supply the private key as a PKCS#8 PEM - inline for an env-injected secret,
+    # or by location for a mounted one. Left blank, a key is generated at startup:
+    # convenient on a laptop, but tokens then die with the process and a second
+    # replica rejects this one's tokens. See SigningKeyProvider.
+    private-key: ${JWT_PRIVATE_KEY:}
+    private-key-location: ${JWT_PRIVATE_KEY_FILE:}
     expiration-ms: ${JWT_EXPIRATION_MS:3600000}
     issuer: ${JWT_ISSUER:asset-tracker-auth}
   # "Sign in with Microsoft 365". Blank issuer-uri / client-id = feature off

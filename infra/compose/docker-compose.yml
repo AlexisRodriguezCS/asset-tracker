@@ -164,9 +164,16 @@ services:
       <<: *common-env
       JWT_ISSUER: ${JWT_ISSUER:-asset-tracker-auth}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-3600000}
+      # Unset by default: the service then generates a key and warns that tokens
+      # will not survive a restart. Put a PEM in ./secrets and point this at it
+      # (see secrets/README.md) to keep sessions across restarts, as the cloud
+      # overlay does with the asset-tracker-jwt secret.
+      JWT_PRIVATE_KEY_FILE: ${JWT_PRIVATE_KEY_FILE:-}
       ENTRA_ISSUER_URI: ${ENTRA_ISSUER_URI:-}
       ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
       ENTRA_DEFAULT_CLIENT_IDS: ${ENTRA_DEFAULT_CLIENT_IDS:-1,2,3}
+    volumes:
+      - ./secrets:/run/secrets:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
       <<: *healthcheck

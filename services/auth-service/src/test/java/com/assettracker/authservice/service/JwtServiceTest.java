@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.assettracker.authservice.entity.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -13,7 +15,17 @@ import org.junit.jupiter.api.Test;
 class JwtServiceTest {
 
   private static final long HOUR = 3_600_000L;
-  private final JwtService jwt = new JwtService(HOUR, "asset-tracker-auth");
+  private final JwtService jwt = new JwtService(rsaKeyPair(), HOUR, "asset-tracker-auth");
+
+  private static KeyPair rsaKeyPair() {
+    try {
+      KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+      generator.initialize(2048);
+      return generator.generateKeyPair();
+    } catch (java.security.NoSuchAlgorithmException e) {
+      throw new IllegalStateException(e);
+    }
+  }
 
   @Test
   void tokenCarriesSubjectRoleAndClientIdsAndRoundTrips() {
@@ -28,14 +40,14 @@ class JwtServiceTest {
 
   @Test
   void aTokenSignedByADifferentKeyPairIsRejected() {
-    JwtService other = new JwtService(HOUR, "asset-tracker-auth");
+    JwtService other = new JwtService(rsaKeyPair(), HOUR, "asset-tracker-auth");
     String foreign = other.generateToken("x@y.z", Role.TECH, List.of(1L), null);
     assertThatThrownBy(() -> jwt.parse(foreign)).isInstanceOf(JwtException.class);
   }
 
   @Test
   void anExpiredTokenIsRejected() {
-    JwtService instant = new JwtService(1L, "asset-tracker-auth");
+    JwtService instant = new JwtService(rsaKeyPair(), 1L, "asset-tracker-auth");
     String token = instant.generateToken("x@y.z", Role.HR, List.of(1L), null);
     try {
       Thread.sleep(5);

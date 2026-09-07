@@ -5,7 +5,8 @@ kind: Kustomization
 #   - images come from GHCR (pushed by .github/workflows/ci.yml)
 #   - Postgres and RabbitMQ are managed services, not in-cluster pods
 #   - the stub Secret is gone; External Secrets Operator provisions
-#     "asset-tracker-db" from Key Vault / Secrets Manager via workload identity
+#     "asset-tracker-db" and "asset-tracker-jwt" from Key Vault / Secrets Manager
+#     via workload identity
 #   - two replicas for the gateway and business services
 #   - real ingress host + TLS
 #
@@ -119,17 +120,21 @@ patches:
       metadata:
         name: rabbitmq-data
 
-  # Two replicas for the edge and the business services.
+  # Two replicas for the edge and every business service, auth-service included.
   #
-  # auth-service is deliberately NOT in this list. JwtService generates its RSA
-  # key pair in the constructor, so each pod would sign with a different key and
-  # publish a different JWK set; the gateway resolves the JWK set through the
-  # auth-service Service, so it would cache one pod's key and reject the other
-  # pod's tokens. Scaling it out requires one shared key (a mounted Secret, or
-  # signing via KMS) - tracked in infra/RUNBOOK.md under "Deferred".
+  # It used to be excluded, because JwtService generated its RSA key pair in the
+  # constructor: each pod signed with a different key and published a different
+  # JWK set, and the gateway - which resolves that JWK set through the
+  # auth-service Service - would cache one pod's key and reject the other pod's
+  # tokens. The key now comes from the "asset-tracker-jwt" secret, provisioned
+  # here by External Secrets Operator alongside asset-tracker-db, so every pod
+  # signs with the same key and a restart no longer signs everyone out.
+  #
+  # That secret is a prerequisite of this patch: without it each pod falls back to
+  # generating its own key, which is exactly the state this replaces.
   - target:
       kind: Deployment
-      name: "(api-gateway|client-service|people-service|location-service|asset-service|assignment-service|notification-service)"
+      name: "(api-gateway|auth-service|client-service|people-service|location-service|asset-service|assignment-service|notification-service)"
     patch: |
       - op: replace
         path: /spec/replicas

@@ -34,10 +34,23 @@ pwsh ../scripts/demo-flow.ps1          # or: bash ../scripts/demo-flow.sh
 docker compose down
 ```
 
-**Auth is RS256.** `auth-service` generates an RSA key pair at startup and serves
-the public half at `http://localhost:8081/.well-known/jwks.json`; the gateway
-reads it from `JWT_JWKS_URI`. Restarting `auth-service` rotates the key, so tokens
-issued before the restart stop validating.
+**Auth is RS256.** `auth-service` signs with an RSA private key and serves the
+public half at `http://localhost:8081/.well-known/jwks.json`; the gateway reads it
+from `JWT_JWKS_URI`.
+
+Supply the key as a PKCS#8 PEM in `JWT_PRIVATE_KEY`, or point `JWT_PRIVATE_KEY_FILE`
+at a mounted one. Generate a local one with:
+
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt-dev.pem
+```
+
+Leave both blank and the service generates a key at startup and logs a warning.
+That is fine on a laptop, but tokens then die with the process - every signed-in
+person is bounced to the sign-in page on restart, Microsoft 365 logins included,
+since that exchange also ends in a locally signed token - and two replicas reject
+each other's tokens. In the cloud overlay the key comes from the
+`asset-tracker-jwt` secret, which is what lets auth-service run two pods.
 
 **Messaging.** `assignment-service` publishes custody events to the RabbitMQ
 `asset-tracker.events` exchange; `notification-service` consumes them off a
@@ -405,8 +418,10 @@ mapping — swap it for one when the tenant's groups are known.
 
 - Per-service tenant enforcement from the forwarded `X-Client-Ids`; verify a
   signed principal inside the mesh instead of trusting the gateway's headers.
-- Persist / KMS-back the token-signing key so tokens survive an `auth-service`
-  restart **and so auth-service can run more than one replica** (see "Scaling" above).
+- Sign via KMS/HSM rather than handing the service the private key, so the key
+  never leaves the store, and add key rotation with an overlap window (publish two
+  JWKS entries, sign with the newer). Loading the key from a secret - the step that
+  unpinned auth-service from one replica - is done.
 - A shared-store rate limiter (Redis) so the auth brake is cluster-wide rather than
   per gateway instance.
 - Saga-style compensation when an offboarding sweep half-fails.

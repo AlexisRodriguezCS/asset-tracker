@@ -21,6 +21,13 @@ spec:
             - secretRef: { name: asset-tracker-db }
           env:
             - { name: SERVER_PORT, value: "8081" }
+            # The RS256 signing key, shared by every replica so their tokens are
+            # interchangeable. Optional on purpose: without the secret the service
+            # generates a key and says so in the log, which is fine for a one-pod
+            # local run and is why this manifest still applies with no secret store.
+            - name: JWT_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef: { name: asset-tracker-jwt, key: private-key, optional: true }
             - name: PG_HOST
               valueFrom: { configMapKeyRef: { name: asset-tracker-env, key: PG_HOST } }
             - name: PG_PORT
