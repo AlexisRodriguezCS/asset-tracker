@@ -59,8 +59,12 @@ test.describe("an employee", () => {
     ).toBeVisible();
     const rows = page.locator("tbody tr");
     await expect(rows.first()).toBeVisible();
-    // the count in the subtitle has to agree with the table under it
-    const summary = await page.getByText(/assigned to you/).innerText();
+    // The count in the subtitle has to agree with the table under it. Scoped to the
+    // header: when the employee holds nothing, the empty state says "Nothing is
+    // assigned to you right now" and an unscoped match hits two elements. It passed
+    // locally, where the seeded employee always holds something, and failed in CI on
+    // a stack where she did not.
+    const summary = await page.getByTestId("page-subtitle").innerText();
     const claimed = Number(summary.match(/^(\d+)/)?.[1]);
     expect(await rows.count()).toBe(claimed);
   });

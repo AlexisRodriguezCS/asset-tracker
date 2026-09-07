@@ -230,6 +230,11 @@ class PlatformE2ETest {
       return;
     }
     for (long swept : sweptFromPerson) {
+      // Checked, not fired and forgotten. This used to ignore the response, so anything that
+      // stopped the put-back - a refused call, a rate limit, an expired token - left the demo
+      // employee stripped of her gear and the suite still green. The next suite to run then
+      // failed somewhere else entirely, which is precisely the trail this class was written to
+      // stop people following.
       authed()
           .contentType(JSON)
           .body(
@@ -238,7 +243,9 @@ class PlatformE2ETest {
                   "assetId", swept,
                   "holderType", "PERSON",
                   "holderId", personId))
-          .post("/api/assignments");
+          .post("/api/assignments")
+          .then()
+          .statusCode(201);
     }
   }
 

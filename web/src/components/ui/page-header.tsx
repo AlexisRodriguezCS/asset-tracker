@@ -14,7 +14,14 @@ export function PageHeader({
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+          // named so a test can ask for the page's own summary line rather than for
+          // any element whose prose happens to match it
+          <p
+            data-testid="page-subtitle"
+            className="mt-1 text-sm text-muted-foreground"
+          >
+            {subtitle}
+          </p>
         )}
       </div>
       {action}
