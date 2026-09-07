@@ -63,8 +63,10 @@ patches:
         PG_OPTS: "?sslmode=require"
         CORS_ALLOWED_ORIGINS: https://__CONSOLE_HOST__
         SPRING_RABBITMQ_HOST: __BROKER_HOST__
-        # Per-instance budget; two gateway replicas => ~10 attempts/min overall.
-        AUTH_RATE_LIMIT_MAX: "5"
+        # The real budget, not a per-pod share of one: the window is counted in
+        # Redis, so ten means ten however many gateways are running. It was 5
+        # because two replicas each kept their own count.
+        AUTH_RATE_LIMIT_MAX: "10"
 
   # Drop the stub Secret - External Secrets Operator creates the real one.
   - patch: |

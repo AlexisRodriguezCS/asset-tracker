@@ -13,6 +13,7 @@ resources:
   - config.yaml
   - postgres.yaml
   - rabbitmq.yaml
+  - redis.yaml
   - discovery-server.yaml
   - api-gateway.yaml
   - auth-service.yaml

@@ -1,5 +1,6 @@
 package com.assettracker.apigateway.web;
 
+import com.assettracker.apigateway.ratelimit.RateLimitStore;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.FilterChain;
@@ -7,8 +8,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -22,12 +21,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * /validate}) keyed by client IP, so brute-forcing login / register / the Microsoft exchange costs
  * something.
  *
- * <p><b>The window is per gateway instance, not per cluster.</b> Counters live in this process's
- * heap, so N replicas allow roughly N x {@code security.rate-limit.max-per-window} attempts per
- * minute and a rolling restart resets every counter. That is enough to make credential stuffing
- * expensive but it is not a hard limit - the budget is therefore a property, so a deployment can
- * divide it by its replica count. A hard, cluster-wide limit needs a shared store (Redis behind
- * Spring Cloud Gateway's {@code RequestRateLimiter}); see infra/RUNBOOK.md.
+ * <p>Where the counters live is a deployment decision, so this filter does not own them: see {@link
+ * RateLimitStore}. With Redis configured the window is cluster-wide; without it each gateway counts
+ * alone, which for more than one replica is a speed bump rather than a limit.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -38,22 +34,18 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
   private static final long MILLIS_PER_SECOND = 1_000L;
 
-  /**
-   * The key is a caller-supplied {@code X-Forwarded-For}, so the map would grow without bound under
-   * a spoofing attacker. Once it passes this many entries every expired window is dropped.
-   */
-  private static final int PURGE_THRESHOLD = 10_000;
-
-  private final Map<String, Window> windows = new ConcurrentHashMap<>();
+  private final RateLimitStore store;
   private final Counter rejected;
   private final int maxPerWindow;
   private final long windowMs;
   private final String retryAfterSeconds;
 
   public AuthRateLimitFilter(
+      RateLimitStore store,
       MeterRegistry meters,
       @Value("${security.rate-limit.max-per-window:10}") int maxPerWindow,
       @Value("${security.rate-limit.window-ms:60000}") long windowMs) {
+    this.store = store;
     this.rejected = meters.counter("assettracker.auth.rate_limited");
     this.maxPerWindow = maxPerWindow;
     this.windowMs = windowMs;
@@ -70,9 +62,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
       return;
     }
 
-    purgeIfCrowded();
-    Window window = windows.computeIfAbsent(clientKey(request), k -> new Window());
-    if (window.tryAcquire(maxPerWindow, windowMs)) {
+    if (store.tryAcquire(clientKey(request), maxPerWindow, windowMs)) {
       chain.doFilter(request, response);
       return;
     }
@@ -98,37 +88,5 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     return forwarded != null && !forwarded.isBlank()
         ? forwarded.split(",")[0].trim()
         : request.getRemoteAddr();
-  }
-
-  /** Drops windows whose minute has elapsed - they carry no state worth keeping. */
-  private void purgeIfCrowded() {
-    if (windows.size() < PURGE_THRESHOLD) {
-      return;
-    }
-    long now = System.currentTimeMillis();
-    windows.values().removeIf(w -> w.isExpired(now, windowMs));
-  }
-
-  /** One caller's fixed-window counter. */
-  private static final class Window {
-    private long windowStart = System.currentTimeMillis();
-    private int count;
-
-    synchronized boolean tryAcquire(int max, long windowMs) {
-      long now = System.currentTimeMillis();
-      if (isExpired(now, windowMs)) {
-        windowStart = now;
-        count = 0;
-      }
-      if (count >= max) {
-        return false;
-      }
-      count++;
-      return true;
-    }
-
-    synchronized boolean isExpired(long now, long windowMs) {
-      return now - windowStart >= windowMs;
-    }
   }
 }

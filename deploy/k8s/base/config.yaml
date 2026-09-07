@@ -13,6 +13,10 @@ data:
   SPRING_CONFIG_IMPORT: ""            # no config-server on k8s
   SPRING_PROFILES_ACTIVE: "prod"      # Flyway + Postgres + ddl-auto=validate
   SPRING_RABBITMQ_HOST: "rabbitmq"
+  # Set, so the gateway's auth brake is one budget for the whole cluster rather
+  # than one per pod. Blank it and each pod counts alone.
+  REDIS_HOST: "redis"
+  REDIS_HEALTH_CHECK: "true"
   JWT_ISSUER: "asset-tracker-auth"
   JWT_JWKS_URI: "http://auth-service:8081/.well-known/jwks.json"
   JWT_EXPIRATION_MS: "3600000"

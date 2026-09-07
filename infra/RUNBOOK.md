@@ -230,12 +230,22 @@ The gateway allows **10 `POST /api/auth/**` per minute per client IP**; the 11th
 gets `429` + `Retry-After: 60`. Behind a proxy the key is the first
 `X-Forwarded-For` hop, so every caller isn't collapsed onto the ingress IP.
 
-The budget is a property — `AUTH_RATE_LIMIT_MAX` / `AUTH_RATE_LIMIT_WINDOW_MS` —
-because **counters live in each gateway's heap, not in a shared store**. N replicas
-therefore allow roughly N × the budget, and a rolling restart resets every counter.
-The cloud overlay runs two gateways and sets `AUTH_RATE_LIMIT_MAX: "5"` to keep the
-cluster-wide rate near 10/min. That makes credential stuffing expensive; it is not a
-hard limit. The real fix is Redis behind Spring Cloud Gateway's `RequestRateLimiter`.
+Where the counters live is a deployment choice. Set `REDIS_HOST` and the window is
+counted in Redis, so the budget is the budget however many gateways are running and a
+restart does not hand out a fresh one — the increment and its expiry are a single Lua
+script, because INCR-then-EXPIRE can leave a key with no TTL if the process dies in
+between, locking that caller out until someone notices. Leave it blank and each gateway
+counts in its own heap: correct for one instance, and for more than one a speed bump
+rather than a limit (N replicas allow roughly N × the budget). The service says which
+one it is doing in the log at startup.
+
+Compose and the k8s base both run a small Redis; the cloud overlay can drop it and point
+`REDIS_HOST` at a managed cache, exactly as it does for the broker. The budget itself
+stays `AUTH_RATE_LIMIT_MAX` / `AUTH_RATE_LIMIT_WINDOW_MS`.
+
+The store **fails open**: if Redis is unreachable the brake stops working and sign-in
+stays up. A cache outage that also took down authentication would be the worse failure,
+and every miss is logged so it cannot pass quietly.
 
 ## Who can see what
 
@@ -422,8 +432,6 @@ mapping — swap it for one when the tenant's groups are known.
   never leaves the store, and add key rotation with an overlap window (publish two
   JWKS entries, sign with the newer). Loading the key from a secret - the step that
   unpinned auth-service from one replica - is done.
-- A shared-store rate limiter (Redis) so the auth brake is cluster-wide rather than
-  per gateway instance.
 - Saga-style compensation when an offboarding sweep half-fails.
 - Connection-pool tuning; one Postgres role per service; a managed instance in cloud.
 - Contract tests (Spring Cloud Contract / Pact), mutation testing (PITest), load tests (k6).

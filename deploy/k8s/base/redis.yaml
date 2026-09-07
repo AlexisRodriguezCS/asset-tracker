@@ -1,0 +1,47 @@
+# Shared counters for the gateway's auth rate limit.
+#
+# Without it each gateway pod counts alone, so two replicas allow twice the
+# budget and any restart hands out a fresh one. Nothing here is durable on
+# purpose: these are one-minute windows, and losing them costs at most one
+# window of unthrottled attempts - so no volume, no persistence, no backup.
+#
+# The cloud overlay can drop this and repoint REDIS_HOST at a managed cache
+# (Azure Cache for Redis / ElastiCache), exactly as it does for the broker.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels: { app.kubernetes.io/name: redis }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: redis }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: redis }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args: ["redis-server", "--save", "", "--appendonly", "no"]
+          ports:
+            - { name: redis, containerPort: 6379 }
+          resources:
+            requests: { cpu: "25m", memory: "32Mi" }
+            limits: { cpu: "250m", memory: "128Mi" }
+          readinessProbe:
+            exec: { command: ["redis-cli", "ping"] }
+            periodSeconds: 10
+          livenessProbe:
+            exec: { command: ["redis-cli", "ping"] }
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels: { app.kubernetes.io/name: redis }
+spec:
+  selector: { app.kubernetes.io/name: redis }
+  ports:
+    - { name: redis, port: 6379, targetPort: redis }

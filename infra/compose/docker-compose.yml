@@ -94,6 +94,20 @@ services:
       <<: *healthcheck
       start_period: 40s
 
+  # Shared counters for the gateway auth rate limit. Small enough to be free, and
+  # the difference between "10 attempts a minute" and "10 per gateway pod".
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    networks: [att]
+    mem_limit: 128m
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      <<: *healthcheck
+
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: rabbitmq
@@ -147,9 +161,17 @@ services:
       JWT_JWKS_URI: ${JWT_JWKS_URI:-http://auth-service:8081/.well-known/jwks.json}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       ENTRA_ISSUER_URI: ${ENTRA_ISSUER_URI:-}
-      # per-instance auth brake; see infra/RUNBOOK.md "Rate limiting"
+      # auth brake; see infra/RUNBOOK.md "Rate limiting"
       AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-10}
       AUTH_RATE_LIMIT_WINDOW_MS: ${AUTH_RATE_LIMIT_WINDOW_MS:-60000}
+      # With this set the auth brake is counted in Redis and holds across every
+      # gateway instance; blank, each one counts alone. Compose runs a single
+      # gateway, so this is here to exercise the shared path the cluster uses.
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_HEALTH_CHECK: ${REDIS_HEALTH_CHECK:-true}
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       <<: *healthcheck

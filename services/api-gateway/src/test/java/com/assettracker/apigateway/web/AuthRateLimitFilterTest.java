@@ -2,6 +2,7 @@ package com.assettracker.apigateway.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.assettracker.apigateway.ratelimit.InMemoryRateLimitStore;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
@@ -12,6 +13,7 @@ class AuthRateLimitFilterTest {
 
   private final AuthRateLimitFilter filter =
       new AuthRateLimitFilter(
+          new InMemoryRateLimitStore(),
           new SimpleMeterRegistry(),
           AuthRateLimitFilter.DEFAULT_MAX_PER_WINDOW,
           AuthRateLimitFilter.DEFAULT_WINDOW_MS);
@@ -51,7 +53,9 @@ class AuthRateLimitFilterTest {
    */
   @Test
   void honoursAConfiguredBudgetAndWindow() throws Exception {
-    AuthRateLimitFilter tight = new AuthRateLimitFilter(new SimpleMeterRegistry(), 2, 30_000L);
+    AuthRateLimitFilter tight =
+        new AuthRateLimitFilter(
+            new InMemoryRateLimitStore(), new SimpleMeterRegistry(), 2, 30_000L);
 
     assertThat(post(tight, "5.5.5.5", "/api/auth/login").getStatus()).isEqualTo(200);
     assertThat(post(tight, "5.5.5.5", "/api/auth/login").getStatus()).isEqualTo(200);
