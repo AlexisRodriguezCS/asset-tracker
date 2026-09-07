@@ -13,6 +13,18 @@ const PW = "Passw0rd!";
 const RUN = Date.now().toString(36).slice(-5).toUpperCase();
 const checkedOut = [];
 
+// Event gear is booked against a *day*: a client with 2 TVs has none left on a
+// date that already has both spoken for. A fixed date therefore passed once and
+// then refused every later run with a 409, which reads exactly like a broken
+// availability rule instead of a harness reusing someone else's booking. Each
+// run gets its own day, far enough out never to collide with demo data.
+const EVENT_DATE = new Date(Date.now() + 400 * 86_400_000 + (Date.now() % 900) * 86_400_000)
+  .toISOString()
+  .slice(0, 10);
+
+const nextDay = (iso) =>
+  new Date(new Date(iso).getTime() + 86_400_000).toISOString().slice(0, 10);
+
 const results = [];
 function check(area, what, actual, expected) {
   const ok = Array.isArray(expected) ? expected.includes(actual) : actual === expected;
@@ -136,7 +148,7 @@ async function main() {
   // --- 8. event sign-out lifecycle ----------------------------------------
   const req = await json(tok.user, "/api/assignments/event-requests", {
     method: "POST",
-    body: JSON.stringify({ clientId: 1, eventName: "QA Fair", eventDate: "2026-11-01",
+    body: JSON.stringify({ clientId: 1, eventName: "QA Fair", eventDate: EVENT_DATE,
       location: "Gym", lines: [{ itemType: "TV", quantity: 2 }] }),
   });
   check("events", "employee submits a request", req && req.status, "SUBMITTED");
@@ -169,6 +181,41 @@ async function main() {
   const tv0 = await json(tok.tech, `/api/assets/${tvs[0]}`);
   check("events", "fulfilled TV really moved custody", tv0.status, "ASSIGNED");
   check("events", "fulfilled TV is held by the requester", tv0.holderId, 1);
+
+  // --- 8b. the event equipment pool ----------------------------------------
+  // The request above booked both of Acme's TVs for EVENT_DATE, so the pool for
+  // that day is now empty and a second ask has to be refused.
+  const free = await json(tok.user, `/api/assignments/event-equipment?clientId=1&date=${EVENT_DATE}`);
+  const tvPool = free.find((i) => i.itemType === "TV");
+  check("pool", "employee can read the sign-out menu", Array.isArray(free), true);
+  check("pool", "the day's TVs are all spoken for", tvPool && tvPool.available, 0);
+  check("pool", "booking the same TVs again is refused",
+    await status(tok.user, "/api/assignments/event-requests", {
+      method: "POST",
+      body: JSON.stringify({ clientId: 1, eventName: "QA Clash", eventDate: EVENT_DATE,
+        lines: [{ itemType: "TV", quantity: 1 }] }),
+    }), 409);
+  check("pool", "another day is unaffected",
+    await status(tok.user, "/api/assignments/event-requests", {
+      method: "POST",
+      body: JSON.stringify({ clientId: 1, eventName: "QA Next Day", eventDate: nextDay(EVENT_DATE),
+        lines: [{ itemType: "TV", quantity: 1 }] }),
+    }), 201);
+  check("pool", "gear the client does not lend is refused",
+    await status(tok.user, "/api/assignments/event-requests", {
+      method: "POST",
+      body: JSON.stringify({ clientId: 1, eventName: "QA Podium", eventDate: nextDay(EVENT_DATE),
+        lines: [{ itemType: "Podium", quantity: 1 }] }),
+    }), 409);
+  const setPool = (who, qty) => status(tok[who], "/api/assignments/event-equipment", {
+    method: "POST", body: JSON.stringify({ clientId: 1, itemType: "TV", quantity: qty }),
+  });
+  check("pool", "employee cannot change the pool", await setPool("user", 99), 403);
+  check("pool", "HR cannot change the pool", await setPool("hr", 99), 403);
+  check("pool", "POC cannot change the pool", await setPool("poc", 99), 403);
+  check("pool", "tech can change the pool", await setPool("tech", 2), 200);
+  check("pool", "another tenant's pool is refused",
+    await status(tok.hr, "/api/assignments/event-equipment?clientId=2"), 403);
 
   // --- 9. error paths ------------------------------------------------------
   check("errors", "unknown asset id", await status(tok.tech, "/api/assets/99999"), 404);

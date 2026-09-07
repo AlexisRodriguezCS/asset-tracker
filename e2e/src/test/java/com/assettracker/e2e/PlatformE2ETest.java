@@ -11,8 +11,10 @@ import static org.hamcrest.Matchers.notNullValue;
 import io.restassured.RestAssured;
 import io.restassured.path.json.JsonPath;
 import io.restassured.specification.RequestSpecification;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
@@ -40,6 +42,9 @@ class PlatformE2ETest {
   private String token;
   private long personId;
   private long assetId;
+
+  /** Other people's gear the offboarding sweep collected, to be handed back afterwards. */
+  private final List<Long> sweptFromPerson = new ArrayList<>();
 
   @BeforeAll
   void gatewayMustBeRouting() {
@@ -183,13 +188,58 @@ class PlatformE2ETest {
   @Test
   @Order(8)
   void offboardingCollectsEverything() {
-    authed()
-        .post("/api/assignments/offboard?clientId=" + ACME + "&personId=" + personId)
-        .then()
-        .statusCode(200)
-        .body("returned", hasItem((int) assetId));
+    List<Object> returned =
+        authed()
+            .post("/api/assignments/offboard?clientId=" + ACME + "&personId=" + personId)
+            .then()
+            .statusCode(200)
+            .body("returned", hasItem((int) assetId))
+            .extract()
+            .jsonPath()
+            .getList("returned");
+
+    // Everything the sweep took that this suite did not check out itself is
+    // somebody else's gear, and putting it back is this suite's job - see below.
+    for (Object id : returned) {
+      long swept = toLong(id);
+      if (swept != assetId) {
+        sweptFromPerson.add(swept);
+      }
+    }
 
     authed().get("/api/assets/" + assetId).then().statusCode(200).body("status", is("IN_STOCK"));
+  }
+
+  /**
+   * Puts back what the sweep took.
+   *
+   * <p>Offboarding collects <em>everything</em> the person holds, and the person picked in step 3
+   * is the first seeded employee - who is also the demo tenant's employee persona. So a plain
+   * {@code ./gradlew build} against a running local stack quietly stripped that account of its
+   * laptop, charger, cable and hotspot, and the console then showed the employee view with nothing
+   * in it. That looked exactly like a broken seeder or a broken scoping rule, and it cost real time
+   * twice before the cause was traced back to here.
+   *
+   * <p>The asset this suite checked out itself stays in stock, because that is what step 8 asserts.
+   * Everything else goes back where it was found. A test that leaves the demo data unusable is not
+   * a passing test.
+   */
+  @AfterAll
+  void restoreWhatTheSweepCollected() {
+    if (token == null || sweptFromPerson.isEmpty()) {
+      return;
+    }
+    for (long swept : sweptFromPerson) {
+      authed()
+          .contentType(JSON)
+          .body(
+              Map.of(
+                  "clientId", ACME,
+                  "assetId", swept,
+                  "holderType", "PERSON",
+                  "holderId", personId))
+          .post("/api/assignments");
+    }
   }
 
   private static Long toLong(Object value) {
