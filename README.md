@@ -74,7 +74,7 @@ Full diagrams and the decision records are in [`docs/`](docs/).
 
 ```
 services/            10 Spring Boot services (Gradle sub-projects)
-web/                  Next.js 15 console (Assets / People / Desks / Types / Reports)
+web/                  Next.js 16 console (Assets / People / Desks / Types / Reports)
 infra/compose/        docker-compose + the Postgres/Flyway overlay
 deploy/k8s/           Kustomize base + local/cloud overlays (see docs/deployment.md)
 config-repo/          Spring Cloud Config native backend

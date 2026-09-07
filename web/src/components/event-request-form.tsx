@@ -34,11 +34,30 @@ export function EventRequestForm({
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
   const [counts, setCounts] = useState<Counts>({});
-  const [items, setItems] = useState(initialItems);
-  const [checking, setChecking] = useState(false);
-  const [stale, setStale] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * What came back for one particular day. `items: null` means the read failed.
+   *
+   * Held with the date it belongs to so the answer below can be worked out while
+   * rendering rather than mirrored into more state. Keeping a copy of
+   * `initialItems` in `useState` and resetting it from the effect meant the
+   * effect wrote state synchronously on every date change - which Next 16's
+   * `react-hooks/set-state-in-effect` flags, and rightly: it is a render's worth
+   * of derived data pretending to be a fact.
+   */
+  const [checked, setChecked] = useState<{
+    date: string;
+    items: EventEquipmentItem[] | null;
+  } | null>(null);
+
+  const forThisDay = checked?.date === eventDate ? checked : null;
+  const items = forThisDay?.items ?? initialItems;
+  const stale = forThisDay !== null && forThisDay.items === null;
+  // a day is picked but its answer has not arrived: that *is* "still checking",
+  // so it is worked out here rather than tracked as a second copy of the truth
+  const checking = eventDate !== "" && forThisDay === null;
 
   const freeOf = useCallback(
     (itemType: string) =>
@@ -57,20 +76,16 @@ export function EventRequestForm({
    */
   useEffect(() => {
     if (!eventDate) {
-      setItems(initialItems);
-      setStale(false);
       return;
     }
     let cancelled = false;
-    setChecking(true);
     fetch(
       `/api/bff/assignments/event-equipment?clientId=${clientId}&date=${eventDate}`,
     )
       .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
       .then((fresh: EventEquipmentItem[]) => {
         if (cancelled) return;
-        setStale(false);
-        setItems(fresh);
+        setChecked({ date: eventDate, items: fresh });
         // trim anything already picked that no longer fits
         setCounts((current) => {
           const trimmed: Counts = {};
@@ -81,12 +96,11 @@ export function EventRequestForm({
           return trimmed;
         });
       })
-      .catch(() => !cancelled && setStale(true))
-      .finally(() => !cancelled && setChecking(false));
+      .catch(() => !cancelled && setChecked({ date: eventDate, items: null }));
     return () => {
       cancelled = true;
     };
-  }, [clientId, eventDate, initialItems]);
+  }, [clientId, eventDate]);
 
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   const countOf = (type: string) => counts[type] ?? 0;
