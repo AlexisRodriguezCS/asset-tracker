@@ -48,11 +48,32 @@ tasks.named('check').configure {
     dependsOn 'spotlessCheck', 'checkstyleMain', 'checkstyleTest'
 }
 
-// --- JaCoCo: coverage REPORT only this session (no hard threshold yet). ---
-// The 80% gate returns in CI once each service has a real test suite.
+// --- JaCoCo: report, plus a per-service coverage floor that only goes up ---
+//
+// Not measured, because a percentage that counts these is measuring the wrong
+// thing and rewards tests written for accessors:
+//   *Application.class  - a main() and nothing else
+//   config/**           - Spring wiring, exercised by every context that loads
+//   dto/**              - records: canonical constructor, accessors, equals
+// Entities are NOT excluded: guarded transitions like Asset.assignTo() are real
+// logic with real tests, and hiding them would flatter the number.
+def coverageExclusions = [
+    '**/*Application.class',
+    '**/config/**',
+    '**/dto/**',
+]
+
 tasks.named('test') {
     useJUnitPlatform()
     finalizedBy tasks.named('jacocoTestReport')
+}
+
+tasks.withType(JacocoReportBase).configureEach {
+    classDirectories.setFrom(
+        files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: coverageExclusions)
+        })
+    )
 }
 
 tasks.named('jacocoTestReport') {
@@ -60,5 +81,49 @@ tasks.named('jacocoTestReport') {
     reports {
         xml.required = true
         html.required = true
+    }
+}
+
+// A ratchet, not an aspiration.
+//
+// These are each about three points under what the service actually covers
+// today, so the gate locks in the tests that exist and fails the build if
+// somebody deletes them or adds a slab of untested code. It is deliberately not
+// one number: a flat 80% across a monorepo where services range from 19% to 55%
+// is a gate nobody can turn on, which is exactly why the last attempt at this
+// stayed a to-do for months.
+//
+// The rule for changing them: raise a floor when its service climbs past it.
+// Never lower one to make a red build green - that is the ratchet slipping,
+// and it is the only thing that makes a number like this worthless.
+def coverageFloors = [
+    'asset-service'       : 0.52,
+    'assignment-service'  : 0.41,
+    'api-gateway'         : 0.35,
+    'people-service'      : 0.30,
+    'client-service'      : 0.28,
+    'auth-service'        : 0.28,
+    'location-service'    : 0.20,
+    'notification-service': 0.15,
+]
+
+// :e2e is a test-only project - it has no main source set to cover.
+if (project.name != 'e2e') {
+    tasks.named('jacocoTestCoverageVerification') {
+        dependsOn tasks.named('jacocoTestReport')
+        violationRules {
+            rule {
+                limit {
+                    counter = 'INSTRUCTION'
+                    value = 'COVEREDRATIO'
+                    // a new service starts low rather than blocking its first commit
+                    minimum = coverageFloors.getOrDefault(project.name, 0.10) as BigDecimal
+                }
+            }
+        }
+    }
+
+    tasks.named('check').configure {
+        dependsOn tasks.named('jacocoTestCoverageVerification')
     }
 }

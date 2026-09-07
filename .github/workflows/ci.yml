@@ -97,6 +97,13 @@ jobs:
           - asset-service
           - assignment-service
           - notification-service
+        # The console builds from its own directory rather than the repo root,
+        # so it carries overrides; the ten services fall back to the defaults
+        # in the build step below.
+        include:
+          - service: web
+            context: web
+            file: web/Dockerfile
     steps:
       - uses: actions/checkout@v7
       - name: Lowercase owner (GHCR requires it)
@@ -114,8 +121,8 @@ jobs:
       - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v7
         with:
-          context: .
-          file: services/${{ matrix.service }}/Dockerfile
+          context: ${{ matrix.context || '.' }}
+          file: ${{ matrix.file || format('services/{0}/Dockerfile', matrix.service) }}
           push: true
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,scope=${{ matrix.service }},mode=max
@@ -226,38 +233,36 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      - name: Build and start the console
-        working-directory: web
-        env:
-          GATEWAY_URL: http://localhost:8080
-          APP_URL: http://localhost:3000
-          SESSION_COOKIE: att_session
-          # the browser suite signs in as each seeded persona
-          DEMO_LOGINS_ENABLED: "true"
-          DEMO_PASSWORD: "Passw0rd!"
+      - name: Lowercase owner (GHCR requires it)
+        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
+      # From the published image, not a source build. The backend is already
+      # tested as the exact artefact that ships; the console should be too, or
+      # its Dockerfile is only ever proven to compile and never to run.
+      - name: Start the console from the image built above
         run: |
-          npm ci
-          npm run build
-          # detached with its output redirected: a background job still
-          # attached to the step's stdout can keep the step from finishing
-          nohup npm start > /tmp/console.log 2>&1 &
+          docker run -d --name console --network host \
+            -e GATEWAY_URL=http://localhost:8080 \
+            -e APP_URL=http://localhost:3000 \
+            -e SESSION_COOKIE=att_session \
+            -e DEMO_LOGINS_ENABLED=true \
+            -e DEMO_PASSWORD='Passw0rd!' \
+            ghcr.io/${OWNER_LC}/asset-tracker-web:${{ github.sha }}
           for i in $(seq 1 40); do
             code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/welcome || echo 000)
             [ "$code" = "200" ] && { echo "console up after ${i} attempts"; exit 0; }
             sleep 3
           done
-          echo "::error::the console never came up"
+          echo "::error::the console image never served a page"
+          docker logs console || true
           exit 1
 
       - name: Run the browser suite
         working-directory: web
         env:
-          GATEWAY_URL: http://localhost:8080
-          APP_URL: http://localhost:3000
-          DEMO_LOGINS_ENABLED: "true"
-          DEMO_PASSWORD: "Passw0rd!"
           PLAYWRIGHT_BASE_URL: http://localhost:3000
         run: |
+          npm ci
           npx playwright install --with-deps chromium
           npm run test:ui
 
@@ -273,7 +278,7 @@ jobs:
         if: failure()
         run: |
           echo "--- console ---"
-          tail -100 /tmp/console.log || true
+          docker logs --tail=100 console || true
           docker compose -f infra/compose/docker-compose.yml \
                          -f infra/compose/docker-compose.ci.yml ps
           docker compose -f infra/compose/docker-compose.yml \

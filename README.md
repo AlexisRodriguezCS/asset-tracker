@@ -154,10 +154,10 @@ into a failure — otherwise a stack that never booted would report green.
 
 | Job | What it does |
 |---|---|
-| `build` | one Gradle build — compile, unit + slice tests, Testcontainers Postgres ITs, Spotless, Checkstyle, JaCoCo |
+| `build` | one Gradle build — compile, unit + slice tests, Testcontainers Postgres ITs, Spotless, Checkstyle, and a JaCoCo floor per service that only ratchets up |
 | `web` | `next build` + ESLint (flat config, warnings fail) + Prettier + `tsc --noEmit` + 105 Vitest unit tests |
 | `secret-scan` | gitleaks over the full history |
-| `images` | on `main`: builds and pushes all ten service images to `ghcr.io/<owner>/asset-tracker-<service>`, tagged by SHA |
+| `images` | on `main`: builds and pushes the ten service images **and the console** to `ghcr.io/<owner>/asset-tracker-<name>`, tagged by SHA |
 | `e2e` | pulls those exact images, brings the stack up with Compose, waits for the gateway to route, drives the demo flow through it, then builds the console and runs the Playwright browser suite against the pair |
 
 ## Not done yet
