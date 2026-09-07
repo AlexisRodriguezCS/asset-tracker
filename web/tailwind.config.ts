@@ -33,7 +33,14 @@ export default {
       },
       boxShadow: {
         card: "0 1px 0 hsl(0 0% 100% / 0.04) inset, 0 1px 2px hsl(224 60% 3% / 0.3)",
-        lift: "0 1px 0 hsl(0 0% 100% / 0.06) inset, 0 16px 40px -16px hsl(266 55% 38% / 0.35)",
+        /*
+         * Two neutral layers: a tight one that draws the panel edge itself,
+         * and a wide one for the distance off the page. What this replaced
+         * was a single brand-purple glow at -16px spread - an accent doing a
+         * job that belongs to shadow, and inset so far it never reached the
+         * edges that are what make a panel look lifted at all.
+         */
+        lift: "0 1px 0 hsl(0 0% 100% / 0.05) inset, 0 2px 6px -1px hsl(224 45% 4% / 0.16), 0 18px 36px -12px hsl(224 45% 4% / 0.34)",
       },
       /*
        * 180ms and 4px, down from 400ms and 8px.

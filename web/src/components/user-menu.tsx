@@ -86,7 +86,7 @@ export function UserMenu({
           />
           <div
             role="menu"
-            className="absolute right-0 z-50 mt-2 w-72 origin-top-right animate-pop-in overflow-hidden rounded-lg border border-border bg-background shadow-lift"
+            className="absolute right-0 z-50 mt-2 w-72 origin-top-right animate-pop-in overflow-hidden rounded-lg border border-border bg-card shadow-lift"
           >
             <div className="border-b border-border/70 px-3 py-2.5">
               <p className="truncate text-sm font-medium">{email}</p>
