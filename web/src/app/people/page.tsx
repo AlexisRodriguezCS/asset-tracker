@@ -3,29 +3,42 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { canOperateAssets, isSelfServiceUser } from "@/lib/roles";
 import { currentClientId } from "@/lib/client";
-import { listPeople, listLocations } from "@/lib/api";
+import { listPeoplePaged, peopleStats, listLocations } from "@/lib/api";
 import { PersonStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatStrip } from "@/components/ui/stat";
 import { PageHeader, TableCard } from "@/components/ui/page-header";
+import { Pagination } from "@/components/pagination";
 
 export const metadata = { title: "People" };
 
-export default async function PeoplePage() {
+/** Matches the catalog, so the two lists page at the same rate. */
+const PAGE_SIZE = 50;
+
+export default async function PeoplePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/welcome?next=/people");
   // staff-only, like every other page that shows the whole tenant: an employee
   // gets their own gear and the sign-out form, and nothing that lists colleagues
   if (isSelfServiceUser(session.role)) redirect("/");
 
-  const clientId = await currentClientId();
-  const [people, desks] = await Promise.all([
-    listPeople(clientId),
+  const [clientId, sp] = await Promise.all([currentClientId(), searchParams]);
+  const pageIndex = Math.max(0, Number(sp.page ?? "0") || 0);
+
+  // One page of rows and counts done in the database. This page used to fetch every person
+  // and count them in the render, which is nothing at five people and the whole tenant over
+  // the wire at five thousand - the same trade the catalog made when it stopped doing it.
+  const [page, stats, desks] = await Promise.all([
+    listPeoplePaged({ clientId, page: pageIndex, size: PAGE_SIZE }),
+    peopleStats(clientId),
     listLocations(clientId, "DESK").catch(() => []),
   ]);
+  const people = page.items;
   const deskLabel = new Map(desks.map((d) => [d.id, d.label]));
-
-  const n = (s: string) => people.filter((p) => p.status === s).length;
 
   return (
     <div className="animate-fade-in-up space-y-6">
@@ -43,15 +56,11 @@ export default async function PeoplePage() {
 
       <StatStrip
         stats={[
-          { label: "People", value: people.length },
-          { label: "Active", value: n("ACTIVE"), tone: "success" },
-          { label: "Offboarding", value: n("OFFBOARDING"), tone: "warn" },
-          { label: "Departed", value: n("DEPARTED") },
-          {
-            label: "With a desk",
-            value: people.filter((p) => p.deskId != null).length,
-            tone: "primary",
-          },
+          { label: "People", value: stats.total },
+          { label: "Active", value: stats.active, tone: "success" },
+          { label: "Offboarding", value: stats.offboarding, tone: "warn" },
+          { label: "Departed", value: stats.departed },
+          { label: "With a desk", value: stats.withDesk, tone: "primary" },
         ]}
       />
 
@@ -92,6 +101,14 @@ export default async function PeoplePage() {
           ))}
         </tbody>
       </TableCard>
+
+      <Pagination
+        page={page.page}
+        totalPages={page.totalPages}
+        total={page.total}
+        size={page.size}
+        href={(next) => (next > 0 ? `/people?page=${next}` : "/people")}
+      />
     </div>
   );
 }

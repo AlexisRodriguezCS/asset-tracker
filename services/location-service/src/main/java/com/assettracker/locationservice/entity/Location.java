@@ -72,6 +72,16 @@ public class Location {
     return label;
   }
 
+  /**
+   * Corrects the tag on this location.
+   *
+   * <p>It has to stay unique across the estate - it is what a phone reads off the wall - and the
+   * check lives in the service, which is the only thing that can see the other rows.
+   */
+  public void setQrTag(String qrTag) {
+    this.qrTag = qrTag;
+  }
+
   public void setLabel(String label) {
     this.label = label;
   }

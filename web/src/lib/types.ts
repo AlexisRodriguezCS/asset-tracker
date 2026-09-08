@@ -142,6 +142,22 @@ export interface Assignment {
   note: string | null;
 }
 
+export interface PagedPeople {
+  items: Person[];
+  total: number;
+  page: number;
+  size: number;
+  totalPages: number;
+}
+
+export interface PeopleStats {
+  total: number;
+  active: number;
+  offboarding: number;
+  departed: number;
+  withDesk: number;
+}
+
 export interface OffboardingResult {
   personId: number;
   /** Back in stock, and the assignment is closed. */

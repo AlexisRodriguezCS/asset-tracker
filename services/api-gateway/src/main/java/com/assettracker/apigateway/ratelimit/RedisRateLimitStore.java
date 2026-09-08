@@ -1,5 +1,7 @@
 package com.assettracker.apigateway.ratelimit;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,10 +39,14 @@ public class RedisRateLimitStore implements RateLimitStore {
 
   private final StringRedisTemplate redis;
   private final String prefix;
+  private final Counter unavailable;
 
-  public RedisRateLimitStore(StringRedisTemplate redis, String prefix) {
+  public RedisRateLimitStore(StringRedisTemplate redis, String prefix, MeterRegistry meters) {
     this.redis = redis;
     this.prefix = prefix;
+    // Counted, not only logged. Failing open is the right trade against an authentication
+    // outage, but it removes the brake - and a trade nobody can see is one nobody revisits.
+    this.unavailable = meters.counter("assettracker.auth.rate_limit.store_unavailable");
   }
 
   @Override
@@ -50,6 +56,7 @@ public class RedisRateLimitStore implements RateLimitStore {
           redis.execute(INCREMENT_AND_EXPIRE, List.of(prefix + key), String.valueOf(windowMs));
       return hits == null || hits <= maxPerWindow;
     } catch (DataAccessException unreachable) {
+      this.unavailable.increment();
       log.warn("rate limit store unavailable, allowing the request: {}", unreachable.getMessage());
       return true;
     }

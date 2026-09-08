@@ -52,6 +52,23 @@ since that exchange also ends in a locally signed token - and two replicas rejec
 each other's tokens. In the cloud overlay the key comes from the
 `asset-tracker-jwt` secret, which is what lets auth-service run two pods.
 
+**Running it the way a deployment runs it.** The demo stack is H2 with seeders; the
+`prod` profile is Postgres with Flyway and no seed data at all, because every seeder is
+`@Profile("!prod")`. Bring that up and prove the journey with:
+
+```bash
+SECURITY_BOOTSTRAP_EMAIL=ops@acme.example SECURITY_BOOTSTRAP_PASSWORD='Boot5trap!' \
+  docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d
+node ../qa/prod-smoke.cjs
+```
+
+Without `SECURITY_BOOTSTRAP_*` a fresh prod database has no accounts and every sign-in
+is refused - auth-service says so in the log rather than leaving you with a bare 401.
+The account is created once, when the user table is empty; change its password after
+the first sign-in. It can act only on the tenants in `SECURITY_BOOTSTRAP_CLIENT_IDS`
+(default `1`), and there is no user administration yet, so a tenant created later is
+not reachable by that admin - see the gaps list.
+
 **Messaging.** `assignment-service` publishes custody events to the RabbitMQ
 `asset-tracker.events` exchange; `notification-service` consumes them off a
 durable queue. Management UI at `http://localhost:15672` (guest / guest). A

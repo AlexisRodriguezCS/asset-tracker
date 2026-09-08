@@ -44,6 +44,10 @@ eureka:
   instance:
     prefer-ip-address: true
 
+downstream:
+  # Asked whether anything is placed on a location before that location can be deleted.
+  asset-service: ${ASSET_SERVICE_URL:lb://asset-service}
+
 # The caller's token is validated here, not just at the gateway. Same names the
 # gateway uses, so one JWKS URI and one issuer are set for the whole stack.
 security:

@@ -25,10 +25,13 @@ export const ALLOW: RegExp[] = [
   /^assets\/types$/,
   /^assets\/types\/\d+(\?.*)?$/,
   /^people$/,
+  /^people\/(paged|stats)(\?.*)?$/,
   // the person record itself: read for the detail page, PATCH to correct it
   /^people\/\d+$/,
   /^people\/\d+\/(offboarding|departed|desk)$/,
   /^locations$/,
+  // one location: PATCH to correct it, DELETE to remove one added by mistake
+  /^locations\/\d+$/,
   /^clients$/,
 ];
 

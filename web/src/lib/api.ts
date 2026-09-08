@@ -13,6 +13,8 @@ import type {
   EventEquipmentItem,
   EventRequest,
   PagedAssets,
+  PagedPeople,
+  PeopleStats,
   Person,
   TypeUsage,
 } from "@/lib/types";
@@ -163,6 +165,17 @@ export const getEventRequest = (id: string | number) =>
  * that aggregate (dashboard, reports, type counts) or filter narrowly; this is
  * for the screen that renders a row per asset.
  */
+export const listPeoplePaged = (params: {
+  clientId: number;
+  status?: string;
+  page?: number;
+  size?: number;
+}) => gateway<PagedPeople>(`/api/people/paged${qs(params)}`, { auth: true });
+
+/** Counts for the directory strip, so the page stops fetching everyone to count them. */
+export const peopleStats = (clientId: number) =>
+  gateway<PeopleStats>(`/api/people/stats${qs({ clientId })}`, { auth: true });
+
 export const listAssetsPaged = (params: {
   clientId: number;
   type?: string;

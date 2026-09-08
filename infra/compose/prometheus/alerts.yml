@@ -1,0 +1,30 @@
+# Alert rules for the demo stack. Kept next to the scrape config so what the stack
+# watches is reviewable in the same place as what it collects.
+groups:
+  - name: asset-tracker
+    rules:
+      # The brake failing open is deliberate - a Redis outage must not take sign-in
+      # with it - but it means credential stuffing is unthrottled while it lasts, and
+      # until now the only trace was a log line nobody reads.
+      - alert: AuthRateLimitStoreUnavailable
+        expr: increase(assettracker_auth_rate_limit_store_unavailable_total[5m]) > 0
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: "The auth rate limiter cannot reach its store"
+          description: >-
+            {{ $value | printf "%.0f" }} sign-in attempts in the last five minutes were
+            let through without being counted, because Redis was unreachable. Logins keep
+            working; brute-force protection does not.
+
+      # Sustained refusals are the other half of the same story: either somebody is
+      # trying passwords, or a client is retrying a broken sign-in in a loop.
+      - alert: AuthRateLimitRejectingSteadily
+        expr: rate(assettracker_auth_rate_limited_total[5m]) > 0.2
+        for: 10m
+        labels: { severity: info }
+        annotations:
+          summary: "Sign-ins are being rate limited continuously"
+          description: >-
+            More than one refusal every five seconds for ten minutes. Worth a look at
+            which address it is coming from before raising the budget.

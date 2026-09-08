@@ -78,7 +78,17 @@ jobs:
           --config=/repo/.gitleaks.toml
 
   images:
-    if: ${{ github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'develop') }}
+    # Pull requests build and publish too, so the e2e job below can run on them.
+    #
+    # It used not to, which made a pull request the *weaker* path: it ran build, web and
+    # secret-scan, while a push to main additionally stood the whole stack up and drove it.
+    # The browser suite is what caught the seeder losing its identity and the employee page
+    # disagreeing with itself - so gating merges on everything except that suite would have
+    # let both through. Tags are by commit SHA, so a PR's images are identifiable and
+    # disposable.
+    if: >-
+      ${{ github.event_name == 'pull_request' ||
+          (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'develop')) }}
     needs: [build, web]
     runs-on: ubuntu-latest
     permissions:
@@ -129,7 +139,7 @@ jobs:
           cache-to: type=gha,scope=${{ matrix.service }},mode=max
           tags: |
             ghcr.io/${{ env.OWNER_LC }}/asset-tracker-${{ matrix.service }}:${{ github.sha }}
-            ghcr.io/${{ env.OWNER_LC }}/asset-tracker-${{ matrix.service }}:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LC }}/asset-tracker-${{ matrix.service }}:${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || github.ref_name }}
 
   # Stand the ten images that were just published up as a real stack and drive it
   # through the gateway. The suite self-skips when no stack is reachable, so this

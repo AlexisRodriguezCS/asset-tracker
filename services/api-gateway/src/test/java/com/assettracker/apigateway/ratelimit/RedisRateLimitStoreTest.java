@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -21,7 +22,7 @@ class RedisRateLimitStoreTest {
   @Test
   @SuppressWarnings("unchecked")
   void allowsUntilTheSharedCounterPassesTheBudget() {
-    RedisRateLimitStore store = new RedisRateLimitStore(redis, "p:");
+    RedisRateLimitStore store = new RedisRateLimitStore(redis, "p:", new SimpleMeterRegistry());
     when(redis.execute(any(RedisScript.class), any(), anyString())).thenReturn(10L, 11L);
 
     // the tenth attempt across the whole cluster is still within a budget of ten
@@ -36,7 +37,7 @@ class RedisRateLimitStoreTest {
   @Test
   @SuppressWarnings("unchecked")
   void anUnreachableStoreLetsTheRequestThrough() {
-    RedisRateLimitStore store = new RedisRateLimitStore(redis, "p:");
+    RedisRateLimitStore store = new RedisRateLimitStore(redis, "p:", new SimpleMeterRegistry());
     when(redis.execute(any(RedisScript.class), any(), anyString()))
         .thenThrow(new RedisConnectionFailureException("down"));
 
