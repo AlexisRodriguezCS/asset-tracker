@@ -47,5 +47,10 @@ stringData:
   # runs before any person has asked for anything. A cluster that seeds no demo data
   # can leave these out entirely - blank means the seeding call goes unauthenticated
   # and is refused, rather than being quietly privileged.
+  # The first admin of a fresh cluster. The seeders are all @Profile("!prod") and this
+  # overlay runs prod, so without these the user table is empty and every sign-in is
+  # refused. Used once, when there are no accounts; change the password after signing in.
+  SECURITY_BOOTSTRAP_EMAIL: "ops@example.invalid"
+  SECURITY_BOOTSTRAP_PASSWORD: "change-me-after-first-sign-in"
   SERVICE_ACCOUNT_EMAIL: "admin@platform.example"
   SERVICE_ACCOUNT_PASSWORD: "Passw0rd!"

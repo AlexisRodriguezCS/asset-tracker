@@ -283,6 +283,8 @@ function DeskCard({
         inStock={inStock}
         canSeat={canSeat}
         canPlace={canPlace}
+        deskLabel={desk.label}
+        itemCount={items.length}
       />
     </div>
   );

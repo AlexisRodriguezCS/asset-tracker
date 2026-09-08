@@ -1,6 +1,7 @@
 package com.assettracker.locationservice.web;
 
 import com.assettracker.locationservice.service.LocationNotFoundException;
+import com.assettracker.locationservice.service.LocationOccupiedException;
 import com.assettracker.locationservice.service.QrTagTakenException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(QrTagTakenException.class)
   public ResponseEntity<ApiError> handleConflict(QrTagTakenException ex) {
     return build(HttpStatus.CONFLICT, "QR_TAG_TAKEN", ex.getMessage());
+  }
+
+  /** Refusing to delete a desk with gear on it is a conflict, not a bad request. */
+  @ExceptionHandler(LocationOccupiedException.class)
+  public ResponseEntity<ApiError> handleOccupied(LocationOccupiedException ex) {
+    return build(HttpStatus.CONFLICT, "LOCATION_OCCUPIED", ex.getMessage());
   }
 
   @ExceptionHandler(ForbiddenClientException.class)

@@ -9,8 +9,12 @@ import com.assettracker.peopleservice.repository.PersonRepository;
 import com.assettracker.peopleservice.web.CallerContext;
 import com.assettracker.peopleservice.web.TenantContext;
 import com.assettracker.peopleservice.web.dto.CreatePersonRequest;
+import com.assettracker.peopleservice.web.dto.PeopleStats;
 import com.assettracker.peopleservice.web.dto.UpdatePersonRequest;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -102,6 +106,43 @@ public class PersonService {
     return status == null
         ? repository.findByClientIdOrderByFullNameAsc(clientId)
         : repository.findByClientIdAndStatus(clientId, status);
+  }
+
+  /**
+   * The directory, a page at a time. Separate from the unpaged {@code list} rather than changing
+   * its shape - the console's pickers legitimately want every name, and a response that is
+   * sometimes an array and sometimes an envelope is worse than two honest methods.
+   *
+   * <p>An ordinary employee still sees only themselves, so the page is theirs alone.
+   */
+  @Transactional(readOnly = true)
+  public Page<Person> listPage(Long clientId, PersonStatus status, Pageable pageable) {
+    TenantContext.requireAllowed(clientId);
+    if (CallerContext.isSelfServiceUser()) {
+      Long self = CallerContext.personId();
+      List<Person> mine =
+          self == null
+              ? List.of()
+              : repository.findById(self).filter(p -> p.getClientId().equals(clientId)).stream()
+                  .toList();
+      return new PageImpl<>(mine, pageable, mine.size());
+    }
+    return status == null
+        ? repository.findByClientId(clientId, pageable)
+        : repository.findByClientIdAndStatus(clientId, status, pageable);
+  }
+
+  /** Counts for the summary strip, done in the database rather than by fetching everyone. */
+  @Transactional(readOnly = true)
+  public PeopleStats stats(Long clientId) {
+    TenantContext.requireAllowed(clientId);
+    CallerContext.requireStaff();
+    return new PeopleStats(
+        repository.countByClientId(clientId),
+        repository.countByClientIdAndStatus(clientId, PersonStatus.ACTIVE),
+        repository.countByClientIdAndStatus(clientId, PersonStatus.OFFBOARDING),
+        repository.countByClientIdAndStatus(clientId, PersonStatus.DEPARTED),
+        repository.countByClientIdAndDeskIdIsNotNull(clientId));
   }
 
   @Transactional(readOnly = true)

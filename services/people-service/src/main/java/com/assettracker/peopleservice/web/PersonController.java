@@ -4,11 +4,15 @@ import com.assettracker.peopleservice.entity.PersonStatus;
 import com.assettracker.peopleservice.service.PersonService;
 import com.assettracker.peopleservice.web.dto.AssignDeskRequest;
 import com.assettracker.peopleservice.web.dto.CreatePersonRequest;
+import com.assettracker.peopleservice.web.dto.PagedPeople;
+import com.assettracker.peopleservice.web.dto.PeopleStats;
 import com.assettracker.peopleservice.web.dto.PersonResponse;
 import com.assettracker.peopleservice.web.dto.UpdatePersonRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,6 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/people")
 public class PersonController {
+
+  private static final int DEFAULT_PAGE_SIZE = 50;
 
   private static final String ACTOR = "X-User-Id";
 
@@ -45,6 +51,24 @@ public class PersonController {
   public List<PersonResponse> list(
       @RequestParam Long clientId, @RequestParam(required = false) PersonStatus status) {
     return service.list(clientId, status).stream().map(PersonResponse::from).toList();
+  }
+
+  /**
+   * The directory, paginated. Sized like the catalog's, and clamped by the same property, so a
+   * caller cannot pull a whole tenant through this route.
+   */
+  @GetMapping("/paged")
+  public PagedPeople listPage(
+      @RequestParam Long clientId,
+      @RequestParam(required = false) PersonStatus status,
+      @PageableDefault(size = DEFAULT_PAGE_SIZE, sort = "fullName") Pageable pageable) {
+    return PagedPeople.from(service.listPage(clientId, status, pageable));
+  }
+
+  /** Counts for the console's summary strip; see PeopleStats. */
+  @GetMapping("/stats")
+  public PeopleStats stats(@RequestParam Long clientId) {
+    return service.stats(clientId);
   }
 
   @GetMapping("/{id}")

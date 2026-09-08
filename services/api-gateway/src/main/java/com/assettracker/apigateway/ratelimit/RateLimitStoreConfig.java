@@ -1,5 +1,6 @@
 package com.assettracker.apigateway.ratelimit;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,9 +26,10 @@ public class RateLimitStoreConfig {
   @ConditionalOnProperty(name = "spring.data.redis.host")
   public RateLimitStore redisRateLimitStore(
       StringRedisTemplate redis,
+      MeterRegistry meters,
       @Value("${security.rate-limit.key-prefix:asset-tracker:auth-rate:}") String prefix) {
     log.info("auth rate limit is cluster-wide, counted in Redis under '{}'", prefix);
-    return new RedisRateLimitStore(redis, prefix);
+    return new RedisRateLimitStore(redis, prefix, meters);
   }
 
   @Bean

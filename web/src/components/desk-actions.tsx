@@ -20,6 +20,8 @@ import type { Asset, Person } from "@/lib/types";
 export function DeskActions({
   deskId,
   clientId,
+  deskLabel,
+  itemCount,
   seated,
   people,
   inStock,
@@ -34,6 +36,10 @@ export function DeskActions({
   inStock: Asset[];
   canSeat: boolean;
   canPlace: boolean;
+  /** What this desk is called, so a correction starts from the current value. */
+  deskLabel: string;
+  /** Whether anything is on the desk - deleting one that is in use is refused by the service. */
+  itemCount: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -41,18 +47,23 @@ export function DeskActions({
   const [asset, setAsset] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState(deskLabel);
 
   if (!canSeat && !canPlace) {
     return null;
   }
 
-  async function send(path: string, body: unknown) {
+  async function send(path: string, body: unknown, method = "POST") {
     setBusy(true);
     setError(null);
     const res = await fetch(`/api/bff/${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      method,
+      ...(body === undefined
+        ? {}
+        : {
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          }),
     });
     setBusy(false);
     if (!res.ok) {
@@ -82,6 +93,16 @@ export function DeskActions({
     if (ok && seated && seated.id !== chosen) {
       await send(`people/${seated.id}/desk`, { deskId: null });
     }
+  }
+
+  async function rename() {
+    await send(`locations/${deskId}`, { label: name.trim() }, "PATCH");
+  }
+
+  async function remove() {
+    // no confirm dialog: an empty desk carries nothing, and the audit trail keeps a
+    // LOCATION_DELETED row with its name and tag if anyone asks what happened to it
+    await send(`locations/${deskId}`, undefined, "DELETE");
   }
 
   async function place() {
@@ -164,6 +185,39 @@ export function DeskActions({
           >
             Place
           </Button>
+        </div>
+      )}
+
+      {canPlace && (
+        <div className="flex items-center gap-2">
+          <label className="sr-only" htmlFor={`name-${deskId}`}>
+            Desk name
+          </label>
+          <input
+            id={`name-${deskId}`}
+            value={name}
+            disabled={busy}
+            onChange={(e) => setName(e.target.value)}
+            className="h-8 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-xs outline-none focus-visible:border-primary"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy || name.trim() === deskLabel || !name.trim()}
+            onClick={rename}
+          >
+            Rename
+          </Button>
+          {/*
+            Only offered for an empty desk. The service refuses either way - it asks
+            asset-service what is on it first - but a button that is always refused is
+            the thing we just spent a change removing from the dashboard.
+          */}
+          {itemCount === 0 && (
+            <Button size="sm" variant="ghost" disabled={busy} onClick={remove}>
+              Delete
+            </Button>
+          )}
         </div>
       )}
 

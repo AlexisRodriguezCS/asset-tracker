@@ -30,6 +30,14 @@ server:
   port: ${SERVER_PORT:8081}
 
 security:
+  # The first account in a deployment that seeds no demo data. Only used when the
+  # user table is empty; see BootstrapAdmin. Blank here on purpose - a shipped
+  # default admin password is worse than no way in, because it is a way in for
+  # everybody.
+  bootstrap:
+    email: ${SECURITY_BOOTSTRAP_EMAIL:}
+    password: ${SECURITY_BOOTSTRAP_PASSWORD:}
+    client-ids: ${SECURITY_BOOTSTRAP_CLIENT_IDS:1}
   jwt:
     # RS256. The public half is served at /.well-known/jwks.json for the gateway
     # to fetch, so no shared secret crosses the mesh.
