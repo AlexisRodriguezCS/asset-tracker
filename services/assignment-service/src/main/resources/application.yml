@@ -32,6 +32,7 @@ server:
 
 downstream:
   asset-service: ${ASSET_SERVICE_URL:lb://asset-service}
+  auth-service: ${AUTH_SERVICE_URL:lb://auth-service}
 
 # Custody changes are published here; notification-service consumes them.
 messaging:
@@ -86,6 +87,13 @@ eureka:
 # The caller's token is validated here, not just at the gateway. Same names the
 # gateway uses, so one JWKS URI and one issuer are set for the whole stack.
 security:
+  # Who this service is when it acts without a person behind it - start-up seeding,
+  # today. Blank by default on purpose: a credential that ships in the image is
+  # worse than a feature that stays off until it is asked for, and a deployment that
+  # seeds nothing needs no account at all.
+  service-account:
+    email: ${SERVICE_ACCOUNT_EMAIL:}
+    password: ${SERVICE_ACCOUNT_PASSWORD:}
   jwt:
     # Fetched lazily and cached, so this service starts whether or not auth-service
     # is up yet.

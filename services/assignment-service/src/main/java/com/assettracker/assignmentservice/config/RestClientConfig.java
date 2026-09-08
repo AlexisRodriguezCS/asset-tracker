@@ -1,6 +1,7 @@
 package com.assettracker.assignmentservice.config;
 
 import java.time.Duration;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
@@ -17,7 +18,8 @@ public class RestClientConfig {
 
   @Bean
   @LoadBalanced
-  public RestClient.Builder loadBalancedRestClientBuilder() {
+  public RestClient.Builder loadBalancedRestClientBuilder(
+      ObjectProvider<ServiceAccountTokens> serviceAccount) {
     ClientHttpRequestFactorySettings settings =
         ClientHttpRequestFactorySettings.defaults()
             .withConnectTimeout(CONNECT_TIMEOUT)
@@ -25,6 +27,6 @@ public class RestClientConfig {
     return RestClient.builder()
         .requestFactory(ClientHttpRequestFactoryBuilder.detect().build(settings))
         .requestInterceptor(new CorrelationIdPropagator())
-        .requestInterceptor(new BearerTokenPropagator());
+        .requestInterceptor(new BearerTokenPropagator(serviceAccount));
   }
 }

@@ -243,6 +243,11 @@ Compose and the k8s base both run a small Redis; the cloud overlay can drop it a
 `REDIS_HOST` at a managed cache, exactly as it does for the broker. The budget itself
 stays `AUTH_RATE_LIMIT_MAX` / `AUTH_RATE_LIMIT_WINDOW_MS`.
 
+Running the suites back to back locally can trip it: between them they sign in more
+than ten times a minute from one address, and since the window moved into Redis it no
+longer resets when a container restarts. Wait a minute, or start the stack with
+`AUTH_RATE_LIMIT_MAX=200` as CI does. A 429 in a test run is the brake working.
+
 The store **fails open**: if Redis is unreachable the brake stops working and sign-in
 stays up. A cache outage that also took down authentication would be the worse failure,
 and every miss is logged so it cannot pass quietly.

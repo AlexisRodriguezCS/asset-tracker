@@ -17,7 +17,19 @@ x-img: &img
 services:
   discovery-server:     { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-discovery-server:${IMAGE_TAG:-main}" }
   config-server:        { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-config-server:${IMAGE_TAG:-main}" }
-  api-gateway:          { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-api-gateway:${IMAGE_TAG:-main}" }
+  api-gateway:
+    <<: *img
+    image: "ghcr.io/alexisrodriguezcs/asset-tracker-api-gateway:${IMAGE_TAG:-main}"
+    environment:
+      # Room for the suites to sign in.
+      #
+      # Three suites run against this stack one after another from a single IP, and
+      # between them they sign in far more than ten times a minute - the REST suite,
+      # the API matrix, and one login per persona for the browser suite. The default
+      # of ten is the product decision and stays untouched; this is the test rig
+      # saying it is not a brute-force attempt. Since the window moved into Redis it
+      # no longer resets when a container restarts, so the runs genuinely add up.
+      AUTH_RATE_LIMIT_MAX: "200"
   auth-service:         { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-auth-service:${IMAGE_TAG:-main}" }
   client-service:       { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-client-service:${IMAGE_TAG:-main}" }
   people-service:       { <<: *img, image: "ghcr.io/alexisrodriguezcs/asset-tracker-people-service:${IMAGE_TAG:-main}" }

@@ -43,3 +43,9 @@ type: Opaque
 stringData:
   SPRING_DATASOURCE_USERNAME: "att"
   SPRING_DATASOURCE_PASSWORD: "att-dev-password"
+  # The account assignment-service signs in as to seed demo custody history, which
+  # runs before any person has asked for anything. A cluster that seeds no demo data
+  # can leave these out entirely - blank means the seeding call goes unauthenticated
+  # and is refused, rather than being quietly privileged.
+  SERVICE_ACCOUNT_EMAIL: "admin@platform.example"
+  SERVICE_ACCOUNT_PASSWORD: "Passw0rd!"

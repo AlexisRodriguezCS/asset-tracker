@@ -57,7 +57,13 @@ test.describe("an employee", () => {
     await expect(
       page.getByRole("heading", { name: "My assets" }),
     ).toBeVisible();
-    const rows = page.locator("tbody tr");
+    // Data rows only. Plain "tbody tr" also matches the single spanning row the table
+    // draws when there is nothing to show, so an employee holding no gear counted as
+    // one asset and disagreed with a subtitle that correctly said none. Keyed on the
+    // colspan rather than on the row's text, because that is what makes it a message
+    // instead of a record - and on this list the tag is deliberately not a link, so
+    // there is no anchor to key on either.
+    const rows = page.locator("tbody tr:not(:has(td[colspan]))");
     await expect(rows.first()).toBeVisible();
     // The count in the subtitle has to agree with the table under it. Scoped to the
     // header: when the employee holds nothing, the empty state says "Nothing is

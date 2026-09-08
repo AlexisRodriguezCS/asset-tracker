@@ -259,6 +259,11 @@ services:
     ports: ["8082:8082"]
     environment:
       <<: *common-env
+      # The identity the start-up seeder uses; it has no person behind it. Demo
+      # credentials, and only here - the service defaults them to blank so nothing
+      # ships with a login baked in.
+      SERVICE_ACCOUNT_EMAIL: ${SERVICE_ACCOUNT_EMAIL:-admin@platform.example}
+      SERVICE_ACCOUNT_PASSWORD: ${SERVICE_ACCOUNT_PASSWORD:-Passw0rd!}
       SPRING_RABBITMQ_HOST: rabbitmq
     depends_on:
       discovery-server:
