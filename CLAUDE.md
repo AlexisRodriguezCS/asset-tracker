@@ -98,23 +98,31 @@ path too, not only the happy one.
 
 ## Known gaps, ranked
 
-Ordered by how much they matter, not by effort.
+The five that were here are done - the signing key, the offboarding misreport,
+header trust, idempotency on transfer and offboarding, and the per-instance rate
+limiter. What replaced them, ordered by how much they matter:
 
-1. **`auth-service` generates its RSA signing key in memory at startup.** So a
-   restart invalidates every live token, and two replicas reject each other's
-   tokens — which is why the cloud overlay pins it to one replica. That pin is a
-   workaround, not a fix. Load the key from a secret or a KMS.
-2. **Offboarding can misreport.** It calls `returnToStock()` then
-   `store.close()`. If the first succeeds and the second fails, the asset is
-   back in stock but history says it is still out — and it lands in `failed`, so
-   someone chases an employee for a laptop already on the shelf.
-3. **Services trust the gateway's `X-User-Role` / `X-Client-Ids` headers.**
-   Anything reaching a service directly can set them freely. Fine behind a
-   gateway; it is the gap under the project's authorization story.
-4. **Transfer and offboarding have no idempotency keys.** Check-out has them
-   (`Idempotency-Key` header); the other two have the same retry problem.
-5. **The auth rate limiter is per gateway instance**, so it does not hold across
-   replicas. Needs a shared store.
+1. **The signing key is handed to the service.** It is loaded from a secret now
+   rather than invented per process, so restarts and replicas are fine, but the
+   private key still lives in the pod's memory. Signing via KMS/HSM would keep it
+   in the store; rotation with an overlap window (publish two JWKS entries, sign
+   with the newer) is the piece that has to come with it.
+2. **The demo service account is a password in config.** Start-up seeding signs in
+   as an ordinary account, which is honest but is still a credential in a secret.
+   A client-credentials grant, or a workload identity the token is minted from,
+   removes it.
+3. **The gateway accepts an Entra token directly** when ENTRA_ISSUER_URI is set,
+   and that token carries no role or clientIds. Services reject it (they trust
+   only auth-service's issuer), so nothing is exposed - but the failure mode is a
+   401 deep in the stack rather than a clear answer at the edge. Either exchange
+   it at the gateway or stop advertising it as a way in.
+4. **Offboarding's  bucket has no repair path.** The report is honest
+   now - asset in stock, assignment not closed - but somebody still has to fix the
+   row by hand. A reconciliation job that closes assignments whose asset is back in
+   stock would finish the job.
+5. **The rate limiter fails open.** Deliberate, and the right trade against a total
+   authentication outage, but a Redis outage silently removes the brake. An alert
+   on the miss it already logs would make that visible.
 
 Deliberately *not* worth doing: distributed tracing, a service mesh, Kafka. They
 add configuration without demonstrating anything the project has not already
