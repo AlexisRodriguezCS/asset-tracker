@@ -24,6 +24,7 @@ export const ROLE_BLURBS: Record<Role, string> = {
 const APPROVERS: Role[] = ["ADMIN", "TECH", "POC"];
 const ASSET_OPERATORS: Role[] = ["ADMIN", "TECH"];
 const COLLECTORS: Role[] = ["ADMIN", "TECH", "HR"];
+const DESK_ASSIGNERS: Role[] = ["ADMIN", "TECH", "HR"];
 
 export function asRole(value: string | null | undefined): Role | null {
   return value && value in ROLE_LABELS ? (value as Role) : null;
@@ -42,6 +43,16 @@ export function canApprove(role: string | null | undefined): boolean {
 /** May create/edit assets and hand gear out. */
 export function canOperateAssets(role: string | null | undefined): boolean {
   return ASSET_OPERATORS.includes(role as Role);
+}
+
+/**
+ * May seat somebody: set or clear the desk a person sits at.
+ *
+ * The same roles as collecting today, but kept apart because it is a different job -
+ * where a new starter sits is HR's call, and it moves no equipment.
+ */
+export function canAssignDesks(role: string | null | undefined): boolean {
+  return DESK_ASSIGNERS.includes(role as Role);
 }
 
 /** May take gear back in - techs and admins, plus HR running an offboarding sweep. */

@@ -121,7 +121,7 @@ public class PersonService {
 
   @Transactional
   public Person assignDesk(Long id, Long deskId, String actor) {
-    CallerContext.requireAssetOperator();
+    CallerContext.requireDeskAssigner();
     Person person = getById(id);
     TenantContext.requireAllowed(person.getClientId());
     Long before = person.getDeskId();

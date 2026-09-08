@@ -14,6 +14,7 @@ import com.assettracker.peopleservice.entity.Person;
 import com.assettracker.peopleservice.entity.PersonStatus;
 import com.assettracker.peopleservice.repository.PersonRepository;
 import com.assettracker.peopleservice.web.CallerContext;
+import com.assettracker.peopleservice.web.ForbiddenRoleException;
 import com.assettracker.peopleservice.web.dto.CreatePersonRequest;
 import java.util.List;
 import java.util.Optional;
@@ -105,6 +106,29 @@ class PersonServiceTest {
     when(repository.findById(4L)).thenReturn(Optional.of(p));
     assertThat(service.assignDesk(4L, 12L, "tech@acme.example").getDeskId()).isEqualTo(12L);
     assertThat(service.assignDesk(4L, null, "tech@acme.example").getDeskId()).isNull();
+  }
+
+  /**
+   * Seating a new starter is HR's job. It used to need an asset operator, which sounded tidy and
+   * was wrong about who does the work - and HR could already offboard the same person, which is the
+   * far bigger action.
+   */
+  @Test
+  void hrMaySeatSomebody() {
+    CallerContext.set("HR", null);
+    Person p = new Person(1L, "Priya", "priya@acme.example", "Finance");
+    when(repository.findById(4L)).thenReturn(Optional.of(p));
+
+    assertThat(service.assignDesk(4L, 12L, "hr@acme.example").getDeskId()).isEqualTo(12L);
+  }
+
+  /** Approving event requests is not the same as arranging the floor. */
+  @Test
+  void aPocMayNotSeatSomebody() {
+    CallerContext.set("POC", null);
+
+    assertThatThrownBy(() -> service.assignDesk(4L, 12L, "poc@acme.example"))
+        .isInstanceOf(ForbiddenRoleException.class);
   }
 
   @Test

@@ -129,6 +129,19 @@ async function main() {
     { method: "POST", body: JSON.stringify({ clientId: 1, fullName: "QA Ghost", email: "qa@acme.example", department: "QA" }) }), 403);
   check("write", "employee create location", await status(tok.user, "/api/locations",
     { method: "POST", body: JSON.stringify({ clientId: 1, kind: "DESK", label: "QA Desk", qrTag: "QA-D-1" }) }), 403);
+  // Seating people. HR does this and cannot buy assets; a POC approves requests and does
+  // neither. The desk moves and is put straight back, so the matrix leaves the floor as it
+  // found it.
+  const seat = (who, deskId) => status(tok[who], "/api/people/1/desk",
+    { method: "POST", body: JSON.stringify({ deskId }) });
+  const seated = (await json(tok.tech, "/api/people?clientId=1")).find((p) => p.id === 1);
+  const desks = await json(tok.tech, "/api/locations?clientId=1&kind=DESK");
+  const elsewhere = desks.find((d) => d.id !== seated.deskId).id;
+  check("write", "employee cannot seat anybody", await seat("user", elsewhere), 403);
+  check("write", "POC cannot seat anybody", await seat("poc", elsewhere), 403);
+  check("write", "HR can seat somebody", await seat("hr", elsewhere), 200);
+  check("write", "tech can seat somebody", await seat("tech", seated.deskId), 200);
+
   check("write", "employee create type", await status(tok.user, "/api/assets/types",
     { method: "POST", body: JSON.stringify({ clientId: 1, name: "QAType" }) }), 403);
 

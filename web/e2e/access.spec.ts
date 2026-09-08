@@ -137,6 +137,56 @@ test.describe("HR", () => {
   });
 });
 
+/**
+ * HR seats people; HR does not buy them laptops.
+ *
+ * Both halves are here because the console got each one wrong in the opposite direction: it
+ * offered HR an "Add asset" button that /assets/new then refused, and it offered nobody at all a
+ * way to change where an existing person sits, though the endpoint had always been there.
+ */
+test.describe("HR and desks", () => {
+  test.use({ storageState: statePath("HR") });
+
+  test("the dashboard does not offer an action HR cannot take", async ({
+    page,
+  }) => {
+    await page.goto("/dashboard");
+
+    await expect(
+      page.getByRole("heading", { name: "Dashboard" }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: /Add asset/i })).toHaveCount(0);
+  });
+
+  test("a person can be moved to another desk and back", async ({ page }) => {
+    await page.goto("/people/1");
+
+    const desk = page.getByLabel("Desk", { exact: true });
+    await expect(desk).toBeVisible();
+    const before = await desk.inputValue();
+
+    // pick any desk that is not the current one, so the test does not depend on seed ids
+    const other = await desk
+      .locator("option")
+      .evaluateAll(
+        (options, current) =>
+          options
+            .map((o) => (o as HTMLOptionElement).value)
+            .find((v) => v !== "" && v !== current) ?? "",
+        before,
+      );
+
+    await desk.selectOption(other);
+    await page.getByRole("button", { name: "Move desk" }).click();
+    await expect(desk).toHaveValue(other);
+
+    // put it back: a suite that leaves the demo tenant rearranged is not a passing suite
+    await desk.selectOption(before);
+    await page.getByRole("button", { name: "Move desk" }).click();
+    await expect(desk).toHaveValue(before);
+  });
+});
+
 test.describe("a POC", () => {
   test.use({ storageState: statePath("POC") });
 

@@ -10,7 +10,7 @@ import {
 } from "@/lib/api";
 import { getSession } from "@/lib/session";
 import { currentClientId } from "@/lib/client";
-import { isSelfServiceUser } from "@/lib/roles";
+import { canOperateAssets, isSelfServiceUser } from "@/lib/roles";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatStrip } from "@/components/ui/stat";
 import { Card } from "@/components/ui/card";
@@ -92,7 +92,11 @@ export default async function DashboardPage() {
         title="Dashboard"
         subtitle="Where the fleet stands right now, and what needs a look"
         action={
-          session ? (
+          // Gated on the role, not merely on being signed in. HR and POCs were offered
+          // this and then bounced off /assets/new by its own guard, which is the worst
+          // of both: it looks like their job until they try it. The assets page has
+          // always gated the same action; the dashboard had drifted from it.
+          canOperateAssets(session.role) ? (
             <Link href="/assets/new">
               <Button size="sm">Add asset</Button>
             </Link>

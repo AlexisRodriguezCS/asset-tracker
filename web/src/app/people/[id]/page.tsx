@@ -12,8 +12,10 @@ import { getSession } from "@/lib/session";
 import { Card } from "@/components/ui/card";
 import { AssetStatusBadge, PersonStatusBadge } from "@/components/ui/badge";
 import { OffboardButton } from "@/components/offboard-button";
+import { DeskPicker } from "@/components/desk-picker";
 import { AuditFeed } from "@/components/audit-feed";
 import { label } from "@/lib/format";
+import { canAssignDesks } from "@/lib/roles";
 
 export default async function PersonDetailPage({
   params,
@@ -38,9 +40,9 @@ export default async function PersonDetailPage({
       holderId: person.id,
     }),
     personAudit(person.clientId, person.id).catch(() => []),
-    person.deskId
-      ? listLocations(person.clientId, "DESK").catch(() => [])
-      : Promise.resolve([]),
+    // Fetched whether or not they sit somewhere: this used to load desks only to name the
+    // one they had, and the picker has to offer the others.
+    listLocations(person.clientId, "DESK").catch(() => []),
   ]);
   const desk = desks.find((d) => d.id === person.deskId) ?? null;
   const deskText = desk
@@ -70,7 +72,24 @@ export default async function PersonDetailPage({
         {` · ${deskText}`}
       </p>
 
-      <Card className="mt-6">
+      {canAssignDesks(session?.role) && (
+        <Card className="mt-6 space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold">Desk</h2>
+            <p className="text-xs text-muted-foreground">
+              Where this person sits. Changing it moves no equipment - gear
+              follows the person, not the desk.
+            </p>
+          </div>
+          <DeskPicker
+            personId={person.id}
+            desks={desks}
+            current={person.deskId ?? null}
+          />
+        </Card>
+      )}
+
+      <Card className="mt-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold">Assets held ({held.length})</h2>
           <OffboardButton

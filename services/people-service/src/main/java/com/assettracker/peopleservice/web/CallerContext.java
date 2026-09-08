@@ -49,6 +49,8 @@ public final class CallerContext {
   private static final java.util.Set<String> STAFF = java.util.Set.of("ADMIN", "TECH", "POC", "HR");
   private static final java.util.Set<String> ASSET_OPERATORS = java.util.Set.of("ADMIN", "TECH");
   private static final java.util.Set<String> COLLECTORS = java.util.Set.of("ADMIN", "TECH", "HR");
+  private static final java.util.Set<String> DESK_ASSIGNERS =
+      java.util.Set.of("ADMIN", "TECH", "HR");
 
   /**
    * A role that is absent denies, rather than waving the caller through.
@@ -78,6 +80,21 @@ public final class CallerContext {
   public static void requireCollector() {
     if (!isOneOf(COLLECTORS)) {
       throw new ForbiddenRoleException(ROLE.get(), "collect or return assets");
+    }
+  }
+
+  /**
+   * Seating somebody: setting or clearing which desk a person sits at.
+   *
+   * <p>The same roles as collecting, but a separate gate because it is a different job and the two
+   * sets have no reason to move together. It used to require an asset operator, which read as tidy
+   * - people and desks are records, records are edited by techs - and was wrong about who does the
+   * work. Deciding where a new starter sits is HR's, and it moves no equipment: the desk is where a
+   * person is, not what they hold.
+   */
+  public static void requireDeskAssigner() {
+    if (!isOneOf(DESK_ASSIGNERS)) {
+      throw new ForbiddenRoleException(ROLE.get(), "assign desks");
     }
   }
 
