@@ -3,17 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import type { Asset, Person } from "@/lib/types";
+import type { Asset, Location, Person } from "@/lib/types";
 
 /** Check-out / return controls on the asset detail page. Requires a signed-in user. */
 export function AssetActions({
   asset,
   people,
+  desks,
   canAct,
 }: {
   asset: Asset;
   people: Person[];
+  /** Desks this asset can be placed on, named rather than numbered. */
+  desks: Location[];
   /** Whether the caller may move this asset's custody (tech, admin, or HR collecting). */
   canAct: boolean;
 }) {
@@ -96,12 +98,30 @@ export function AssetActions({
             {busy ? "…" : "Assign"}
           </Button>
           <span className="text-xs text-muted-foreground">or to a desk id</span>
-          <Input
-            value={deskId}
-            onChange={(e) => setDeskId(e.target.value)}
-            placeholder="desk id"
-            className="w-24"
-          />
+          {/*
+            A picker, not the numeric id this used to ask for. Placing a dock on Desk 007
+            meant knowing that Desk 007 is id 10 - a database key asked of somebody standing
+            in an office. The person page picks desks by name; this now matches it.
+          */}
+          <label className="text-sm">
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">
+              Or place on a desk
+            </span>
+            <select
+              value={deskId}
+              onChange={(e) => setDeskId(e.target.value)}
+              className="h-9 rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary"
+            >
+              <option value="">Choose a desk…</option>
+              {desks.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {[d.label, d.building, d.floor && `floor ${d.floor}`]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </option>
+              ))}
+            </select>
+          </label>
           <Button
             variant="outline"
             disabled={busy || !deskId}

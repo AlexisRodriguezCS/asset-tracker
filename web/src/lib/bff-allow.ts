@@ -25,6 +25,8 @@ export const ALLOW: RegExp[] = [
   /^assets\/types$/,
   /^assets\/types\/\d+(\?.*)?$/,
   /^people$/,
+  // the person record itself: read for the detail page, PATCH to correct it
+  /^people\/\d+$/,
   /^people\/\d+\/(offboarding|departed|desk)$/,
   /^locations$/,
   /^clients$/,

@@ -10,12 +10,12 @@ import {
 } from "@/lib/api";
 import { getSession } from "@/lib/session";
 import { Card } from "@/components/ui/card";
-import { AssetStatusBadge, PersonStatusBadge } from "@/components/ui/badge";
 import { OffboardButton } from "@/components/offboard-button";
 import { DeskPicker } from "@/components/desk-picker";
+import { PersonGear } from "@/components/person-gear";
+import { PersonDetails } from "@/components/person-details";
 import { AuditFeed } from "@/components/audit-feed";
-import { label } from "@/lib/format";
-import { canAssignDesks } from "@/lib/roles";
+import { canAssignDesks, canCollect, canOperateAssets } from "@/lib/roles";
 
 export default async function PersonDetailPage({
   params,
@@ -32,7 +32,7 @@ export default async function PersonDetailPage({
     throw e;
   }
 
-  const [session, held, activity, desks] = await Promise.all([
+  const [session, held, activity, inStock, desks] = await Promise.all([
     getSession(),
     listAssets({
       clientId: person.clientId,
@@ -40,6 +40,10 @@ export default async function PersonDetailPage({
       holderId: person.id,
     }),
     personAudit(person.clientId, person.id).catch(() => []),
+    // the stockroom, so gear can be handed over from this page rather than from each asset
+    listAssets({ clientId: person.clientId, status: "IN_STOCK" }).catch(
+      () => [],
+    ),
     // Fetched whether or not they sit somewhere: this used to load desks only to name the
     // one they had, and the picker has to offer the others.
     listLocations(person.clientId, "DESK").catch(() => []),
@@ -60,17 +64,11 @@ export default async function PersonDetailPage({
         <ChevronLeft className="h-4 w-4" /> People
       </Link>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          {person.fullName}
-        </h1>
-        <PersonStatusBadge status={person.status} />
-      </div>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {person.email}
-        {person.department ? ` · ${person.department}` : ""}
-        {` · ${deskText}`}
-      </p>
+      <PersonDetails
+        person={person}
+        canEdit={canOperateAssets(session?.role)}
+      />
+      <p className="mt-1 text-sm text-muted-foreground">{deskText}</p>
 
       {canAssignDesks(session?.role) && (
         <Card className="mt-6 space-y-3">
@@ -100,34 +98,14 @@ export default async function PersonDetailPage({
           />
         </div>
 
-        {held.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">
-            This person holds no assets.
-          </p>
-        ) : (
-          <ul className="mt-4 divide-y divide-border">
-            {held.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-center justify-between py-2.5"
-              >
-                <div>
-                  <Link
-                    href={`/assets/${a.id}`}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {[a.make, a.model].filter(Boolean).join(" ") ||
-                      label(a.type)}
-                  </Link>
-                  <p className="font-mono text-xs text-muted-foreground">
-                    {a.assetTag} · {label(a.type)}
-                  </p>
-                </div>
-                <AssetStatusBadge status={a.status} />
-              </li>
-            ))}
-          </ul>
-        )}
+        <PersonGear
+          clientId={person.clientId}
+          personId={person.id}
+          held={held}
+          inStock={inStock}
+          canGive={canOperateAssets(session?.role)}
+          canTakeBack={canCollect(session?.role)}
+        />
       </Card>
 
       <Card className="mt-4">

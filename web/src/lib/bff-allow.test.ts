@@ -27,6 +27,7 @@ describe("paths the console actually uses", () => {
     "assets/types",
     "assets/types/7?clientId=1",
     "people",
+    "people/3",
     "people/3/offboarding",
     "people/3/departed",
     "people/3/desk",

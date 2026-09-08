@@ -182,6 +182,7 @@ export default async function AssetDetailPage({
             <AssetActions
               asset={asset}
               people={people}
+              desks={desks}
               canAct={canCollect(session?.role)}
             />
             <AssetAdmin

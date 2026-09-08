@@ -60,6 +60,35 @@ test.describe("as a tech", () => {
     await expect(page.getByText(/^\$[\d,]+$/).first()).toBeVisible();
   });
 
+  /**
+   * Handing gear over and taking it back, both from the page about the person.
+   *
+   * This used to be a trip to each asset: find it, pick the person out of a dropdown, check it
+   * out - and the only thing the person page offered was the offboarding sweep, which is far too
+   * big a hammer for swapping a charger.
+   *
+   * The test hands one item over and gives it straight back, so it can run twice.
+   */
+  test("gear can be handed over and taken back from the person page", async ({
+    page,
+  }) => {
+    await page.goto("/people/1");
+
+    const rows = page.locator("li").filter({ hasText: "Assigned" });
+    const before = await rows.count();
+
+    const stock = page.getByLabel("Gear to hand over");
+    const first = await stock.locator("option").nth(1).getAttribute("value");
+    await stock.selectOption(first!);
+    await page.getByRole("button", { name: "Hand over" }).click();
+
+    await expect(rows).toHaveCount(before + 1);
+
+    // and back, or the stockroom shrinks by one on every run
+    await rows.last().getByRole("button", { name: "Return" }).click();
+    await expect(rows).toHaveCount(before);
+  });
+
   test("the asset list paginates rather than dumping the catalog", async ({
     page,
   }) => {

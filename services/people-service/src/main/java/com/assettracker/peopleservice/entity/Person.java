@@ -77,6 +77,17 @@ public class Person {
     return email;
   }
 
+  /**
+   * Corrects the address on this record.
+   *
+   * <p>Deliberately not free: the email is what ties a person to their login, and it has to stay
+   * unique within the client - so the uniqueness check lives in the service, which is the only
+   * thing that can see the other rows.
+   */
+  public void setEmail(String email) {
+    this.email = email;
+  }
+
   public String getDepartment() {
     return department;
   }

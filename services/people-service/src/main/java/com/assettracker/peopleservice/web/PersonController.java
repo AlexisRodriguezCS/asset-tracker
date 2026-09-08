@@ -5,11 +5,13 @@ import com.assettracker.peopleservice.service.PersonService;
 import com.assettracker.peopleservice.web.dto.AssignDeskRequest;
 import com.assettracker.peopleservice.web.dto.CreatePersonRequest;
 import com.assettracker.peopleservice.web.dto.PersonResponse;
+import com.assettracker.peopleservice.web.dto.UpdatePersonRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -48,6 +50,14 @@ public class PersonController {
   @GetMapping("/{id}")
   public PersonResponse getById(@PathVariable Long id) {
     return PersonResponse.from(service.getById(id));
+  }
+
+  @PatchMapping("/{id}")
+  public PersonResponse update(
+      @PathVariable Long id,
+      @Valid @RequestBody UpdatePersonRequest request,
+      @RequestHeader(value = ACTOR, defaultValue = "system") String actor) {
+    return PersonResponse.from(service.update(id, request, actor));
   }
 
   @PostMapping("/{id}/offboarding")

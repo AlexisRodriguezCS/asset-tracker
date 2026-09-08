@@ -16,6 +16,7 @@ import com.assettracker.peopleservice.repository.PersonRepository;
 import com.assettracker.peopleservice.web.CallerContext;
 import com.assettracker.peopleservice.web.ForbiddenRoleException;
 import com.assettracker.peopleservice.web.dto.CreatePersonRequest;
+import com.assettracker.peopleservice.web.dto.UpdatePersonRequest;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -129,6 +130,49 @@ class PersonServiceTest {
 
     assertThatThrownBy(() -> service.assignDesk(4L, 12L, "poc@acme.example"))
         .isInstanceOf(ForbiddenRoleException.class);
+  }
+
+  @Test
+  void updateChangesOnlyWhatWasSent() {
+    Person p = new Person(1L, "Priya", "priya@acme.example", "Finance");
+    when(repository.findById(4L)).thenReturn(Optional.of(p));
+
+    Person updated =
+        service.update(4L, new UpdatePersonRequest("Priya Nair", null, null), "tech@acme.example");
+
+    assertThat(updated.getFullName()).isEqualTo("Priya Nair");
+    // the fields the caller left out are untouched, so fixing a name cannot blank an address
+    assertThat(updated.getEmail()).isEqualTo("priya@acme.example");
+    assertThat(updated.getDepartment()).isEqualTo("Finance");
+  }
+
+  /** The email ties this record to a login, so it has to stay unique the way creation does. */
+  @Test
+  void updateRefusesAnEmailSomebodyElseHas() {
+    Person p = new Person(1L, "Priya", "priya@acme.example", "Finance");
+    when(repository.findById(4L)).thenReturn(Optional.of(p));
+    when(repository.existsByClientIdAndEmailIgnoreCase(1L, "taken@acme.example")).thenReturn(true);
+
+    assertThatThrownBy(
+            () ->
+                service.update(
+                    4L,
+                    new UpdatePersonRequest(null, "taken@acme.example", null),
+                    "tech@acme.example"))
+        .isInstanceOf(EmailTakenException.class);
+  }
+
+  /** Re-sending the address they already have is not a clash with themselves. */
+  @Test
+  void updateAcceptsThePersonsOwnEmailBack() {
+    Person p = new Person(1L, "Priya", "priya@acme.example", "Finance");
+    when(repository.findById(4L)).thenReturn(Optional.of(p));
+
+    Person updated =
+        service.update(
+            4L, new UpdatePersonRequest(null, "PRIYA@acme.example", null), "tech@acme.example");
+
+    assertThat(updated.getEmail()).isEqualTo("priya@acme.example");
   }
 
   @Test

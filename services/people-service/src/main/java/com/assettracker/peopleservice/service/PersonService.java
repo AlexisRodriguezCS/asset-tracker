@@ -9,6 +9,7 @@ import com.assettracker.peopleservice.repository.PersonRepository;
 import com.assettracker.peopleservice.web.CallerContext;
 import com.assettracker.peopleservice.web.TenantContext;
 import com.assettracker.peopleservice.web.dto.CreatePersonRequest;
+import com.assettracker.peopleservice.web.dto.UpdatePersonRequest;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +49,43 @@ public class PersonService {
         "added " + saved.getFullName() + " <" + saved.getEmail() + ">",
         null);
     return saved;
+  }
+
+  /**
+   * Corrects a person's details. Null fields are left as they are.
+   *
+   * <p>The email is the interesting one: it is what ties this record to a login, so changing it has
+   * to stay unique within the client for the same reason creating one does - and the check is the
+   * same case-insensitive one, or two people could differ only by capitals.
+   */
+  @Transactional
+  public Person update(Long id, UpdatePersonRequest request, String actor) {
+    CallerContext.requireAssetOperator();
+    Person person = getById(id);
+    TenantContext.requireAllowed(person.getClientId());
+
+    String email = request.email();
+    if (email != null && !email.equalsIgnoreCase(person.getEmail())) {
+      if (repository.existsByClientIdAndEmailIgnoreCase(person.getClientId(), email)) {
+        throw new EmailTakenException(email);
+      }
+      person.setEmail(email);
+    }
+    if (request.fullName() != null && !request.fullName().isBlank()) {
+      person.setFullName(request.fullName().trim());
+    }
+    if (request.department() != null) {
+      person.setDepartment(request.department().isBlank() ? null : request.department().trim());
+    }
+
+    audit.record(
+        person.getClientId(),
+        actor,
+        "PERSON_UPDATED",
+        person.getId(),
+        "updated " + person.getFullName() + " <" + person.getEmail() + ">",
+        null);
+    return person;
   }
 
   @Transactional(readOnly = true)
