@@ -89,6 +89,48 @@ test.describe("as a tech", () => {
     await expect(rows).toHaveCount(before);
   });
 
+  /**
+   * Seating somebody from the desk itself.
+   *
+   * The page calls itself the view a QR scan at the desk would open, which is exactly where you
+   * are standing when the question comes up - but until now it could only be read, and seating
+   * happened on the person's page instead.
+   *
+   * The person is put back where they started, via the picker on their own page, so the suite can
+   * run twice and the demo floor plan survives it.
+   */
+  test("somebody can be seated from the desk card", async ({ page }) => {
+    await page.goto("/people/1");
+    const theirDesk = page.getByLabel("Desk", { exact: true });
+    const original = await theirDesk.inputValue();
+
+    await page.goto("/desks");
+    // An empty desk, so this is not fighting whoever already sits somewhere. Scoped by the
+    // card's own id rather than by its text: filtering divs on prose matches every ancestor
+    // that happens to contain the words, and the one it settles on need not be the card.
+    const empty = page
+      .locator('[id^="desk-"]')
+      .filter({ hasText: "Nobody sits here" })
+      .first();
+    // Pinned by id before anything changes. Held as a text filter, the locator stops matching
+    // the moment somebody is seated there - it is defined by the words that just went away.
+    const cardId = await empty.getAttribute("id");
+    const card = page.locator(`[id="${cardId}"]`);
+    await card.getByRole("button", { name: "Seat or place…" }).click();
+
+    const who = card.getByLabel("Who sits here");
+    await who.selectOption({ label: "Dana Reyes" });
+    await card.getByRole("button", { name: "Seat", exact: true }).click();
+
+    await expect(card.getByRole("link", { name: "Dana Reyes" })).toBeVisible();
+
+    // back to where she was sitting
+    await page.goto("/people/1");
+    await theirDesk.selectOption(original);
+    await page.getByRole("button", { name: "Move desk" }).click();
+    await expect(theirDesk).toHaveValue(original);
+  });
+
   test("the asset list paginates rather than dumping the catalog", async ({
     page,
   }) => {

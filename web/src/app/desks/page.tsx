@@ -2,13 +2,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { MapPin } from "lucide-react";
 import { getSession } from "@/lib/session";
-import { canOperateAssets, isSelfServiceUser } from "@/lib/roles";
+import {
+  canAssignDesks,
+  canOperateAssets,
+  isSelfServiceUser,
+} from "@/lib/roles";
 import { currentClientId } from "@/lib/client";
-import { listLocations, listAssets } from "@/lib/api";
+import { listLocations, listAssets, listPeople } from "@/lib/api";
 import { StatStrip } from "@/components/ui/stat";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
-import type { Asset, Location } from "@/lib/types";
+import { DeskActions } from "@/components/desk-actions";
+import type { Asset, Location, Person } from "@/lib/types";
 
 export const metadata = { title: "Desks" };
 
@@ -24,10 +29,18 @@ export default async function DesksPage({
   if (isSelfServiceUser(session.role)) redirect("/");
 
   const [clientId, sp] = await Promise.all([currentClientId(), searchParams]);
-  const [allDesks, assigned] = await Promise.all([
+  const [allDesks, assigned, people, inStock] = await Promise.all([
     listLocations(clientId, "DESK"),
     listAssets({ clientId, holderType: "LOCATION" }),
+    // who sits where, and what is free to put down - both so the card can be acted on
+    listPeople(clientId).catch(() => []),
+    listAssets({ clientId, status: "IN_STOCK" }).catch(() => []),
   ]);
+
+  const seatedAt = new Map<number, Person>();
+  for (const p of people) {
+    if (p.deskId != null) seatedAt.set(p.deskId, p);
+  }
 
   const byDesk = new Map<number, Asset[]>();
   for (const a of assigned) {
@@ -159,6 +172,12 @@ export default async function DesksPage({
                       key={d.id}
                       desk={d}
                       items={byDesk.get(d.id) ?? []}
+                      seated={seatedAt.get(d.id) ?? null}
+                      people={people}
+                      inStock={inStock}
+                      clientId={clientId}
+                      canSeat={canAssignDesks(session.role)}
+                      canPlace={canOperateAssets(session.role)}
                     />
                   ))}
                 </div>
@@ -171,7 +190,25 @@ export default async function DesksPage({
   );
 }
 
-function DeskCard({ desk, items }: { desk: Location; items: Asset[] }) {
+function DeskCard({
+  desk,
+  items,
+  seated,
+  people,
+  inStock,
+  clientId,
+  canSeat,
+  canPlace,
+}: {
+  desk: Location;
+  items: Asset[];
+  seated: Person | null;
+  people: Person[];
+  inStock: Asset[];
+  clientId: number;
+  canSeat: boolean;
+  canPlace: boolean;
+}) {
   return (
     <div
       id={`desk-${desk.id}`}
@@ -203,6 +240,21 @@ function DeskCard({ desk, items }: { desk: Location; items: Asset[] }) {
         </span>
       </div>
 
+      {/* Who sits here. The grid showed only what was on the desk, which answered half of the
+          question a desk raises. */}
+      <p className="mt-3 text-sm">
+        {seated ? (
+          <Link
+            href={`/people/${seated.id}`}
+            className="text-primary hover:underline"
+          >
+            {seated.fullName}
+          </Link>
+        ) : (
+          <span className="text-muted-foreground">Nobody sits here</span>
+        )}
+      </p>
+
       {items.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">Empty</p>
       ) : (
@@ -222,6 +274,16 @@ function DeskCard({ desk, items }: { desk: Location; items: Asset[] }) {
           ))}
         </ul>
       )}
+
+      <DeskActions
+        deskId={desk.id}
+        clientId={clientId}
+        seated={seated}
+        people={people}
+        inStock={inStock}
+        canSeat={canSeat}
+        canPlace={canPlace}
+      />
     </div>
   );
 }
